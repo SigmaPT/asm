@@ -1,5 +1,5 @@
 NAME "stockfish 5"
-PATH "engines\stockfish_x64_bmi2.exe"
+PATH "engines\stockfish_x64_modern.exe"
 RATE "3150 0"
 DESC "very strong opponent"
 LOGO "graphics\stockfish.bmp"
