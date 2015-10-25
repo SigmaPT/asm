@@ -98,10 +98,10 @@ end if
 			lea   rax, [hashTable]
 			and   byte[rax+TT.date], -4
 			add   byte[rax+TT.date], 4
-	if SEARCH_DEBUG eq 1
-		       call   HashTable_Clear
-			mov   byte [QSearchTesting],0
-	end if
+    ;    if SEARCH_DEBUG eq 1
+    ;                   call   HashTable_Clear
+    ;                    mov   byte [QSearchTesting],0
+    ;    end if
 
 		; clear stats
 			xor   eax, eax
@@ -125,7 +125,7 @@ end if
 			mov   dword [rootMoves+RootMoves.depth], r15d
 			cmp   r15d, MAX_PLY
 			jae   .IdLoopDone
-			cmp   r15d, dword [Limits.depth]
+			cmp   r15d, dword[Limits.depth]
 			 ja   .IdLoopDone
 
 

@@ -1,356 +1,482 @@
 
 
 
-Engine_ChangePVCount:	  ; rcx address of Engine
-			  ; edx increment
-		       push  rbp rsi rdi
+
+Engine_UpdatePlayer:
+	       push  rbp rsi rdi
+		mov  rbp, rcx
+		mov  byte[rbp-Engine1+Engine1_GoingQ], 0
+	       call  Engine_Position
+		mov  rcx, rbp
+	       call  Engine_ClearOutput
+		mov  rcx, rbp
+	       call  Engine_Think
+		mov  byte[rbp-Engine1+Engine1_GoingQ], -1
+Engine_UpdateDone:
+		lea  rdi,[rbp-Engine1+Engine1_MemoryUsage]
+		mov  [rdi+PROCESS_MEMORY_COUNTERS_EX.cb],sizeof.PROCESS_MEMORY_COUNTERS_EX
+	     invoke  GetProcessMemoryInfo,qword[rbp-Engine1+Engine1_PI.hProcess],rdi,sizeof.PROCESS_MEMORY_COUNTERS_EX
+		mov  rax,[rdi+PROCESS_MEMORY_COUNTERS_EX.PrivateUsage]
+		shr  rax,20
+	       call  PrintUnsignedInteger
+		mov  rax,' MiB'
+	      stosq
+		pop  rdi rsi rbp
+		ret
+Engine_UpdateKibitzer:
+	       push  rbp rsi rdi
+		mov  rbp, rcx
+		mov  byte[rbp-Engine1+Engine1_GoingQ], 0
+	       call  Engine_Stop
+		mov  rcx, rbp
+	       call  Engine_Position
+		mov  rcx, rbp
+	       call  Engine_ClearOutput
+		mov  rcx, rbp
+	       call  Engine_GoInfinite
+		jmp  Engine_UpdateDone
+
+
+Engine_StopKibitzers:
+	       push  rbp rdi rsi
+		lea  rbp, [BoardPos]
+		mov  byte[Engine3_GoingQ], 0
+		mov  byte[Engine4_GoingQ], 0
+		cmp  dword[Engine3_On], 0
+		 je  .NoEngine3
+		lea  rcx, [Engine3]
+	       call  Engine_Stop
+.NoEngine3:
+		cmp  dword[Engine4_On], 0
+		 je  .NoEngine4
+		lea  rcx,[Engine4]
+	       call  Engine_Stop
+.NoEngine4:
+		pop  rsi rdi rbp
+		ret
+
+
+
+Engine_ChangePVCount:
+	; rcx address of Engine (3 or 4)
+	; edx increment
+	       push  rbp rsi rdi
+		mov  rbp, rcx
+		mov  eax, 1
+		add  edx, dword[rbp-Engine1+Engine1_KibitzPVCount]
+		cmp  edx, eax
+	      cmovl  edx, eax
+		mov  eax, ENGINE_PV_COUNT
+		cmp  edx, eax
+	      cmovg  edx, eax
+		cmp  edx, dword[rbp-Engine1+Engine1_KibitzPVCount]
+		 je  .Done
+		mov  dword[rbp-Engine1+Engine1_KibitzPVCount], edx
+		mov  byte[rbp-Engine1+Engine1_GoingQ], 0
+		mov  rcx, rbp
+	       call  Engine_Stop
+		mov  rcx, rbp
+	       call  Engine_ClearOutput
+		lea  rdi, [rbp-Engine1+Engine1_InputBuffer]
+		lea  rsi, [szCmdMultiPV]
+	       call  Append
+		mov  eax, [rbp-Engine1+Engine1_KibitzPVCount]
+	       call  PrintUnsignedInteger
+		mov  al, 10
+	      stosb
+		lea  rdx, [rbp-Engine1+Engine1_InputBuffer]
+		mov  r8, rdi
+		sub  r8, rdx
+	     invoke  WriteFile, qword[rbp-Engine1+Engine1_In_Write], rdx, r8, temp, NULL
+		mov  rcx, rbp
+	       call  Engine_GoInfinite
+		mov  byte[rbp-Engine1+Engine1_GoingQ], -1
+.Done:
+		pop  rdi rsi rbp
+		ret
+
+
+
+Engine_Write:
+		lea  rdx, [rbp-Engine1+Engine1_InputBuffer]
+		mov  r8, rdi
+		sub  r8, rdx
+	     invoke  WriteFile, qword[rbp-Engine1+Engine1_In_Write], rdx, r8, temp, NULL
+Engine_Return:
+		pop  rdi rsi rbp
+		ret
+Engine_UCI:
+	       push  rbp rsi rdi
+		mov  rbp, rcx
+		lea  rdi, [rbp-Engine1+Engine1_InputBuffer]
+		lea  rsi, [szCmdUCI]
+	       call  AppendNewLine
+		jmp  Engine_Write
+
+Engine_Position:
+	       push  rbp rsi rdi
+		mov  rbp, rcx
+		mov  rdx, qword[BoardPos+PosEx.szPosTable]
+		mov  r8, qword[BoardPos+PosEx.szPos]
+		mov  byte[r8], 10
+		sub  r8, rdx
+		add  r8, 1
+	     invoke  WriteFile, qword[rbp-Engine1+Engine1_In_Write], rdx, r8, temp, NULL
+		jmp  Engine_Return
+Engine_Think:
+	       push  rbp rsi rdi
+		mov  rbp, rcx
+		mov  byte[rbp-Engine1+Engine1_ThinkingQ], -1
+		lea  rdi,[rbp-Engine1+Engine1_InputBuffer]
+		lea  rsi, [szCmdThink]
+	       call  AppendNewLine
+		jmp  Engine_Write
+
+Engine_GoInfinite:
+	       push  rbp rsi rdi
+		mov  rbp, rcx
+		mov  byte[rbp-Engine1+Engine1_ThinkingQ], -1
+		lea  rdi, [rbp-Engine1+Engine1_InputBuffer]
+		lea  rsi, [szCmdGo]
+	       call  AppendNewLine
+		jmp  Engine_Write
+Engine_Stop:
+	       push  rbp rsi rdi
+		mov  rbp, rcx
+		cmp  byte[rbp-Engine1+Engine1_ThinkingQ], 0
+		 je  Engine_Return
+		mov  byte[rbp-Engine1+Engine1_ThinkingQ], 0
+		mov  byte[rbp-Engine1+Engine1_GoingQ],0
+		lea  rdi, [rbp-Engine1+Engine1_InputBuffer]
+		lea  rsi, [szCmdStop]
+	       call  AppendNewLine
+		jmp  Engine_Write
+Engine_Quit:
+	       push  rbp rsi rdi
+		mov  rbp, rcx
+		cmp  dword[rbp-Engine1+Engine1_On], 0
+		 je  .Return
+	       call  Engine_Stop
+		lea  rdi, [rbp-Engine1+Engine1_InputBuffer]
+		lea  rsi, [szCmdQuit]
+	       call  AppendNewLine
+		lea  rdx, [rbp-Engine1+Engine1_InputBuffer]
+		mov  r8, rdi
+		sub  r8, rdx
+	     invoke  WriteFile, qword[rbp-Engine1+Engine1_In_Write], rdx, r8, temp, NULL
+	     invoke  WaitForSingleObject, qword[rbp-Engine1+Engine1_hThread], 500
+		mov  byte[rbp-Engine1+Engine1_GoingQ],0
+		mov  dword[rbp-Engine1+Engine1_On], 0	 ; this fill force the thread to terminate the process
+	       test  eax, eax
+		 jz  .CleanExit
+		lea  rdx, qword[rbp-Engine1+Engine1_Name]
+	     invoke  MessageBoxA, 0, rdx,'exit not clean',MB_OK
+	     invoke  WaitForSingleObject, qword[rbp-Engine1+Engine1_hThread], -1
+	.CleanExit:
+
+	     invoke  CloseHandle, qword[rbp-Engine1+Engine1_hThread]
+
+.Return:
+		pop  rdi rsi rbp
+		ret
+
+
+Engine_ClearOutput:
+		       push  rbp
 			mov  rbp,rcx
-			mov  eax,1
-			add  edx,dword[rbp-Engine1+Engine1_KibitzPVCount]
-			cmp  edx,eax
-		      cmovl  edx,eax
-			mov  eax,ENGINE_PV_COUNT
-			cmp  edx,eax
-		      cmovg  edx,eax
-			cmp  edx,dword[rbp-Engine1+Engine1_KibitzPVCount]
-			 je  .Done
-			mov   dword [rbp-Engine1+Engine1_KibitzPVCount], edx
-
-			mov   byte [rbp-Engine1+Engine1_GoingQ], 0
-
-			mov   rcx, rbp
-		       call   Engine_Stop
-
-			mov   rcx, rbp
-		       call   Engine_ClearOutput
-
-
-
-			lea  rdi,[rbp-Engine1+Engine1_InputBuffer]
-			lea  rsi,[szCmdMultiPV]
-		       call  Append
-			mov  eax,[rbp-Engine1+Engine1_KibitzPVCount]
-		       call  PrintUnsignedInteger
-			mov  al,10
-		      stosb
-
-			lea  rdx,[rbp-Engine1+Engine1_InputBuffer]
-			mov  r8,rdi
-			sub  r8,rdx
-		     invoke  WriteFile,qword[rbp-Engine1+Engine1_In_Write],rdx,r8,temp,NULL
-
-			mov  rcx,rbp
-		       call  Engine_GoInfinite
-			mov  byte[rbp-Engine1+Engine1_GoingQ],-1
-	.Done:
-			pop  rdi rsi rbp
-			ret
-
-
-
-Engine_Write:		lea   rdx, [rbp-Engine1+Engine1_InputBuffer]
-			mov   r8, rdi
-			sub   r8, rdx
-		     invoke   WriteFile, qword [rbp-Engine1+Engine1_In_Write], rdx, r8, temp, NULL
-Engine_Return:		pop   rdi rsi rbp
-			ret
-
-Engine_UCI:	       push   rbp rsi rdi
-			mov   rbp, rcx
-			lea   rdi, [rbp-Engine1+Engine1_InputBuffer]
-			lea   rsi, [szCmdUCI]
-		       call   AppendNewLine
-			jmp   Engine_Write
-
-Engine_Position:       push   rbp rsi rdi
-			mov   rbp, rcx
-			mov   rdx, qword [BoardPos+PosEx.szPosTable]
-			mov   r8, qword [BoardPos+PosEx.szPos]
-			mov   byte [r8], 10
-			sub   r8, rdx
-			add   r8, 1
-		     invoke   WriteFile, qword [rbp-Engine1+Engine1_In_Write], rdx, r8, temp, NULL
-			jmp   Engine_Return
-;                       push   rbx
-;                        mov   rbx, qword [BoardPos+PosEx.moveTable]
-;        .next:          cmp   rbx, qword [BoardPos+PosEx.move]
-;                        jae   .done
-;                        mov   al, ' '
-;                      stosb
-;                        lea   rsi, [rbx+MoveData.moveUci]
-;                       call   Append
-;                        add   rbx, sizeof.MoveData
-;                        jmp   .next
-;        .done:          mov   eax, 10
-;                      stosb
-;                        pop   rbx
-		   ;     jmp   Engine_Write
-
-Engine_Think:	       push   rbp rsi rdi
-			mov   rbp, rcx
-			mov   byte [rbp-Engine1+Engine1_ThinkingQ], -1
-			lea   rdi,[rbp-Engine1+Engine1_InputBuffer]
-			lea   rsi, [szCmdThink]
-		       call   AppendNewLine
-			jmp   Engine_Write
-
-Engine_GoInfinite:     push   rbp rsi rdi
-			mov   rbp,rcx
-			mov   byte[rbp-Engine1+Engine1_ThinkingQ],-1
-			lea   rdi,[rbp-Engine1+Engine1_InputBuffer]
-			lea   rsi,[szCmdGo]
-		       call   AppendNewLine
-			jmp   Engine_Write
-
-Engine_Stop:	       push  rbp rsi rdi
-			mov  rbp,rcx
-			cmp  byte[rbp-Engine1+Engine1_ThinkingQ],0
-			 je  Engine_Return
-			mov  byte[rbp-Engine1+Engine1_ThinkingQ],0
-			lea  rdi,[rbp-Engine1+Engine1_InputBuffer]
-			lea  rsi,[szCmdStop]
-		       call  AppendNewLine
-			jmp  Engine_Write
-
-Engine_Quit:	       push  rbp rsi rdi
-			mov  rbp,rcx
-		       call  Engine_Stop
-			lea  rdi,[rbp-Engine1+Engine1_InputBuffer]
-			lea  rsi,[szCmdQuit]
-		       call  AppendNewLine
-			lea  rdx,[rbp-Engine1+Engine1_InputBuffer]
-			mov  r8,rdi
-			sub  r8,rdx
-		     invoke  WriteFile,qword[rbp-Engine1+Engine1_In_Write],rdx,r8,temp,NULL
-		     invoke  Sleep,100
-			mov  dword[rbp-Engine1+Engine1_On],0
-			pop  rdi rsi rbp
-			ret
-
-
-
-_Engine_Start:		push  rbp rsi rdi
-			mov  rbp,rcx
-			cmp  dword[rbp-Engine1+Engine1_On],0
-			jne  .Done
-			mov  dword[rbp-Engine1+Engine1_SA.nLength],sizeof.SECURITY_ATTRIBUTES
-			mov  dword[rbp-Engine1+Engine1_SA.lpSecurityDescriptor],NULL
-			mov  dword[rbp-Engine1+Engine1_SA.bInheritHandle],TRUE
-			lea  rcx,[rbp-Engine1+Engine1_Out_Read]
-			lea  rdx,[rbp-Engine1+Engine1_Out_Write]
-			lea  r8,[rbp-Engine1+Engine1_SA]
-			xor  r9,r9
-		     invoke  CreatePipe,rcx,rdx,r8,r9
-			lea  rcx,[rbp-Engine1+Engine1_In_Read]
-			lea  rdx,[rbp-Engine1+Engine1_In_Write]
-			lea  r8,[rbp-Engine1+Engine1_SA]
-			xor  r9,r9
-		     invoke  CreatePipe,rcx,rdx,r8,r9
-			xor  eax,eax 
-			mov  ecx,sizeof.PROCESS_INFORMATION 
-			lea  rdi,[rbp-Engine1+Engine1_PI]
-		  rep stosb 
-			xor  eax,eax 
-			mov  ecx,sizeof.STARTUPINFO 
-			lea  rdi,[rbp-Engine1+Engine1_SI]
-		  rep stosb 
-			mov  dword[rbp-Engine1+Engine1_SI.cb],sizeof.STARTUPINFO
-			mov  rax,[rbp-Engine1+Engine1_Out_Write]
-			mov  [rbp-Engine1+Engine1_SI.hStdError],rax
-			mov  [rbp-Engine1+Engine1_SI.hStdOutput],rax
-			mov  rax,[rbp-Engine1+Engine1_In_Read]
-			mov  [rbp-Engine1+Engine1_SI.hStdInput],rax
-			mov  [rbp-Engine1+Engine1_SI.dwFlags],STARTF_USESTDHANDLES+STARTF_USESHOWWINDOW
-			mov  dword[rbp-Engine1+Engine1_SI.wShowWindow],SW_HIDE
-			lea  rdx,[rbp-Engine1+Engine1_String]
-			lea  rsi,[rbp-Engine1+Engine1_SI]
-			lea  rdi,[rbp-Engine1+Engine1_PI]
-		     invoke  CreateProcess,NULL,rdx,NULL,NULL,TRUE,0,NULL,NULL,rsi,rdi
-		     invoke  Sleep,125
-		     invoke  CreateThread,0,0,Engine_Thread,rbp,0,0
-
-		 @@: invoke  Sleep,25
-			cmp  dword[rbp-Engine1+Engine1_On],0
-			 je  @b
-
-
-			mov  rcx,rbp
-
-		       call  Print_Engine_Name
-
-
-      .Done:		pop  rdi rsi rbp
-			ret
-
-
-
-
-
-
-
-
-
-
-SendBookInfo:
-		       push  rbp rsi rdi
-
-
-			lea  rdi,[rbp-Engine1+Engine1_MemoryUsage]
-			mov  [rdi+PROCESS_MEMORY_COUNTERS_EX.cb],sizeof.PROCESS_MEMORY_COUNTERS_EX
-		     invoke  GetProcessMemoryInfo,qword[rbp-Engine1+Engine1_PI.hProcess],rdi,sizeof.PROCESS_MEMORY_COUNTERS_EX
-			mov  rax,[rdi+PROCESS_MEMORY_COUNTERS_EX.PrivateUsage]
-			shr  rax,20
-		       call  PrintUnsignedInteger
-			mov  rax,' MiB'
-		      stosq
-
 			xor  eax,eax
-
-			mov  dword[rbp-Engine1+Engine1__nps],eax
-			mov  dword[rbp-Engine1+Engine1__nodes],eax
-
-
-			lea  rdi,[rbp-Engine1+Engine1_Lines+ENGINE_LINE.TEXT]
-
-			mov  al,9
-		      stosb
-		      stosb
-			mov  eax,'book'
-		      stosd
-			mov  al,9
-		      stosb
-
-			mov  eax, 'move'
-		      stosd
-
-
-			xor  eax,eax
-		      stosb
-
-
-			mov  dword[rbp-Engine1+Engine1_Lines+ENGINE_LINE.TEXT+sizeof.ENGINE_LINE],eax
-
-
-			xor  ecx,ecx
-			mov  rax,[hEngineWindow]
-			cmp  rbp,Engine1
-		      cmove  rcx,rax
-			mov  rax,[hEngineWindow]
-			cmp  rbp,Engine2
-		      cmove  rcx,rax
-
-		       test  rcx,rcx
-			 jz  @f
-		     invoke  SendMessage,rcx,WM_COMMAND,0,0
-			 @@:
-
-		 ;       cmp  rbp,Engine3
-		 ;        je  @f
-		 ;       cmp  rbp,Engine4
-		 ;        je  @f
-		 ;    invoke  SendMessage,[hVisualWindow],WM_COMMAND,0,0
-		 ;        @@:
-
-
-			pop  rdi rsi rbp
+			mov  ecx,(Engine1__ENDER-Engine1__)/8
+			lea  rdi,[rbp-Engine1+Engine1__]
+		  rep stosq
+			mov  ecx,(ENGINE_LINE_COUNT*sizeof.ENGINE_LINE)/8
+			lea  rdi,[rbp-Engine1+Engine1_Lines]
+		  rep stosq
+			mov  ecx,ENGINE_PV_COUNT
+			lea  rdi,[rbp-Engine1+Engine1_PV]
+		  rep stosq
+			pop  rbp
 			ret
 
 
 
+Engine_TurnOnKibitzer:
+	; rcx: address of engine (3 or 4)
+	; rdx: string start
+	; r8:  string end
+	       push  rbp rsi rdi rbx r13 r14 r15
+		mov  rbp, rcx
+		mov  r14, rdx
+		mov  r15, r8
+	       call  Engine_Quit
+		mov  rcx, rbp
+	       call  Engine_ClearOutput
+	; get name
+		mov  rcx, r14
+		mov  rdx, r15
+		mov  r8d, 'NAME'
+	       call  Person_GetXXXX
+		mov  rcx, rax
+		lea  rdx, [rbp-Engine1+Engine1_Name]
+		mov  r8, r15
+	       call  Person_CopyUntilEndQuote
+		mov  byte[rdx],0
+	; get ex string
+		mov  rcx, r14
+		mov  rdx, r15
+		mov  r8d, 'PATH'
+	       call  Person_GetXXXX
+		mov  rcx, rax
+		lea  rdx, [rbp-Engine1+Engine1_String]
+		mov  r8, r15
+	       call  Person_CopyUntilEndQuote
+		mov  byte[rdx], 0
+	; start engine
+		mov  rcx, rbp
+		mov  dword[rbp-Engine1+Engine1_KibitzPVCount],1
+		mov  byte[rbp-Engine1+Engine1_UploadQ],-1
+	       call  Engine_Start
+		mov  rcx, rbp
+	       call  Engine_UCI
+	; send options
+.loop_optn:
+		mov  rcx, r14
+		mov  rdx, r15
+		mov  r8d, 'OPTN'
+	       call  Person_GetXXXX
+		mov  r14, rax
+	       test  rax, rax
+		 jz  .done_optn
+		lea  rdx,[rbp-Engine1+Engine1_InputBuffer]
+		mov  r8, r15
+	       call  Person_CopyUntilEndQuote
+		mov  byte[rdx], 10
+		add  rdx, 1
+		lea  r8, [rbp-Engine1+Engine1_InputBuffer]
+		sub  rdx, r8
+	       xchg  rdx, r8
+	     invoke  WriteFile,qword[rbp-Engine1+Engine1_In_Write],rdx,r8,temp,NULL
+		jmp  .loop_optn
+.done_optn:
+		mov  rcx, rbp
+	       call  Engine_Position
+	; go ?
+		cmp  byte[BoardPos+PosEx.result], 0
+		jne  .Done
+		mov  rcx, rbp
+	       call  Engine_GoInfinite
+		mov  byte[Engine3_GoingQ], -1
+.Done:
+		pop  r15 r14 r13 rbx rdi rsi rbp
+		ret
 
 
-Print_Engine_Name:
-			ret
+Engine_TurnOnPlayer:
+	; rcx: address of engine (1 or 2)
+	; rdx: string start
+	; r8:  string end
+	       push  rbp rsi rdi rbx r13 r14 r15
+		mov  rbp, rcx
+		mov  r14, rdx
+		mov  r15, r8
+	       call  Engine_ClearOutput
+	; get name
+		mov  rcx, r14
+		mov  rdx, r15
+		mov  r8d, 'NAME'
+	       call  Person_GetXXXX
+		mov  rcx, rax
+		lea  rdx, [rbp-Engine1+Engine1_Name+2]
+		mov  r8, r15
+	       call  Person_CopyUntilEndQuote
+		mov  byte[rdx],0
+	; get ex string
+		mov  rcx, r14
+		mov  rdx, r15
+		mov  r8d, 'PATH'
+	       call  Person_GetXXXX
+		mov  rcx, rax
+		lea  rdx, [rbp-Engine1+Engine1_String]
+		mov  r8, r15
+	       call  Person_CopyUntilEndQuote
+		mov  byte[rdx], 0
+	; get move options
+		mov  rcx, r14
+		mov  rdx, r15
+		mov  r8d, 'MOVE'
+	       call  Person_GetXXXX
+		mov  rcx, rax
+		lea  rdx, [rbp-Engine1+Engine1_MoveString]
+		mov  r8, r15
+	       call  Person_CopyUntilEndQuote
+		mov  byte[rdx], 0
+	; start engine
+		mov  rcx, rbp
+		mov  dword[rbp-Engine1+Engine1_KibitzPVCount], 1
+	       call  Engine_Start
+		mov  rcx, rbp
+	       call  Engine_UCI
+	; send options
+.loop_optn:
+		mov  rcx, r14
+		mov  rdx, r15
+		mov  r8d, 'OPTN'
+	       call  Person_GetXXXX
+		mov  r14, rax
+	       test  rax, rax
+		 jz  .done_optn
+		lea  rdx, [rbp-Engine1+Engine1_InputBuffer]
+		mov  r8, r15
+	       call  Person_CopyUntilEndQuote
+		mov  byte[rdx], 10
+		add  rdx, 1
+		lea  r8, [rbp-Engine1+Engine1_InputBuffer]
+		sub  rdx, r8
+	       xchg  rdx, r8
+	     invoke  WriteFile, qword[rbp-Engine1+Engine1_In_Write], rdx, r8, temp, NULL
+		jmp  .loop_optn
+.done_optn:
+		mov  rcx, rbp
+	       call  Engine_Position
+.Done:
+		pop  r15 r14 r13 rbx rdi rsi rbp
+		ret
 
-		;       push  rdi
-		;
-		;        lea  rdi,[rbp-Engine1+Engine1_Message]
-		;
-		;        mov  al,' '
-		;
-		;        mov  ecx,179
-		;        cmp  rbp,Engine1
-		;      cmove  eax,ecx
-		;
-		;        mov  ecx,176
-		;        cmp  rbp,Engine2
-		;      cmove  eax,ecx
-		;
-		;        mov  ah,' '
-		;      stosw
-		;
-		;        lea  rsi,[rbp-Engine1+Engine1_Name]
-		;       call  Append
-		;        mov  al,0
-		;      stosb
-		;
-		;
-		;        mov  rcx,[hEngine1TitleWindow]
-		;
-		;        lea  rax,[Engine2]
-		;        mov  rdx,[hEngine2TitleWindow]
-		;        cmp  rbp,rax
-		;      cmove  rcx,rdx
-		;
-		;        lea  rax,[Engine3]
-		;        mov  rdx,[hEngine3TitleWindow]
-		;        cmp  rbp,rax
-		;      cmove  rcx,rdx
-		;
-		;        lea  rax,[Engine4]
-		;        mov  rdx,[hEngine4TitleWindow]
-		;        cmp  rbp,rax
-		;      cmove  rcx,rdx
-		;
-		;
-		;        lea  r9,[rbp-Engine1+Engine1_Message]
-		;     invoke  SendMessage,rcx,WM_SETTEXT,0,r9
-		;
-		;        pop  rdi
-		;        ret
+
+
+Engine_Start:
+	       push  rbp rsi rdi
+		mov  rbp, rcx
+		cmp  dword[rbp-Engine1+Engine1_On], 0
+		jne  .Done
+		mov  dword[rbp-Engine1+Engine1_SA.nLength],sizeof.SECURITY_ATTRIBUTES
+		mov  dword[rbp-Engine1+Engine1_SA.lpSecurityDescriptor], NULL
+		mov  dword[rbp-Engine1+Engine1_SA.bInheritHandle], TRUE
+		lea  rcx, [rbp-Engine1+Engine1_Out_Read]
+		lea  rdx, [rbp-Engine1+Engine1_Out_Write]
+		lea  r8, [rbp-Engine1+Engine1_SA]
+		xor  r9, r9
+	     invoke  CreatePipe, rcx, rdx, r8, r9
+	     invoke  SetHandleInformation,[rbp-Engine1+Engine1_Out_Read],HANDLE_FLAG_INHERIT,0
+		lea  rcx, [rbp-Engine1+Engine1_In_Read]
+		lea  rdx, [rbp-Engine1+Engine1_In_Write]
+		lea  r8, [rbp-Engine1+Engine1_SA]
+		xor  r9,r9
+	     invoke  CreatePipe, rcx, rdx, r8, r9
+	     invoke  SetHandleInformation,[rbp-Engine1+Engine1_In_Write],HANDLE_FLAG_INHERIT,0
+		xor  eax, eax
+		mov  ecx, sizeof.PROCESS_INFORMATION
+		lea  rdi, [rbp-Engine1+Engine1_PI]
+	  rep stosb
+		xor  eax, eax
+		mov  ecx, sizeof.STARTUPINFO
+		lea  rdi, [rbp-Engine1+Engine1_SI]
+	  rep stosb
+		mov  dword[rbp-Engine1+Engine1_SI.cb], sizeof.STARTUPINFO
+		mov  rax, [rbp-Engine1+Engine1_Out_Write]
+		mov  [rbp-Engine1+Engine1_SI.hStdError], rax
+		mov  [rbp-Engine1+Engine1_SI.hStdOutput], rax
+		mov  rax, [rbp-Engine1+Engine1_In_Read]
+		mov  [rbp-Engine1+Engine1_SI.hStdInput], rax
+		mov  [rbp-Engine1+Engine1_SI.dwFlags], STARTF_USESTDHANDLES+STARTF_USESHOWWINDOW
+		mov  dword[rbp-Engine1+Engine1_SI.wShowWindow], SW_HIDE
+		lea  rdx, [rbp-Engine1+Engine1_String]
+		lea  rsi, [rbp-Engine1+Engine1_SI]
+		lea  rdi, [rbp-Engine1+Engine1_PI]
+	     invoke  CreateProcess, NULL, rdx, NULL, NULL, TRUE, 0, NULL, NULL, rsi, rdi
+	     invoke  Sleep, 125
+	     invoke  CreateThread, 0, 0, Engine_Thread, rbp, 0, 0
+		mov  qword[rbp-Engine1+Engine1_hThread], rax
+		mov  esi, 10
+.Check:
+	     invoke  Sleep, 50
+		cmp  dword[rbp-Engine1+Engine1_On], 0
+		jne  .Done
+		sub  esi, 1
+		jns  .Check
+.Done:
+		pop   rdi rsi rbp
+		ret
+
+
+Engine_UpdateMove:
+	; out: rax tick just after engine has been sent go cmd
+	       push  rbp rdi rsi rbx r15
+   irps i, 1 2 3 4 {
+		mov  byte[Engine#i#_GoingQ], 0
+		lea  rcx, [Engine#i#_BoardPos]
+		lea  rdx, [Engine#i#_StateList]
+		lea  r8, [BoardPos]
+	       call  CopyPosExToThread
+   }
+		lea  rbp, qword[BoardPos]
+		mov  rax, qword[rbp+PosEx.move]
+		cmp  byte[rbp+PosEx.result], 0
+		jne  .Done
+	       call  Game_MakeThinkString
+
+.Engine1:	cmp  byte[WhiteCompQ], 0
+		 jz  .Engine2
+		cmp  byte[rbp+Pos.sideToMove], 0
+		jne  .NoEngine1
+		lea  rcx, [Engine1]
+	       call  Engine_UpdatePlayer
+		jmp  .Engine2
+.NoEngine1:	lea  rcx, [Engine1]
+	       call  Engine_Stop
+
+.Engine2:	cmp  byte[BlackCompQ], 0
+		 jz  .Engine3
+		cmp  byte[rbp+Pos.sideToMove], 0
+		 je  .NoEngine2
+		lea  rcx, [Engine2]
+	       call  Engine_UpdatePlayer
+		jmp  .Engine3
+.NoEngine2:	lea  rcx,[Engine2]
+	       call  Engine_Stop
+.Engine3:
+	     invoke  GetTickCount
+		mov  r15, rax
+		lea  rcx, [Engine3]
+		cmp  dword[rcx-Engine1+Engine1_On], 0
+		 je  .Engine4
+	       call  Engine_UpdateKibitzer
+.Engine4:
+		lea  rcx,[Engine4]
+		cmp  dword[rcx-Engine1+Engine1_On], 0
+		 je  .Done
+	       call  Engine_UpdateKibitzer
+.Done:
+		mov  rax, r15
+		pop  r15 rbx rsi rdi rbp
+		ret
+
+
+
+
+
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
 
 
 Engine_Thread:
 			sub  rsp,8*5
-
-virtual at rsp
-.PaintQ dd ?
-
-end virtual
-
 			mov  rbp,rcx
-		     invoke  Sleep,100
 
+			mov   dword[rbp-Engine1+Engine1_Score], 0x80000000
 
+		     invoke  Sleep,50
 
 			mov  dword[rbp-Engine1+Engine1_On],-1
-
-
-
 
     .ActiveCheck:	mov  rcx,qword[rbp-Engine1+Engine1_PI.hProcess]
 			lea  rdx,[rbp-Engine1+Engine1_Exit]
 		     invoke  GetExitCodeProcess,rcx,rdx
 			cmp  dword[rbp-Engine1+Engine1_Exit],STILL_ACTIVE
 			jne  .ActiveDone
-
-    .BookCheck:
-			mov   rbx, qword[rbp-Engine1+Engine1_BookMove]
-		       test   rbx, rbx
-			 jz   .ReadCheck
-			xor   eax,eax
-			mov   qword [rbp-Engine1+Engine1_BookMove], rax
-
-			mov   rsi, qword [BoardPos+PosEx.move]
-			mov   qword [rsi+MoveData.moveUci], rbx
-			mov   qword [rsi+MoveData.ponderUci], rax
-			mov   qword [rsi+MoveData.score], 'book'
-		     invoke   GetTickCount
-			mov   qword [rsi+MoveData.time2], rax
-		     invoke   SendMessage, qword [hMainWindow], WM_COMMAND, ID_CMD_MAKEMOVE, r9
-
-		       call   SendBookInfo
-
     .ReadCheck:
 			mov  rcx,qword[rbp-Engine1+Engine1_Out_Read]
 			lea  rdx,[rbp-Engine1+Engine1_OutputBuffer]
@@ -358,74 +484,68 @@ end virtual
 			lea  r9,[rbp-Engine1+Engine1_Bread]
 			lea  rax,[rbp-Engine1+Engine1_Avail]
 		     invoke  PeekNamedPipe,rcx,rdx,r8,r9,rax,NULL
-			cmp  dword[rbp-Engine1+Engine1_Bread],0
+		       test  eax, eax
+			 jz  .ReadDone
+			cmp  dword[rbp-Engine1+Engine1_Bread], 0
 			 jz  .ReadDone
 
 			lea  rdi,[rbp-Engine1+Engine1_OutputBuffer]
 			xor  eax,eax
 			mov  ecx,ENGINE_READ_BUFFER_SIZE/8
 		  rep stosq
-
 			lea  rsi,[rbp-Engine1+Engine1_OutputBuffer]
-			mov  rcx,qword[rbp-Engine1+Engine1_Out_Read]
-			mov  rdx,rsi
-			mov  r8d,ENGINE_READ_BUFFER_SIZE
-			lea  r9,[rbp-Engine1+Engine1_Bread]
-			xor  eax,eax
-		     invoke  ReadFile,rcx,rdx,r8,r9,rax
-			mov  eax,[rbp-Engine1+Engine1_Bread]
-			add  rsi,rax
-
-      .ReadCompleteTest:
-			cmp  byte[rsi-1],' '
-			 jb  .ReadComplete
-
-			mov  rcx,qword[rbp-Engine1+Engine1_Out_Read]
-			mov  rdx,rsi
-			mov  r8d,1
-			lea  r9,[rbp-Engine1+Engine1_Bread]
-			xor  eax,eax
-		     invoke  ReadFile,rcx,rdx,r8,r9,rax
-			mov  eax,[rbp-Engine1+Engine1_Bread]
-			add  rsi,rax
-			jmp  .ReadCompleteTest
-
-      .ReadComplete:
 		     invoke  GetTickCount
 			mov  qword [rbp-Engine1+Engine1_readTick], rax
+	      .ReadMore:
+			mov  rcx, qword[rbp-Engine1+Engine1_Out_Read]
+			mov  rdx, rsi
+			lea  r9, [rbp-Engine1+Engine1_Bread]
+			xor  eax, eax
+		     invoke  ReadFile, rcx, rdx, 1, r9, rax
+		       test  eax, eax
+			 jz  .ActiveCheck
+		      movzx  eax, byte[rsi]
+			add  rsi, 1
+			cmp  al, ' '
+			jae  .ReadMore
+      .ReadComplete:
+			mov  dword [rsi], 0
 		       call  ParseEngineOutput
-		     invoke  Sleep,50
 			jmp  .ReadCheck
       .ReadDone:
-		     invoke  Sleep,50
+		     invoke  Sleep,20
 
 			cmp  dword[rbp-Engine1+Engine1_On],0
 			jne  .ActiveCheck
 
-
-			mov  dword[rbp-Engine1+Engine1_On],0
-		     invoke  Sleep,250
+		     invoke  Sleep,50
 
 			mov  rcx,qword[rbp-Engine1+Engine1_PI.hProcess]
 			xor  edx,edx
 		     invoke  TerminateProcess,rcx,edx
 
     .ActiveDone:
-		     invoke  CloseHandle,qword[rbp-Engine1+Engine1_Out_Read]
-		     invoke  CloseHandle,qword[rbp-Engine1+Engine1_Out_Write]
-		     invoke  CloseHandle,qword[rbp-Engine1+Engine1_In_Read]
-		     invoke  CloseHandle,qword[rbp-Engine1+Engine1_In_Write]
 
-			xor  eax,eax
-			mov  dword[rbp-Engine1+Engine1_On],eax
-			mov  qword[rbp-Engine1+Engine1_Out_Read],rax
-			mov  qword[rbp-Engine1+Engine1_Out_Write],rax
-			mov  qword[rbp-Engine1+Engine1_In_Read],rax
-			mov  qword[rbp-Engine1+Engine1_In_Write],rax
+	     invoke  CloseHandle,qword[rbp-Engine1+Engine1_Out_Read]
+	     invoke  CloseHandle,qword[rbp-Engine1+Engine1_Out_Write]
+	     invoke  CloseHandle,qword[rbp-Engine1+Engine1_In_Read]
+	     invoke  CloseHandle,qword[rbp-Engine1+Engine1_In_Write]
+		xor  eax,eax
+		mov  dword[rbp-Engine1+Engine1_On],eax
+		mov  qword[rbp-Engine1+Engine1_Out_Read],rax
+		mov  qword[rbp-Engine1+Engine1_Out_Write],rax
+		mov  qword[rbp-Engine1+Engine1_In_Read],rax
+		mov  qword[rbp-Engine1+Engine1_In_Write],rax
 
-			mov  dword[rbp-Engine1+Engine1_On],0
+	     invoke  CloseHandle, [rbp-Engine1+Engine1_PI.hProcess]
+	     invoke  CloseHandle, [rbp-Engine1+Engine1_PI.hThread]
+		xor  eax,eax
+		mov  qword[rbp-Engine1+Engine1_PI.hProcess], rax
+		mov  qword[rbp-Engine1+Engine1_PI.hThread], rax
 
-		     invoke  ExitThread,0
+;invoke MessageBoxA,0, "exiting thread", "Asdf", MB_OK
+
+	     invoke  ExitThread,0
 
 
 
@@ -442,10 +562,11 @@ ParseEngineOutput:     push  rbp rbx rdi rsi r12 r14 r15
 
 			mov  byte[rbp-Engine1+Engine1_UpdateTextQ],0
 
+
 			lea  rsi,[rbp-Engine1+Engine1_OutputBuffer]
 
-			cmp  byte[rbp-Engine1+Engine1_GoingQ],0
-			 je  .Return
+		     ;   cmp  byte[rbp-Engine1+Engine1_GoingQ],0
+		     ;    je  .Return
 
 
 .Clear: 		mov  r13d,6
@@ -476,6 +597,7 @@ irps type, pv {
 			jnz  .FoundBigInfo		       }
 
 			add  r12d,1
+		       call  SkipSpaces
 		       call  CopyToken
 			jmp  .ParseNext
 
@@ -485,6 +607,7 @@ irps type, pv {
 		 @@:	mov  byte[rdi],0
 			mov  rdi,rbx
 			xor  r12d,r12d
+
 			jmp  .ParseNext
 
 .ParseDone:		mov  byte[rdi],0
@@ -493,7 +616,7 @@ irps type, pv {
 			 je  @f
 		       call  ProcessParsed
 			jmp  .processeddone
-	      @@:      call  ProcessEngine5
+	      @@:
 
 		.processeddone:
 
@@ -501,62 +624,12 @@ irps type, pv {
 			cmp  byte[rbp-Engine1+Engine1_UpdateTextQ],0
 			 je  .update_text_done
 
-			cmp  rbp,Engine5
-			 je  PrintEngine5
 
-
-
-
-			lea  rdi,[rbp-Engine1+Engine1_MemoryUsage]
-
-			mov  [rdi+PROCESS_MEMORY_COUNTERS_EX.cb],sizeof.PROCESS_MEMORY_COUNTERS_EX
-		     invoke  GetProcessMemoryInfo,qword[rbp-Engine1+Engine1_PI.hProcess],rdi,sizeof.PROCESS_MEMORY_COUNTERS_EX
-
-
-			mov  rax,[rdi+PROCESS_MEMORY_COUNTERS_EX.PrivateUsage]
-			shr  rax,20
-		       call  PrintUnsignedInteger
-			mov  rax,' MiB'
-		      stosq
-
-			xor  ecx,ecx
-			mov  rax,[hEngineWindow]
-			cmp  rbp,Engine1
-		      cmove  rcx,rax
-			mov  rax,[hEngineWindow]
-			cmp  rbp,Engine2
-		      cmove  rcx,rax
-			mov  rax,[hKibitzWindow]
-			cmp  rbp,Engine3
-		      cmove  rcx,rax
-			mov  rax,[hKibitzWindow]
-			cmp  rbp,Engine4
-		      cmove  rcx,rax
-
-		       test  rcx,rcx
-			 jz  @f
-		     invoke  SendMessage,rcx,WM_COMMAND,0,0
-			 @@:
-
-;                        cmp  rbp,Engine3
-;                         je  @f
-;                        cmp  rbp,Engine4
-;                         je  @f
-;                     invoke  SendMessage,[hVisualWindow],WM_COMMAND,0,0
-;                         @@:
-
-		  ;      cmp  byte[rbp-Engine1+Engine1_UploadQ],0
-		  ;       je  @f
-		  ;   invoke  SendMessage,[hBoardWindow],WM_PAINT,0,0
-		  ;       @@:
-
+		mov  byte[DrawQ_Engine], -1
 
 	.update_text_done:
 
-
-
 .Return:
-
 			pop  r15 r14 r12 rsi rdi rbx rbp
 			ret
 
@@ -566,231 +639,13 @@ irps type, pv {
 			 je  @f
 		       call  ProcessParsed
 			jmp  .processeddone1
-	      @@:      call  ProcessEngine5
+	      @@:   ;   call  ProcessEngine5
 		.processeddone1:
 
 			lea  rdi,[rbp-Engine1+Engine1_ENDER]
 			xor  r12d,r12d
 	       ;     invoke  MessageBoxA,0,rsi,'PARSE AGIAN',MB_OK
 			jmp  .Clear
-
-
-
-
-
-
-
-
-PrintEngineScore:	mov  eax,ecx
-			cmp  ecx,0x80000000
-			 je  .ret
-
-			mov  byte[rdi],'+'
-		       test  eax,eax
-			jns  @f
-			mov  byte[rdi],'-'
-			neg  eax
-		   @@:
-			add  rdi,1
-
-
-			cmp  eax,1000000000
-			jae  .mate
-
-			xor  edx,edx
-			mov  ecx,100
-			div  rcx
-		       call  PrintUnsignedInteger
-			mov  byte[rdi],'.'
-			add  rdi,1
-			mov  eax,edx
-			xor  edx,edx
-			mov  ecx,10
-			div  rcx
-		       call  PrintUnsignedInteger
-			mov  eax,edx
-		       call  PrintUnsignedInteger
-
-.ret:
-			ret
-
-.mate:			mov  byte[rdi],'#'
-			add  rdi,1
-			sub  eax,2000000000
-			neg  eax
-		       call  PrintUnsignedInteger
-			ret
-
-
-
-
-
-
-
-PrintEngine5:		lea  rdi,[rbp-Engine1+Engine1_Message]
-
-
-
-
-		     invoke  SendMessage,[hMentorWindow],WM_COMMAND,0,0
-
-			pop  r15 r14 r12 rsi rdi rbx rbp
-			ret
-
-
-
-
-ProcessEngine5:
-		       push  rbp rbx rsi rdi r13 r14 r15
-
-irps type, currmove currmovenumber currline refutation hashfull tbhits cpuload string {
-			lea  rsi,[rbp-Engine1+Engine1_#type]
-			lea  rdi,[rbp-Engine1+Engine1__#type]
-		       call  CopyIfNotEmpty
-}
-			lea  rsi,[rbp-Engine1+Engine1_pv]
-
-			mov  r15,rsi
-		       call  CopyTokenSmall
-			mov  r14,rax	       ; r14 = move
-
-		       test  eax,eax
-			 jz  .done
-
-
-			cmp  byte[Engine5_GoingQ],0
-			 je  .done
-
-			mov  byte[rbp-Engine1+Engine1_UpdateTextQ],-1
-
-			lea  rsi,[rbp-Engine1+Engine1_depth]
-		       call  SkipWhiteSpaces
-		       call  ParseInteger
-
-			mov  ebx,eax
-
-
-			mov  eax,dword[Engine5MaxDepth]
-			add  eax,5
-			cmp  ebx,eax
-			 ja  .done
-
-			cmp  ebx,dword[Engine5MaxDepth]
-			jbe  .clearloopdone
-
-			mov  dword[Engine5MaxDepth],ebx
-			 or  esi,-1
-     .clearloop:	add  esi,1
-			cmp  esi,dword[Engine5_KibitzPVCount]
-			jae  .clearloopdone
-			mov  eax,dword[AgeMoves+4*rsi]
-			add  eax,1
-			mov  ecx,4
-			cmp  eax,ecx
-		      cmova  eax,ecx
-			mov  dword[AgeMoves+4*rsi],eax
-			cmp  eax,3
-			 jb  .clearloop
-			mov  dword[ScoreMoves+4*rsi],0x80000000
-			jmp  .clearloop
-     .clearloopdone:
-
-
-			mov  r13d,0x80000000
-			lea  rsi,[rbp-Engine1+Engine1_score]
-			cmp  byte[rsi],0
-			 je  .Score_done
-		    stdcall  CmpString,'mate'
-		       test  eax,eax
-			jnz  .Score_mate
-		    stdcall  CmpString,'cp'
-		       test  eax,eax
-			 jz  .Score_done
-
-.Score_cp:	       call  SkipWhiteSpaces
-		       call  ParseInteger
-			mov  r13d,eax
-			jmp  .Score_done
-
-.Score_mate:	       call  SkipWhiteSpaces
-		       call  ParseInteger
-			mov  r13d,eax
-			mov  ecx,2000000000
-			sar  eax,63
-			xor  ecx,eax
-			sub  ecx,eax
-			sub  r13d,ecx
-			neg  r13d
-
-.Score_done:		mov   ecx, dword[Engine5_BoardPos+Pos.sideToMove]
-			neg   ecx
-			xor   r13d, ecx
-			sub   r13d, ecx
-
-			 or  esi,-1
-     .moveloop: 	add  esi,1
-			cmp  esi,dword[Engine5_KibitzPVCount]
-			jae  .done
-			mov  rcx,qword[DepthMoves+8*rsi]
-			cmp  r14,rcx
-			jne  .moveloop
-       .found:
-			mov  qword[DepthMoves+8*rsi],r14
-			mov  dword[ScoreMoves+4*rsi],r13d
-			mov  dword[AgeMoves+4*rsi],0
-
-		       imul  ecx,esi,64
-			add  ecx,ebx
-			mov  dword[DepthArray+4*rcx],r13d
-
-			mov  r11d,dword[Engine5_KibitzPVCount]
-			xor  r10d,r10d
-			sub  r11d,1
-			 js  .done
-	.sortloop:	cmp  r10d,r11d
-			jae  .sortloopdone
-			mov  r8d,dword[SortMoves+4*r10]
-			mov  r9d,dword[SortMoves+4*(r10+1)]
-			mov  ecx,dword[ScoreMoves+4*r8]
-			mov  edx,dword[ScoreMoves+4*r9]
-		       call  NeedToSwap
-		       test  eax,eax
-			 jz  @f
-			mov  dword[SortMoves+4*r10],r9d
-			mov  dword[SortMoves+4*(r10+1)],r8d
-		 @@:	add  r10d,1
-			jmp  .sortloop
-	.sortloopdone:
-
-	.done:
-
-
-			pop  r15 r14 r13 rdi rsi rbx rbp
-			ret
-
-
-
-NeedToSwap:		xor   eax, eax
-			cmp   ecx, 0x80000000
-			 je   .yes
-			cmp   edx, 0x80000000
-			 je   .ret
-			cmp   ecx, edx
-			 je   .ret
-			mov   eax, dword [Engine5_BoardPos+Pos.sideToMove]
-			neg   eax
-			jge   .ret
-			not   eax
-	   .ret:
-		       ; xor  eax,eax
-			ret
-
-	   .yes:	cmp   edx,0x80000000
-			 je   .ret
-			 or   eax,-1
-			ret
-
-
 
 
 
@@ -821,8 +676,8 @@ irps type, currmove currmovenumber currline refutation hashfull tbhits cpuload s
 ;;;;;;;;;;;;;;;;;;; print pv ;;;;;;;;;;;;;;;;;;;;;
 
 
-			cmp  byte[rbp-Engine1+Engine1_GoingQ],0
-			 je  .AllDone
+		      ;  cmp  byte[rbp-Engine1+Engine1_GoingQ],0
+		      ;   je  .AllDone
 			cmp  byte[rbp-Engine1+Engine1_pv],0
 			 je  .PVDone
 
@@ -869,13 +724,13 @@ irps type, currmove currmovenumber currline refutation hashfull tbhits cpuload s
 			jmp  .Shift
 	.ShiftDone:
 .found_place_to_replace:
-			mov  word [rdx+ENGINE_LINE.depth], r14w
-			mov  word [rdx+ENGINE_LINE.multiPv], r15w
+			mov  word[rdx+ENGINE_LINE.depth], r14w
+			mov  word[rdx+ENGINE_LINE.multiPv], r15w
 			lea  rdi, [rdx+ENGINE_LINE.TEXT]
 
 .start_read:
 
-			mov  byte[rbp-Engine1+Engine1_UpdateTextQ],-1
+			mov  byte[rbp-Engine1+Engine1_UpdateTextQ], -1
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 .Time:			lea  rsi,[rbp-Engine1+Engine1_time]
@@ -915,6 +770,14 @@ irps type, currmove currmovenumber currline refutation hashfull tbhits cpuload s
 			 jz  .Score_done
 .Score_cp:	       call  SkipWhiteSpaces
 		       call  ParseInteger
+
+			mov   edx, eax
+			mov   ecx, dword[rbp-Engine1+Engine1_BoardPos+Pos.sideToMove]
+			neg   ecx
+			xor   edx, ecx
+			sub   edx, ecx
+			mov   dword[rbp-Engine1+Engine1_Score], edx
+
 			mov  rdx,rax
 			sar  rdx,63
 			xor  rax,rdx
@@ -945,6 +808,16 @@ irps type, currmove currmovenumber currline refutation hashfull tbhits cpuload s
 			sar  rdx,63
 			xor  rax,rdx
 			sub  rax,rdx
+
+			mov   ecx, dword [rbp-Engine1+Engine1_BoardPos+Pos.sideToMove]
+			neg   ecx
+			xor   ecx, edx
+			mov   r8d, 2000000000
+			sub   r8d, eax
+			xor   r8d, ecx
+			sub   r8d, ecx
+			mov   dword[rbp-Engine1+Engine1_Score], r8d
+
 			mov   ecx, dword [rbp-Engine1+Engine1_BoardPos+Pos.sideToMove]
 			sub   ecx, 1
 			xor  edx,ecx
@@ -977,25 +850,19 @@ irps type, currmove currmovenumber currline refutation hashfull tbhits cpuload s
 		      stosb
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-.Nodes: 		lea  rsi,[rbp-Engine1+Engine1_nodes]
-			cmp  byte[rsi],0
-			 je  .Nodes_done
-		       call  SkipWhiteSpaces
-		       call  ParseInteger
-		       push  rdi
-			lea  rdi,[rbp-Engine1+Engine1__nodes]
-			mov  qword[rbp-Engine1+Engine1_TotalNodes],rax
-		       call  PrintGroupedInteger
-			xor  eax,eax
-		      stosd
-			pop  rdi
-		  ;      mov  dword[rbp-Engine1+Engine1_TotalNodes],'asd'
-
-		;        mov  qword[rbp-Engine1+Engine1_TotalNodes],rax
-		;       call  PrintGroupedInteger;PrintUnsignedIntegerPostfix
-.Nodes_done:	;        mov  al,9
-		;      stosb
-
+.Nodes: 	lea  rsi,[rbp-Engine1+Engine1_nodes]
+		cmp  byte[rsi],0
+		 je  .Nodes_done
+	       call  SkipWhiteSpaces
+	       call  ParseInteger
+	       push  rdi
+		lea  rdi,[rbp-Engine1+Engine1__nodes]
+		mov  qword[rbp-Engine1+Engine1_TotalNodes],rax
+	       call  PrintGroupedInteger
+		xor  eax,eax
+	      stosd
+		pop  rdi
+.Nodes_done:
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 .PV:
@@ -1016,14 +883,6 @@ irps type, currmove currmovenumber currline refutation hashfull tbhits cpuload s
 			mov   eax, '    '
 		      stosd
 		@@:
-
-			cmp   byte [PrettyPV], 0
-			jne   .PV_pretty
-
-			lea   rsi, [rbp-Engine1+Engine1_pv]
-		       call   Append
-
-			jmp   .PV_done
 
 .PV_pretty:
 			mov   r15, rbp
@@ -1085,20 +944,6 @@ irps type, currmove currmovenumber currline refutation hashfull tbhits cpuload s
 			lea   rdx, [r15-Engine1+Engine1_StateList]
 			lea   r8, [BoardPos]
 		       call   CopyPosExToThread
-       ;
-       ;
-       ;
-       ;         @@:
-       ;                 mov   rbx, qword [rbp+PosEx.state]
-       ;                 cmp   rbx, qword [rbp+PosEx.stateTable]
-       ;                 jbe   @f
-       ;                call   UndoMove
-       ;                 jmp   @b
-       ;         @@:
-       ;                 lea   rdi, [rbp+PosEx.moveList]
-       ;                call   Gen_Legal
-       ;                 xor   eax, eax
-       ;               stosq
 
 			mov   rbp, r15
 
@@ -1120,6 +965,12 @@ irps type, currmove currmovenumber currline refutation hashfull tbhits cpuload s
 			cmp   rbp, Engine2
 			 ja   .bestmove_done
 
+
+		lea  rax, [BoardPos]
+		cmp  byte [rax+PosEx.result], 0
+		jne  .bestmove_done
+
+
 			mov   byte [rbp-Engine1+Engine1_ThinkingQ], 0
 
 			lea   rdi, [rbp-Engine1+Engine1__bestmove]
@@ -1138,17 +989,18 @@ irps type, currmove currmovenumber currline refutation hashfull tbhits cpuload s
 			mov   qword [rsi+MoveData.moveUci], rax
 			mov   rax, qword [rbp-Engine1+Engine1__ponder]
 			mov   qword [rsi+MoveData.ponderUci], rax
-			mov   rax, qword [rbp-Engine1+Engine1__score]
-			shl   rax, 8
-			shr   rax, 8
-			mov   qword [rsi+MoveData.score], rax
+			mov   eax, dword [rbp-Engine1+Engine1_Score]
+			mov   dword [rsi+MoveData.score], eax
 			mov   rax, qword [rbp-Engine1+Engine1_readTick]
 			mov   qword [rsi+MoveData.time2], rax
+
+
 
 			cmp   rbp, Engine1
 			jne   @f
 			cmp   byte [rbx+Pos.sideToMove], 0
 			jne   @f
+		     invoke  SendMessage, qword[hEngineWindow], WM_COMMAND, 0, 0
 		     invoke   SendMessage, qword [hMainWindow], WM_COMMAND, ID_CMD_MAKEMOVE, r9
 			jmp   .bestmove_done
 		    @@:
@@ -1157,6 +1009,7 @@ irps type, currmove currmovenumber currline refutation hashfull tbhits cpuload s
 			jne   @f
 			cmp   byte [rbx+Pos.sideToMove], 0
 			 je   @f
+		     invoke  SendMessage, qword[hEngineWindow], WM_COMMAND, 0, 0
 		     invoke   SendMessage, qword[hMainWindow], WM_COMMAND, ID_CMD_MAKEMOVE, r9
 		    @@:
 
@@ -1172,100 +1025,6 @@ irps type, currmove currmovenumber currline refutation hashfull tbhits cpuload s
 
 
 
-	     ;           mov   byte [EngineGrabSquare], -1
-	     ;
-	     ;
-	      ;          cmp  dword[AnimationSteps],2
-	      ;           jl  .skip_animation
-	      ;
-	      ;        movzx  r12d,byte[rbp-Engine1+Engine1__bestmove+0]
-	      ;        movzx  r13d,byte[rbp-Engine1+Engine1__bestmove+1]
-	      ;          sub  r12d,'a'
-	      ;           js  .skip_animation
-	      ;          cmp  r12d,7
-	      ;           ja  .skip_animation
-	      ;          sub  r13d,'1'
-	      ;           js  .skip_animation
-	      ;          cmp  r13d,7
-	      ;           ja  .skip_animation
-	      ;          xor  r13d,7
-	      ;          lea  eax,[r12+8*r13]
-	      ;        movzx  r14d,byte[rbp-Engine1+Engine1__bestmove+2]
-	      ;        movzx  r15d,byte[rbp-Engine1+Engine1__bestmove+3]
-	      ;          sub  r14d,'a'
-	      ;           js  .skip_animation
-	      ;          cmp  r14d,7
-	      ;           ja  .skip_animation
-	      ;          sub  r15d,'1'
-	      ;           js  .skip_animation
-	      ;          cmp  r15d,7
-	      ;           ja  .skip_animation
-	      ;          xor  r15d,7
-	      ;
-	      ;          mov  byte[EngineGrabSquare],al
-	      ;
-	      ;          movzx  eax, byte[BoardFlip]
-	      ;          and  eax,7
-	      ;          xor  r12d,eax
-	      ;          xor  r13d,eax
-	      ;          xor  r14d,eax
-	      ;          xor  r15d,eax
-	      ;
-	      ;          mov  eax,r12d
-	      ;          sub  eax,r14d
-	      ;          mov  ecx,r13d
-	      ;          sub  ecx,r15d
-	      ;         imul  eax,eax
-	      ;         imul  ecx,ecx
-	      ;          add  eax,ecx
-	      ;           jz  .skip_animation
-	      ;         imul  eax,dword[AnimationSteps]
-	      ;         imul  eax,dword[AnimationSteps]
-	      ;     cvtsi2sd  xmm0,eax
-	      ;       sqrtsd  xmm0,xmm0
-	      ;     cvtsd2si  edi,xmm0
-	      ;          mov  ebx,1
-;          .next_frame:
-
-; p1 (ebx/edi) + p2 ((edi-ebx)/edi)
-
-	      ;     cvtsi2sd  xmm0,r14d
-	      ;     cvtsi2sd  xmm1,r12d
-	      ;     cvtsi2sd  xmm2,ebx
-	      ;     cvtsi2sd  xmm3,edi
-	      ;        mulsd  xmm0,xmm2
-	      ;        subsd  xmm2,xmm3
-	      ;        mulsd  xmm1,xmm2
-	      ;        subsd  xmm0,xmm1
-	      ;        divsd  xmm0,xmm3
-	      ;        movsd  qword[EngineGrab.x],xmm0
-	      ;
-	      ;     cvtsi2sd  xmm0,r15d
-	      ;     cvtsi2sd  xmm1,r13d
-	      ;     cvtsi2sd  xmm2,ebx
-	      ;     cvtsi2sd  xmm3,edi
-	      ;        mulsd  xmm0,xmm2
-	      ;        subsd  xmm2,xmm3
-	      ;        mulsd  xmm1,xmm2
-	      ;        subsd  xmm0,xmm1
-	      ;        divsd  xmm0,xmm3
-	      ;        movsd  qword[EngineGrab.y],xmm0
-	      ;
-	      ;       invoke  SendMessage,qword[hBoardWindow],WM_PAINT,0,0
-	      ;       invoke  Sleep,20
-	      ;          add  ebx,1
-	      ;          cmp  ebx,edi
-	      ;           jb  .next_frame
-	      ;
-	      ;          mov  byte[EngineGrabSquare],-1
-
-
-;        .skip_animation:
-
-
-
-
-;.Done:
 
 
 
@@ -1274,102 +1033,4 @@ irps type, currmove currmovenumber currline refutation hashfull tbhits cpuload s
 
 
 
-
-
-
-
-
-_ParseInteger:	     ; string at rsi, return integer in rax
-			xor  ecx,ecx
-			xor  eax,eax
-			xor  edx,edx
-			cmp  byte[rsi],'-'
-			 je  .neg
-			cmp  byte[rsi],'+'
-			 je  .pos
-			jmp  .next
-	 .neg:		not  rdx
-	 .pos:		add  rsi,1
-	 .next: 	mov  cl,byte[rsi]
-		       test  cl,cl
-			 jz  .done
-			sub  cl,'0'
-			 js  .done
-			cmp  cl,9
-			 ja  .done
-			add  rsi,1
-		       imul  rax,10
-			add  rax,rcx
-			jmp  .next
-	.done:		xor  rax,rdx
-			sub  rax,rdx
-			ret
-
-__PrintUnsignedInteger:       ; rax: number
-		       push  rbp rcx rdx
-			mov  ecx,10
-			mov  rbp,rsp
-		.l1:	xor  edx,edx
-			div  rcx
-		       push  rdx
-		       test  rax,rax
-			jnz  .l1
-		.l2:	pop  rax
-			add  al,'0'
-		      stosb
-			cmp  rsp,rbp
-			 jb  .l2
-			pop  rdx rcx rbp
-			ret
-
-
-PrintUnsignedIntegerPostfix:	   ; rax: number
-		       push  rbx rcx rdx
-			xor  edx,edx
-
-			mov  ecx,1000000000
-			mov  bl,'B'
-		       imul  r8,rcx,1000
-			cmp  rax,r8
-			 ja  .Postfix
-
-			mov  ecx,1000000
-			mov  bl,'M'
-		       imul  r8,rcx,1000
-			cmp  rax,r8
-			 ja  .Postfix
-
-			mov  ecx,1000
-			mov  bl,'K'
-		       imul  r8,rcx,1000
-			cmp  rax,r8
-			jbe  .NoPostfix
-
-     .Postfix:		div  rcx
-		       call  PrintUnsignedInteger
-			mov  al,bl
-		      stosb
-			pop  rdx rcx rbx
-			ret
-
-    .NoPostfix:        call  PrintUnsignedInteger
-			pop  rdx rcx rbx
-			ret
-
-
-Engine_ClearOutput:
-		       push  rbp
-			mov  rbp,rcx
-			xor  eax,eax
-			mov  ecx,(Engine1__ENDER-Engine1__)/8
-			lea  rdi,[rbp-Engine1+Engine1__]
-		  rep stosq
-			mov  ecx,(ENGINE_LINE_COUNT*sizeof.ENGINE_LINE)/8
-			lea  rdi,[rbp-Engine1+Engine1_Lines]
-		  rep stosq
-			mov  ecx,ENGINE_PV_COUNT
-			lea  rdi,[rbp-Engine1+Engine1_PV]
-		  rep stosq
-			pop  rbp
-			ret
 

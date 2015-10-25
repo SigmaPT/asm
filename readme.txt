@@ -2,8 +2,6 @@
 - basic making moves and taking back
 - supports uci engines for playing and kibitzing
 - should use minimal resources while maintaining nice appearance
-- F1, F2, F3 - toggle game status, thinking lines, and kibitzing windows
-- right click on main background for menu
 
 1. about another chess engine ace:
 - it is a rewrite of stockfish into x86-64

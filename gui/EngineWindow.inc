@@ -4,16 +4,13 @@ proc EngineWindowProc hwnd,wmsg,wparam,lparam
 			mov  [wmsg],rdx
 			mov  [wparam],r8
 			mov  [lparam],r9
-
 		       push  r15 r14 r13 r12 rdx rbx rdi rsi
-
-
 
 			cmp  edx,WM_NCHITTEST
 			 je  .wm_nchittest
 
 			cmp  edx,WM_COMMAND
-			 je  .wmcommand
+			 je  .wm_redraw
 			cmp  edx,WM_CREATE
 			 je  .wmcreate
 			cmp  edx,WM_PAINT
@@ -103,58 +100,39 @@ proc EngineWindowProc hwnd,wmsg,wparam,lparam
 			 or  eax,-1
 			mov  byte[Engine1_UploadQ],al
 			mov  byte[Engine2_UploadQ],al
-
- .wmsize:
- .wmcommand:
+.wmsize:
 		     invoke  DeleteObject,[hEngineBitmap]
 		     invoke  DeleteDC,[hEngineMemDC]
 
-		     invoke  GetClientRect,[hwnd],rc
+		     invoke  GetClientRect,[hwnd],EWrc
 
-			mov  ecx,200
-			cmp  dword[Engine1_On],0
-			 je  @f
-			cmp  dword[Engine2_On],0
-			 je  @f
-			mov  ecx,300
-	     @@:
-			mov  eax,[rc.bottom]
+			mov  ecx,100
+			mov  eax,[EWrc.bottom]
 			cmp  eax,ecx
 		      cmovb  eax,ecx
-			mov  [rc.bottom],eax
-
-
-
+			mov  [EWrc.bottom],eax
 			mov  ecx,200
-
-			mov  eax,[rc.right]
+			mov  eax,[EWrc.right]
 			cmp  eax,ecx
 		      cmovb  eax,ecx
-			mov  [rc.right],eax
+			mov  [EWrc.right],eax
 
-			xor  eax,eax
-		     invoke  CreateCompatibleDC,rax
-			mov  [hEngineMemDC],rax
-		     invoke  CreateBitmap,[rc.right],[rc.bottom],1,32,NULL
-			mov  [hEngineBitmap],rax
-		     invoke  SelectObject,[hEngineMemDC],[hEngineBitmap]
 
+		xor  eax,eax
+	     invoke  CreateCompatibleDC,rax
+		mov  [hEngineMemDC],rax
+	     invoke  CreateBitmap,[EWrc.right],[EWrc.bottom],1,32,NULL
+		mov  [hEngineBitmap],rax
+	     invoke  SelectObject,[hEngineMemDC],[hEngineBitmap]
+
+.wm_redraw:
 		       call  PaintEngineWindow
-
-
  .wmpaint:
 		     invoke  GetClientRect,[hwnd],rc
 		     invoke  InvalidateRect,[hwnd],rc,FALSE
 		     invoke  BeginPaint,[hwnd],ps
 			mov  [hdc],rax
 		     invoke  BitBlt,[hdc],0,0,[rc.right],[rc.bottom],[hEngineMemDC],0,0,SRCCOPY
-
-			mov  ecx,[rc.right]
-			sub  ecx,22+0*21
-			mov  edx,4
-			mov  dword[Message],120-6
-		       call  DrawButton
-
 		     invoke  EndPaint,[hwnd],ps
 			jmp  .returnz
  .wmkeydown:
@@ -166,56 +144,159 @@ proc EngineWindowProc hwnd,wmsg,wparam,lparam
  .wmlbuttonup:
 			jmp  .returnz
 
- .wmlbuttondown:
-		     invoke  GetClientRect,[hwnd],rc
-		      movsx  eax,word[lparam+0]
-		      movsx  ecx,word[lparam+2]
-			mov  dword[pt.x],eax
-			mov  dword[pt.y],ecx
+.wmlbuttondown:
+	     invoke  GetClientRect,[hwnd],rc
+	      movsx  eax,word[lparam+0]
+	      movsx  ecx,word[lparam+2]
+		mov  dword[pt.x],eax
+		mov  dword[pt.y],ecx
 
-			mov  ecx,[rc.right]
-			sub  ecx,22+0*21
-			mov  edx,4
+		mov  ecx,[rc.right]
+		sub  ecx,22+0*21
+		mov  edx,4
+	       call  PointInButtonQ
+	       test  eax,eax
+		jnz  .engine_window_close
+
+		mov  ecx,[rc.right]
+		sub  ecx,22+1*21
+		mov  edx,4
+	       call  PointInButtonQ
+	       test  eax,eax
+		jnz  .kibitz_window_new
+
+;                jmp  .returnz
+
+	.engine3_button:
+		cmp  dword[Engine3_On],0
+		 je  .engine4_button
+
+		mov  ecx,[rc.right]
+		sub  ecx,30
+		mov  edx,dword[Engine3_yOffset]
+		lea  r15,[Engine3]
+
+	       test  edx,edx
+		 jz  .engine4_button
+
+	       call  PointInButtonQ
+	       test  eax,eax
+		jnz  .engine_close
+
+			sub  ecx,21
+			mov  r14d,1
 		       call  PointInButtonQ
 		       test  eax,eax
-			jnz  .engine_window_close
+			jnz  .engine_pv
+
+			sub  ecx,21
+			mov  r14d,-1
+		       call  PointInButtonQ
+		       test  eax,eax
+			jnz  .engine_pv
+
+.engine4_button:
+		cmp  dword[Engine4_On],0
+		 je  .kibitz_buttons_done
+
+			mov  ecx,[rc.right]
+			sub  ecx,30
+			mov  edx,dword[Engine4_yOffset]
+			lea  r15,[Engine4]
+
+		       test  edx,edx
+			 jz  .returnz
+
+		       call  PointInButtonQ
+		       test  eax,eax
+			jnz  .engine_close
+
+			sub  ecx,21
+			mov  r14d,1
+		       call  PointInButtonQ
+		       test  eax,eax
+			jnz  .engine_pv
+
+			sub  ecx,21
+			mov  r14d,-1
+		       call  PointInButtonQ
+		       test  eax,eax
+			jnz  .engine_pv
+
+.kibitz_buttons_done:
 			jmp  .returnz
+
+
+.engine_close:		mov  rcx,r15
+		       call  Engine_Quit
+		     invoke  Sleep,125
+			jmp  .wm_redraw
+
+.engine_pv:		mov  rcx,r15
+			mov  edx,r14d
+		       call  Engine_ChangePVCount
+			jmp  .returnz
+
+
 
 .engine_window_close:
-			and  qword[OpenMask],not ENGINE_WND_MASK
-		     invoke  DestroyWindow,[hEngineWindow]
-			jmp  .returnz
+		and  qword[OpenMask],not ENGINE_WND_MASK
+	     invoke  DestroyWindow,[hEngineWindow]
+		jmp  .returnz
 
+.kibitz_window_new:
+	     invoke  DialogBoxParamA,[hInstance],ID_LoadPersonDialog,[hEngineWindow],LoadPersonDialogProc,0
+		cmp  eax, 2
+		jne  .returnz
+		lea  rcx, [Engine3]
+		lea  rax, [Engine4]
+		cmp  dword[Engine3_On],0
+	     cmovne  rcx, rax
+		mov  eax, dword[PersonSelection]
+		mov  edx, dword[PersonOffsets+4*rax]
+		mov  r8d, dword[PersonOffsets+4*rax+4]
+		add  rdx, qword[PersonText]
+		add  r8, qword[PersonText]
+	       call  Engine_TurnOnKibitzer
+	     invoke  Sleep, 100
+		jmp  .wm_redraw
 
- .wmrbuttondown:
-			jmp  .returnz
+.wmrbuttondown:
+		jmp  .returnz
 
 
 .wm_destroy:
 
-		     invoke  GetWindowRect,[hEngineWindow],EngineWindowRect
-		     invoke  MapWindowPoints,HWND_DESKTOP,[hMainWindow],EngineWindowRect,2
-			mov  eax,[EngineWindowRect.left]
-			sub  [EngineWindowRect.right],eax
-			mov  eax,[EngineWindowRect.top]
-			sub  [EngineWindowRect.bottom],eax
+	     invoke  GetWindowRect,[hEngineWindow],EngineWindowRect
+	     invoke  MapWindowPoints,HWND_DESKTOP,[hMainWindow],EngineWindowRect,2
+		mov  eax,[EngineWindowRect.left]
+		sub  [EngineWindowRect.right],eax
+		mov  eax,[EngineWindowRect.top]
+		sub  [EngineWindowRect.bottom],eax
 
-		     invoke  DeleteObject,[hEngineBitmap]
-		     invoke  DeleteDC,[hEngineMemDC]
-			xor  eax,eax
-			mov  [hEngineBitmap],rax
-			mov  [hEngineMemDC],rax
-			mov  [hEngineWindow],rax
+	     invoke  DeleteObject,[hEngineBitmap]
+	     invoke  DeleteDC,[hEngineMemDC]
+		xor  eax,eax
+		mov  [hEngineBitmap],rax
+		mov  [hEngineMemDC],rax
+		mov  [hEngineWindow],rax
 
-			mov  byte[Engine1_UploadQ],al
-			mov  byte[Engine2_UploadQ],al
+		mov  byte[Engine1_UploadQ],al
+		mov  byte[Engine2_UploadQ],al
+
 
 .returnz:
-			xor  eax,eax
+		xor  eax,eax
 .return:
-			pop  rsi rdi rbx rdx r12 r13 r14 r15
-			ret
+		pop  rsi rdi rbx rdx r12 r13 r14 r15
+		ret
 endp
+
+
+
+
+
+
 
 
 PaintEngineWindow:
@@ -228,16 +309,16 @@ PaintEngineWindow:
 
 
 virtual at rbp
- .engine  dq ?
- .engine1_top	 dq ?
- .engine1_bottom dq ?
- .engine2_top	 dq ?
- .engine2_bottom dq ?
+ .engineA  dq ?
+ .engineB  dq ?
+ .engineC  dq ?
+ .engineD  dq ?
+ .count    dq ?
 end virtual
 
-		     invoke  SelectObject,[hEngineMemDC],qword[GuiColor1brush1]
-		     invoke  SelectObject,[hEngineMemDC],qword[GuiColor2pen1]
-		     invoke  Rectangle,[hEngineMemDC],0,0,[rc.right],[rc.bottom]
+		     invoke  SelectObject,[hEngineMemDC],qword[GuiColor1brush]
+		     invoke  SelectObject,[hEngineMemDC],qword[GuiColor2pen]
+		     invoke  Rectangle,[hEngineMemDC],0,0,[EWrc.right],[EWrc.bottom]
 
 		     invoke  SetTextColor,[hEngineMemDC],dword[GuiColor5]
 
@@ -250,104 +331,136 @@ end virtual
 		     invoke  DrawTextA,[hEngineMemDC],'Thinking Lines',14,rect,DT_EDITCONTROL
 
 
-			mov  eax,150
-			mov  ebx,[rc.right]
+			mov  eax,250
+			mov  ebx,[EWrc.right]
 			cmp  ebx,eax
 		      cmovl  ebx,eax
 
-			cmp  dword[Engine1_On],0
-			 je  .engine1_no
-			cmp  dword[Engine2_On],0
-			 je  .engine1_yes_engine2_no
+		xor  ecx, ecx
+
+.Check1:
+		lea  rax, [Engine1]
+		cmp  dword[Engine1_On],0
+		 je  .Check2
+		mov  qword[.engineA+8*rcx], rax
+		add  ecx, 1
+.Check2:
+		lea  rax, [Engine2]
+		cmp  dword[Engine2_On],0
+		 je  .CheckFlip
+		mov  qword[.engineA+8*rcx], rax
+		add  ecx, 1
+.CheckFlip:
+		cmp  ecx, 2
+		 jb  .Check3
+		cmp  byte[BoardFlip], 0
+		jne  .Check3
+		mov  rax, qword[.engineA+8*0]
+		mov  rdx, qword[.engineA+8*1]
+		mov  qword[.engineA+8*1], rax
+		mov  qword[.engineA+8*0], rdx
+.Check3:
+		lea  rax, [Engine3]
+		cmp  dword[Engine3_On],0
+		 je  .Check4
+		mov  qword[.engineA+8*rcx], rax
+		add  ecx, 1
+.Check4:
+		lea  rax, [Engine4]
+		cmp  dword[Engine4_On],0
+		 je  .Check5
+		mov  qword[.engineA+8*rcx], rax
+		add  ecx, 1
+.Check5:
+		mov  qword[.count], rcx
+	       test  ecx, ecx
+		 jz  .finished_drawing
+
+		mov  eax, dword[EWrc.bottom]
+		sub  eax, 25
+		xor  edx, edx
+		div  ecx
+		xor  r13d, r13d
+		mov  ecx, 103
+		cmp  eax, ecx
+	      cmovb  eax, ecx
+		mov  r14d, eax
+		xor  r12d, r12d
+.draw_next:
+		mov  r15, [.engineA+8*r12]
+		lea  esi, [r13+25]
+		add  r13d, r14d
+		lea  edi, [r13d-20]
+		mov  dword[r15-Engine1+Engine1_yOffset], esi
+	       call  .paint_engine
+		add  r12d, 1
+		cmp  r12d, dword[.count]
+		 jb  .draw_next
+.finished_drawing:
+
+		mov  ecx,[EWrc.right]
+		sub  ecx,22+0*21
+		mov  edx,4
+		mov  r8, [hEngineMemDC]
+		mov  dword[Message],120-6
+	       call  DrawButtonHdc
+		mov  ecx,[EWrc.right]
+		sub  ecx,22+1*21
+		mov  edx,4
+		mov  r8, [hEngineMemDC]
+		mov  dword[Message],157
+	       call  DrawButtonHdc
 
 
-.engine1_yes_engine2_yes:
+		mov  rsp,rbp
+		add  rsp,8*16
+		pop  r15 r14 r13 r12 rdi rsi rbp
+		ret
 
-			mov  esi,26
-
-			mov  edi,[rc.bottom]
-			shr  edi,1
-			sub  edi,37
-
-			lea  eax,[rsi+40]
-			cmp  edi,eax
-		      cmovl  edi,eax
-
-			mov  ebx,[rc.right]
-
-			lea  r15,[Engine1]
-			lea  rax,[Engine2]
-			cmp  byte[BoardFlip],0
-		      cmove  r15, rax
-		       call  .paint_engine
-
-			lea  rsi,[rdi+50]
-
-			mov  edi,[rc.bottom]
-			sub  edi,50
-			lea  eax,[rsi+40]
-			cmp  edi,eax
-		      cmovl  edi,eax
-			lea  r15,[Engine2]
-			lea  rax,[Engine1]
-			cmp  byte[BoardFlip],0
-		      cmove  r15, rax
-		       call  .paint_engine
-
-			jmp  .done_painting
-
-.engine1_yes_engine2_no:
-			mov  esi,26
-			mov  edi,[rc.bottom]
-			sub  edi,50
-			lea  eax,[rsi+40]
-			cmp  edi,eax
-		      cmovl  edi,eax
-			lea  r15,[Engine1]
-		       call  .paint_engine
-
-			jmp  .done_painting
-.engine1_no:
-			cmp  dword[Engine2_On],0
-			 je  .engine1_no_engine2_no
-.engine1_no_engine2_yes:
-			mov  esi,26
-			mov  edi,[rc.bottom]
-			sub  edi,50
-			lea  eax,[rsi+40]
-			cmp  edi,eax
-		      cmovl  edi,eax
-			lea  r15,[Engine2]
-		       call  .paint_engine
-
-.engine1_no_engine2_no:
-
-.done_painting:
-
-
-			mov  rsp,rbp
-			add  rsp,8*16
-			pop  r15 r14 r13 r12 rdi rsi rbp
-			ret
 
 
 .paint_engine:
-			mov  qword[.engine],r15
-		       push  rbp
+	       push  rbp r12 r13 r14 r15
 
-		     invoke  SetBkColor,[hEngineMemDC],dword[GuiColor1]
-		     invoke  SelectObject,[hEngineMemDC],[hFontMedium]
-			mov  [rect.left],5
-			mov  [rect.top],esi
-			mov  [rect.right],ebx
-			add  esi,20
-			mov  [rect.bottom],esi
-			lea  rdx,[r15-Engine1+Engine1_Name]
-		     invoke  DrawTextA,[hEngineMemDC],rdx,-1,rect,DT_EDITCONTROL
+		lea  rax, [Engine3]
+		cmp  r15, rax
+		 jb  .NotKibitzer
+		mov  ecx,[EWrc.right]
+		sub  ecx,30+0*21
+		mov  edx,esi
+		mov  dword[Message],120-6
+		mov  r8, [hEngineMemDC]
+	       call  DrawButtonHdc
+		mov  ecx,[EWrc.right]
+		sub  ecx,30+1*21
+		mov  edx,esi
+		mov  dword[Message],120-6-4*16+3
+		mov  r8, [hEngineMemDC]
+	       call  DrawButtonHdc
+		mov  ecx,[EWrc.right]
+		sub  ecx,30+2*21
+		mov  edx,esi
+		mov  dword[Message],120-6-4*16+4
+		mov  r8, [hEngineMemDC]
+	       call  DrawButtonHdc
+.NotKibitzer:
+
+	     invoke  SetBkColor,[hEngineMemDC],dword[GuiColor1]
+	     invoke  SetTextColor,[hEngineMemDC],dword[GuiColor5]
+	     invoke  SelectObject,[hEngineMemDC],[hFontMedium]
+		mov  [rect.left],5
+		mov  [rect.top],esi
+		mov  [rect.right],ebx
+		add  esi,20
+		mov  [rect.bottom],esi
+		lea  rdx,[r15-Engine1+Engine1_Name]
+	     invoke  DrawTextA,[hEngineMemDC],rdx,-1,rect,DT_EDITCONTROL
 
 
-		     invoke  SelectObject,[hEngineMemDC],[GuiColor3brush2]
-		     invoke  SelectObject,[hEngineMemDC],[GuiColor4pen2]
+
+
+		     invoke  SelectObject,[hEngineMemDC],[GuiColor3brush]
+		     invoke  SelectObject,[hEngineMemDC],[GuiColor4pen]
 			mov  [rect.left],BORDERWIDTH
 			mov  [rect.top],esi
 			lea  eax,[rbx-BORDERWIDTH-1]
@@ -370,26 +483,26 @@ TEXT_O	= 5
 
 			mov  [rect.left], BORDERWIDTH+2+TIME_O
 			mov  [rect.right],BORDERWIDTH+2+DEPTH_O-2
-		     invoke  FillRect,[hEngineMemDC],rect,[GuiColor1brush1]
+		     invoke  FillRect,[hEngineMemDC],rect,[GuiColor1brush]
 			add  [rect.left],TEXT_O
 		     invoke  DrawTextA,[hEngineMemDC],'Time',4,rect,DT_LEFT+DT_TOP
 
 			mov  [rect.left], BORDERWIDTH+2+DEPTH_O
 			mov  [rect.right],BORDERWIDTH+2+EVAL_O-2
-		     invoke  FillRect,[hEngineMemDC],rect,[GuiColor1brush1]
+		     invoke  FillRect,[hEngineMemDC],rect,[GuiColor1brush]
 			add  [rect.left],TEXT_O
 		     invoke  DrawTextA,[hEngineMemDC],'Ply',3,rect,DT_LEFT+DT_TOP
 
 			mov  [rect.left], BORDERWIDTH+2+EVAL_O
 			mov  [rect.right],BORDERWIDTH+2+MOVES_O-2
-		     invoke  FillRect,[hEngineMemDC],rect,[GuiColor1brush1]
+		     invoke  FillRect,[hEngineMemDC],rect,[GuiColor1brush]
 			add  [rect.left],TEXT_O
 		     invoke  DrawTextA,[hEngineMemDC],'Score',5,rect,DT_LEFT+DT_TOP
 
 			mov  [rect.left], BORDERWIDTH+2+MOVES_O
 			lea  eax,[rbx-BORDERWIDTH-1-2]
 			mov  [rect.right],eax
-		     invoke  FillRect,[hEngineMemDC],rect,[GuiColor1brush1]
+		     invoke  FillRect,[hEngineMemDC],rect,[GuiColor1brush]
 			add  [rect.left],TEXT_O
 		     invoke  DrawTextA,[hEngineMemDC],'Moves',5,rect,DT_LEFT+DT_TOP
 
@@ -419,7 +532,7 @@ TEXT_O	= 5
 			jge  .line_done
 
 
-			mov  r15,qword[.engine]
+			mov  r15,qword[rsp]
 		       imul  r12,r14,sizeof.ENGINE_LINE
 			lea  rax,[r15-Engine1+Engine1_Lines+ENGINE_LINE.TEXT]
 			add  r12,rax
@@ -470,13 +583,13 @@ TEXT_O	= 5
 
 .all_rows_done:
 
-			mov  r15,qword[.engine]
+			mov  r15,qword[rsp]
 
 
-			lea  esi,[rdi+1]
+			lea  esi,[rdi-1]
 
-		     invoke  SelectObject,[hEngineMemDC],[GuiColor3brush2]
-		     invoke  SelectObject,[hEngineMemDC],[GuiColor4pen2]
+		     invoke  SelectObject,[hEngineMemDC],[GuiColor3brush]
+		     invoke  SelectObject,[hEngineMemDC],[GuiColor4pen]
 			mov  [rect.left],BORDERWIDTH
 			lea  eax,[rbx-BORDERWIDTH-1]
 			mov  [rect.right],eax
@@ -504,26 +617,26 @@ CURRENT_O = 310
 
 			mov  [rect.left], BORDERWIDTH+2+MEMORY_O
 			mov  [rect.right],BORDERWIDTH+2+SPEED_O-2
-		     invoke  FillRect,[hEngineMemDC],rect,[GuiColor1brush1]
+		     invoke  FillRect,[hEngineMemDC],rect,[GuiColor1brush]
 			add  [rect.left],TEXT_O
 		     invoke  DrawTextA,[hEngineMemDC],'Memory',6,rect,DT_LEFT+DT_TOP
 
 			mov  [rect.left], BORDERWIDTH+2+SPEED_O
 			mov  [rect.right],BORDERWIDTH+2+NODES_O-2
-		     invoke  FillRect,[hEngineMemDC],rect,[GuiColor1brush1]
+		     invoke  FillRect,[hEngineMemDC],rect,[GuiColor1brush]
 			add  [rect.left],TEXT_O
 		     invoke  DrawTextA,[hEngineMemDC],'Nodes / Sec',11,rect,DT_LEFT+DT_TOP
 
 			mov  [rect.left], BORDERWIDTH+2+NODES_O
 			mov  [rect.right],BORDERWIDTH+2+CURRENT_O-2
-		     invoke  FillRect,[hEngineMemDC],rect,[GuiColor1brush1]
+		     invoke  FillRect,[hEngineMemDC],rect,[GuiColor1brush]
 			add  [rect.left],TEXT_O
 		     invoke  DrawTextA,[hEngineMemDC],'Positions',9,rect,DT_LEFT+DT_TOP
 
 			mov  [rect.left], BORDERWIDTH+2+CURRENT_O
 			lea  eax,[rbx-BORDERWIDTH-1-2]
 			mov  [rect.right],eax
-		     invoke  FillRect,[hEngineMemDC],rect,[GuiColor1brush1]
+		     invoke  FillRect,[hEngineMemDC],rect,[GuiColor1brush]
 			add  [rect.left],TEXT_O
 		     invoke  DrawTextA,[hEngineMemDC],'Extras',6,rect,DT_LEFT+DT_TOP
 
@@ -552,5 +665,5 @@ CURRENT_O = 310
 		     invoke  DrawTextA,[hEngineMemDC],rdx,-1,rect,DT_LEFT+DT_TOP
 
 
-			pop  rbp
+			pop  r15 r14 r13 r12 rbp
 			ret

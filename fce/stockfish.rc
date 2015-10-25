@@ -1,0 +1,18 @@
+#############################
+#
+# Adapter Resource Control
+#
+#############################
+#
+# Exe-Name
+exe=fce.exe
+#
+# Directory 
+dir=c:\uci2wb\
+#
+# Hashtable size in MB (*not* for UCI)
+Hash=512
+#
+# for DeepShredder
+Threads=2
+#

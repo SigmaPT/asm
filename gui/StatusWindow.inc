@@ -1,3 +1,8 @@
+
+
+max_move_width = 280
+inc_space = 60
+
 proc StatusWindowProc hwnd,wmsg,wparam,lparam
 
 			mov  [hwnd],rcx
@@ -7,27 +12,16 @@ proc StatusWindowProc hwnd,wmsg,wparam,lparam
 
 		       push  r15 r14 r13 r12 rdx rbx rdi rsi
 
-
-
 			cmp  edx,WM_NCHITTEST
 			 je  .wm_nchittest
-
 			cmp  edx,WM_COMMAND
-			 je  .wmcommand
+			 je  .wm_redraw
 			cmp  edx,WM_CREATE
 			 je  .wmcreate
 			cmp  edx,WM_PAINT
 			 je  .wmpaint
 			cmp  edx,WM_SIZE
 			 je  .wmsize
-			cmp  edx,WM_KEYDOWN
-			 je  .wmkeydown
-			cmp  edx,WM_KEYUP
-			 je  .wmkeyup
-			cmp  edx,WM_MOUSEMOVE
-			 je  .wmmousemove
-			cmp  edx,WM_LBUTTONUP
-			 je  .wmlbuttonup
 			cmp  edx,WM_LBUTTONDOWN
 			 je  .wmlbuttondown
 			cmp  edx,WM_RBUTTONDOWN
@@ -102,153 +96,69 @@ proc StatusWindowProc hwnd,wmsg,wparam,lparam
  .wmcreate:
 			 or  qword[OpenMask],STATUS_WND_MASK
  .wmsize:
- .wmcommand:
-		     invoke  DeleteObject,[hStatusBitmap]
-		     invoke  DeleteDC,[hStatusMemDC]
+; .wmcommand:
+	     invoke  DeleteObject,[hStatusBitmap]
+	     invoke  DeleteDC,[hStatusMemDC]
+	     invoke  GetClientRect,[hwnd],SWrc
 
-		     invoke  GetClientRect,[hwnd],rc
+		mov  ecx, 240
+		mov  eax, [SWrc.bottom]
+		cmp  eax, ecx
+	      cmovb  eax, ecx
+		mov  [SWrc.bottom], eax
+		mov  ecx, 200;max_move_width+50
+		mov  eax, dword[SWrc.right]
+		cmp  eax, ecx
+	      cmovb  eax, ecx
+		mov  [SWrc.right], eax
 
-			mov  ecx,240
-			mov  eax,[rc.bottom]
-			cmp  eax,ecx
-		      cmovb  eax,ecx
-			mov  [rc.bottom],eax
+		xor  eax,eax
+	     invoke  CreateCompatibleDC,rax
+		mov  [hStatusMemDC],rax
+	     invoke  CreateBitmap,[SWrc.right],[SWrc.bottom],1,32,NULL
+		mov  [hStatusBitmap],rax
+	     invoke  SelectObject,[hStatusMemDC],[hStatusBitmap]
+	       call  PaintGameStatusWindow
 
-			mov  ecx,120
-			mov  eax,[rc.right]
-			cmp  eax,ecx
-		      cmovb  eax,ecx
-			mov  [rc.right],eax
+.wm_redraw:
+	       call   PaintGameStatusTime
+.wmpaint:
+	     invoke  GetClientRect,[hwnd],SWrc
+	     invoke  InvalidateRect,[hwnd],SWrc,FALSE
+	     invoke  BeginPaint,[hwnd],ps
+		mov  [hdc],rax
+	     invoke  BitBlt,[hdc],0,0,[SWrc.right],[SWrc.bottom],[hStatusMemDC],0,0,SRCCOPY
 
-			xor  eax,eax
-		     invoke  CreateCompatibleDC,rax
-			mov  [hStatusMemDC],rax
-		     invoke  CreateBitmap,[rc.right],[rc.bottom],1,32,NULL
-			mov  [hStatusBitmap],rax
-		     invoke  SelectObject,[hStatusMemDC],[hStatusBitmap]
+		mov  ecx,[SWrc.right]
+		sub  ecx,22+0*21
+		mov  edx,4
+		mov  dword[Message],120-6
+	       call  DrawButton
 
+		mov  ecx,22
+		mov  ebx,[SWrc.right]
+		shr  ebx,1
+		sub  ebx,80
+		cmp  ebx,ecx
+	      cmovl  ebx,ecx
 
-
- .wm_redraw:
-		       call  PaintStatusWindow
-
-
- .wmpaint:
-		     invoke  GetClientRect,[hwnd],rc
-		     invoke  InvalidateRect,[hwnd],rc,FALSE
-		     invoke  BeginPaint,[hwnd],ps
-			mov  [hdc],rax
-		     invoke  BitBlt,[hdc],0,0,[rc.right],[rc.bottom],[hStatusMemDC],0,0,SRCCOPY
-
-			mov  ecx,[rc.right]
-			sub  ecx,22+0*21
-			mov  edx,4
-			mov  dword[Message],120-6
-		       call  DrawButton
-
-
-			mov  ecx,22
-			mov  ebx,[rc.right]
-			shr  ebx,1
-			sub  ebx,80
-			cmp  ebx,ecx
-		      cmovl  ebx,ecx
-
-STATUS_BUTTON_Y =80
-
-			lea  ecx,[rbx+0*21]
-			mov  edx,STATUS_BUTTON_Y
-			mov  dword[Message],57
-		       call  DrawButton
-			lea  ecx,[rbx+1*21]
-			mov  edx,STATUS_BUTTON_Y
-			mov  dword[Message],55
-		       call  DrawButton
-			lea  ecx,[rbx+2*21]
-			mov  edx,STATUS_BUTTON_Y
-			mov  dword[Message],51
-		       call  DrawButton
-			lea  ecx,[rbx+3*21]
-			mov  edx,STATUS_BUTTON_Y
-			mov  dword[Message],60
-		       call  DrawButton
-			lea  ecx,[rbx+4*21]
-			mov  edx,STATUS_BUTTON_Y
-			mov  dword[Message],52
-		       call  DrawButton
-			lea  ecx,[rbx+5*21]
-			mov  edx,STATUS_BUTTON_Y
-			mov  dword[Message],56
-		       call  DrawButton
-			lea  ecx,[rbx+6*21]
-			mov  edx,STATUS_BUTTON_Y
-			mov  dword[Message],58
-		       call  DrawButton
-
-		     invoke  EndPaint,[hwnd],ps
-
-		  ;      invoke  ShowWindow,qword[hMoveListWindow],SW_SHOW
-
-			jmp  .returnz
- .wmkeydown:
-			jmp  .returnz
- .wmkeyup:
-			jmp  .returnz
- .wmmousemove:
-			jmp  .returnz
- .wmlbuttonup:
-			jmp  .returnz
+	     invoke  EndPaint,[hwnd],ps
+		jmp  .returnz
 
  .wmlbuttondown:
-		     invoke  GetClientRect,[hwnd],rc
-		      movsx  eax,word[lparam+0]
-		      movsx  ecx,word[lparam+2]
-			mov  dword[pt.x],eax
-			mov  dword[pt.y],ecx
+	     invoke  GetClientRect,[hwnd],SWrc
+	      movsx  eax,word[lparam+0]
+	      movsx  ecx,word[lparam+2]
+		mov  dword[pt.x],eax
+		mov  dword[pt.y],ecx
 
-
-			mov  ecx,[rc.right]
-			sub  ecx,22+0*21
-			mov  edx,4
-		       call  PointInButtonQ
-		       test  eax,eax
-			jnz  .status_window_close
-
-
-
-			mov  ecx,22
-			mov  ebx,[rc.right]
-			shr  ebx,1
-			sub  ebx,80
-			cmp  ebx,ecx
-		      cmovl  ebx,ecx
-
-
-			lea  ecx,[rbx+2*21]
-			mov  edx,STATUS_BUTTON_Y
-		       call  PointInButtonQ
-		       test  eax,eax
-			jnz  .takeback
-
-			lea  ecx,[rbx+1*21]
-			mov  edx,STATUS_BUTTON_Y
-		       call  PointInButtonQ
-		       test  eax,eax
-			jnz  .takeback2
-
-			lea  ecx,[rbx+4*21]
-			mov  edx,STATUS_BUTTON_Y
-		       call  PointInButtonQ
-		       test  eax,eax
-			jnz  .redo
-
-			lea  ecx,[rbx+5*21]
-			mov  edx,STATUS_BUTTON_Y
-		       call  PointInButtonQ
-		       test  eax,eax
-			jnz  .redo2
-
-			jmp  .returnz
+		mov  ecx,[SWrc.right]
+		sub  ecx,22+0*21
+		mov  edx,4
+	       call  PointInButtonQ
+	       test  eax,eax
+		jnz  .status_window_close
+		jmp  .returnz
 
 
  .status_window_close:
@@ -306,62 +216,147 @@ STATUS_BUTTON_Y =80
 endp
 
 
-PaintStatusWindow:
-
-		       push  rbp rsi rdi r12 r13 r14 r15
 
 
 
-		     invoke  SelectObject,[hStatusMemDC],qword[GuiColor1brush1]
-		     invoke  SelectObject,[hStatusMemDC],qword[GuiColor2pen1]
-		     invoke  Rectangle,[hStatusMemDC],0,0,[rc.right],[rc.bottom]
-
-		     invoke  SetTextColor,[hStatusMemDC],dword[GuiColor5]
-
-		     invoke  SelectObject,[hStatusMemDC],[hFontTitle]
-		     invoke  SetBkColor,[hStatusMemDC],dword[GuiColor1]
-			mov  [rect.left],10
-			mov  [rect.top],1
-			mov  [rect.right],200
-			mov  [rect.bottom],24
-		     invoke  DrawTextA,[hStatusMemDC],'Game Status',11,rect,DT_EDITCONTROL
 
 
 
-		;        mov  r12,[hBmpBlackLogo]
-		;        mov  r13,[hBmpWhiteLogo]
-		;        cmp  byte[BoardFlip],0
-		;         je  @f
-		;       xchg  r12,r13
-		;        @@:
-		;
-		;     invoke  CreateCompatibleDC,[hStatusMemDC]
-		;        mov  rsi,rax
-		;     invoke  SelectObject,rsi,r12
-		;     invoke  BitBlt,[hStatusMemDC],10,25,75,96,rsi,0,0,SRCCOPY
-		;     invoke  SelectObject,rsi,r13
-		;        mov  r8d,[rc.bottom]
-		;        sub  r8d,105
-		;     invoke  BitBlt,[hStatusMemDC],10,r8,75,96,rsi,0,0,SRCCOPY
-		;     invoke  DeleteDC,rsi
 
-			lea   rbp, [BoardPos]
+PaintGameStatusTime:
+
+	       push  rbp rsi rdi r12 r13 r14 r15
+
+		lea  rbp, [BoardPos]
+		mov  r12, 24
+		mov  r13d, [SWrc.bottom]
+		sub  r13d, 60
+		cmp  byte [BoardFlip], 0
+		jnz  @f
+	       xchg  r12, r13
+	@@:	mov  r14d, 5
+		mov  r15d, dword [SWrc.right]
+		lea  r15d, [3*r15]
+		shr  r15d, 2
+		mov  eax, max_move_width
+		cmp  r15d, eax
+	      cmova  r15d, eax
+
+	     invoke  SelectObject,[hStatusMemDC],qword[GuiColor1brush]
+		lea  eax,[r14+10-5]
+		mov  [rect.left],eax
+		lea  eax,[r15-inc_space-5]
+		mov  [rect.right],eax
+		lea  eax,[r12+21]
+		mov  [rect.top],eax
+		lea  eax,[r12+52+1]
+		mov  [rect.bottom],eax
+	     invoke  SelectObject,[hStatusMemDC],qword[GuiColor1pen]
+	     invoke  Rectangle,[hStatusMemDC],[rect.left],[rect.top],[rect.right],[rect.bottom]
+		lea  eax,[r13+21]
+		mov  [rect.top],eax
+		lea  eax,[r13+52+1]
+		mov  [rect.bottom],eax
+	     invoke  SelectObject,[hStatusMemDC], qword[GuiColor1pen]
+	     invoke  Rectangle,[hStatusMemDC],[rect.left],[rect.top],[rect.right],[rect.bottom]
+	     invoke  SetBkColor,[hStatusMemDC],dword[GuiColor1]
 
 
-			mov   r12, 24
-			mov   r13d, [rc.bottom]
-			sub   r13d, 60
-			cmp   byte [BoardFlip], 0
-			jnz   @f
-		       xchg   r12, r13
-			@@:
+		; time remaining
 
-			mov   r14d, 5
-			mov   r15d, dword [rc.right]
+			lea  eax,[r14+10]
+			mov  [rect.left],eax
+			lea  eax,[r15-inc_space-5]
+			mov  [rect.right],eax
+		     invoke  SelectObject,[hStatusMemDC],[hFontHuge]
 
-inc_space = 60
+			mov   esi, dword [GuiColor7]
+			lea   rdi, [Message]
 
-		   ;  invoke  BitBlt,[hStatusMemDC],20,20,76,97,[hStatusWhiteMemDC],0,0,SRCCOPY
+			mov   rbx, qword [Time_TIME+8*White]
+			mov   rax, qword [rbp+PosEx.move]
+			cmp   byte [rbp+Pos.sideToMove], 0
+			jne   @f
+			cmp   byte [rbp+PosEx.result], 0
+			jne   @f
+			mov   esi, dword [GuiColor6]
+			add   rbx, qword [rax+MoveData.time1]
+		     invoke   GetTickCount
+			sub   rbx, rax
+		@@:	mov   rax, rbx
+		       call   PrintTime
+			xor   eax, eax
+		      stosd
+
+		     invoke  SetTextColor,[hStatusMemDC],esi
+			lea  eax,[r12+21]
+			mov  [rect.top],eax
+			lea  eax,[r12+52]
+			mov  [rect.bottom],eax
+		     invoke  DrawTextA,[hStatusMemDC],Message,-1,rect,DT_EDITCONTROL
+			mov  esi, dword[GuiColor7]
+
+			lea   rdi, [Message]
+			mov   rbx, qword[Time_TIME+8*Black]
+			mov   rax, qword [rbp+PosEx.move]
+			cmp   byte [rbp+Pos.sideToMove], 0
+			 je   @f
+			cmp   byte [rbp+PosEx.result],0
+			jne   @f
+			mov   esi, dword[GuiColor6]
+			add   rbx, qword [rax+MoveData.time1]
+		     invoke   GetTickCount
+			sub   rbx, rax
+		@@:	mov   rax, rbx
+		       call   PrintTime
+			xor   eax,eax
+		      stosd
+
+		     invoke  SetTextColor,[hStatusMemDC],esi
+			lea  eax,[r13+21]
+			mov  [rect.top],eax
+			lea  eax,[r13+52]
+			mov  [rect.bottom],eax
+		     invoke  DrawTextA,[hStatusMemDC],Message,-1,rect,DT_EDITCONTROL
+
+			pop  r15 r14 r13 r12 rdi rsi rbp
+			ret
+
+
+
+
+
+PaintGameStatusWindow:
+	       push  rbp rsi rdi r12 r13 r14 r15
+
+	     invoke  SelectObject,[hStatusMemDC],qword[GuiColor1brush]
+	     invoke  SelectObject,[hStatusMemDC],qword[GuiColor2pen]
+	     invoke  Rectangle,[hStatusMemDC],0,0,[SWrc.right],[SWrc.bottom]
+
+	     invoke  SetTextColor,[hStatusMemDC],dword[GuiColor5]
+
+	     invoke  SelectObject,[hStatusMemDC],[hFontTitle]
+	     invoke  SetBkColor,[hStatusMemDC],dword[GuiColor1]
+		mov  [rect.left],10
+		mov  [rect.top],1
+		mov  [rect.right],200
+		mov  [rect.bottom],24
+	     invoke  DrawTextA,[hStatusMemDC],'Game Status',11,rect,DT_EDITCONTROL
+
+		lea  rbp, [BoardPos]
+		mov  r12, 24
+		mov  r13d, [SWrc.bottom]
+		sub  r13d, 60
+		cmp  byte [BoardFlip], 0
+		jnz  @f
+	       xchg  r12, r13
+	@@:	mov  r14d, 5
+		mov  r15d, dword[SWrc.right]
+		lea  r15d, [3*r15]
+		shr  r15d, 2
+		mov  eax, max_move_width
+		cmp  r15d, eax
+	      cmova  r15d, eax
 
 		; engine names
 			lea  eax,[r14+5]
@@ -369,14 +364,19 @@ inc_space = 60
 			lea  eax,[r14+200]
 			mov  [rect.right],eax
 		     invoke  SelectObject,[hStatusMemDC],[hFontLarge]
+
 			mov  [rect.top],r12d
 			lea  eax,[r12+23]
 			mov  [rect.bottom],eax
 		     invoke  DrawTextA,[hStatusMemDC],Engine1_Name,-1,rect,DT_EDITCONTROL
+
 			mov  [rect.top],r13d
 			lea  eax,[r13+23]
 			mov  [rect.bottom],eax
 		     invoke  DrawTextA,[hStatusMemDC],Engine2_Name,-1,rect,DT_EDITCONTROL
+
+
+
 
 		; time control
 			lea  eax,[r15-inc_space+2]
@@ -430,93 +430,56 @@ inc_space = 60
 		     invoke  DrawTextA,[hStatusMemDC],Message,-1,rect,DT_EDITCONTROL
 
 
+if 0
+		; ratings
+			cmp   dword[Tournament.GoingQ], 0
+			 je   .rating_done
 
-		; time remaining
+			lea   eax,[r15-160]
+			mov   [rect.left],eax
+			lea   eax,[r15-5]
+			mov   [rect.right],eax
 
-			lea  eax,[r14+10]
-			mov  [rect.left],eax
-			lea  eax,[r15-inc_space-5]
-			mov  [rect.right],eax
-		     invoke  SelectObject,[hStatusMemDC],[hFontHuge]
+		       push   r12 r13
 
-			mov   esi, dword [GuiColor7]
-			lea   rdi, [Message]
-			mov   rbx, qword [Time_TIME+8*White]
-			mov   rax, qword [rbp+PosEx.move]
-			cmp   byte [rbp+Pos.sideToMove], 0
-			jne   @f
-			cmp   byte [rax+MoveData.result], 0
-			jne   @f
-			mov   esi, dword [GuiColor6]
-			add   rbx, qword [rax+MoveData.time1]
-		     invoke   GetTickCount
-			sub   rbx, rax
-		@@:	mov   rax, rbx
-		       call   PrintTime
-			xor   eax, eax
-		      stosd
+		       test   dword[Tournament.GameCt], 1
+			 jz   @f
+		       xchg   r12, r13
+		    @@:
 
-		     invoke  SetTextColor,[hStatusMemDC],esi
-			lea  eax,[r12+21]
-			mov  [rect.top],eax
-			lea  eax,[r12+52]
-			mov  [rect.bottom],eax
-		     invoke  DrawTextA,[hStatusMemDC],Message,-1,rect,DT_EDITCONTROL
-			mov  esi, dword[GuiColor7]
+			lea   rdi,[Message]
+			lea   rsi, [Tournament.P1Win]
+		       call   PrintRatingStats
+			lea   eax,[r12+3]
+			mov   [rect.top],eax
+			lea   eax,[r12+20]
+			mov   [rect.bottom],eax
+		     invoke   DrawTextA,[hStatusMemDC],Message,-1,rect,DT_RIGHT
 
-			lea   rdi, [Message]
-			mov   rbx, qword[Time_TIME+8*Black]
-			mov   rax, qword [rbp+PosEx.move]
-			cmp   byte [rbp+Pos.sideToMove], 0
-			 je   @f
-			cmp   byte [rax+MoveData.result],0
-			jne   @f
-			mov   esi, dword[GuiColor6]
-			add   rbx, qword [rax+MoveData.time1]
-		     invoke   GetTickCount
-			sub   rbx, rax
-		@@:	mov   rax, rbx
-		       call   PrintTime
-			xor   eax,eax
-		      stosd
+			lea   rdi,[Message]
+			lea   rsi, [Tournament.P2Win]
+		       call   PrintRatingStats
+			lea   eax,[r13+3]
+			mov   [rect.top],eax
+			lea   eax,[r13+23]
+			mov   [rect.bottom],eax
+		     invoke   DrawTextA,[hStatusMemDC],Message,-1,rect,DT_RIGHT
 
-		     invoke  SetTextColor,[hStatusMemDC],esi
-			lea  eax,[r13+21]
-			mov  [rect.top],eax
-			lea  eax,[r13+52]
-			mov  [rect.bottom],eax
-		     invoke  DrawTextA,[hStatusMemDC],Message,-1,rect,DT_EDITCONTROL
+			pop   r13 r12
+      .rating_done:
 
-
-			cmp  byte [rbp+PosEx.sideToMove], 0
-			mov  ecx, r12d
-		     cmovne  ecx, r13d
-			lea  eax,[r14+10-3]
-			mov  [rect.left],eax
-			lea  eax,[r15-inc_space-5]
-			mov  [rect.right],eax
-			lea  eax,[rcx+21+2]
-			mov  [rect.top],eax
-			lea  eax,[rcx+52-1]
-			mov  [rect.bottom],eax
-		     invoke  FrameRect,[hStatusMemDC],rect,qword[GuiColor3brush2]
-	       @@:
-
-
-
-
-
+end if
 
 		; moves
 
-		     invoke  SelectObject,[hStatusMemDC],[GuiColor3brush2]
-		     invoke  SelectObject,[hStatusMemDC],[GuiColor2pen1]
+		     invoke  SelectObject,[hStatusMemDC],[GuiColor3brush]
+		     invoke  SelectObject,[hStatusMemDC],[GuiColor2pen]
 			mov  [rect.left],8
-			mov  [rect.top],STATUS_BUTTON_Y+20
-			mov  eax,[rc.right]
+			mov  [rect.top],80
+			mov  eax, r15d ;[SWrc.right]
 			sub  eax,8
 			mov  [rect.right],eax
-			mov  eax,[rc.bottom]
+			mov  eax,[SWrc.bottom]
 			sub  eax,64
 			mov  [rect.bottom],eax
 		     invoke  Rectangle,[hStatusMemDC],[rect.left],[rect.top],[rect.right],[rect.bottom]
@@ -524,73 +487,182 @@ inc_space = 60
 		     invoke  SetBkColor,[hStatusMemDC],dword[GuiColor3]
 		     invoke  SelectObject,[hStatusMemDC],[hFontMedium]
 
-			mov   r13d, 32
+		     invoke  SelectObject,[hStatusMemDC],[GuiColor10brush]
+
+			mov  r13d, 48
 	    .move:
-			mov   r12d, dword [rbp+Pos.gamePly]
-			sub   r12d, r13d
-			jle   .next_move
 
-			lea   eax, [r13+1]
-		       imul   eax, sizeof.MoveData
-			mov   r14, qword [rbp+PosEx.move]
-			sub   r14, rax
+			mov  r12d, dword [rbp+Pos.gamePly]
+			sub  r12d, r13d
+			jle  .next_move
 
-			cmp   r14, qword [rbp+PosEx.moveTable]
-			 jb   .next_move
+			lea  eax, [r13+1]
+		       imul  eax, sizeof.MoveData
+			mov  r14, qword [rbp+PosEx.move]
+			sub  r14, rax
 
-		       imul  edx,r13d,15
-			add  edx,STATUS_BUTTON_Y+23
-			lea  ecx,[rdx+16]
-			mov  eax,[rc.bottom]
-			sub  eax,64+2
-			cmp  ecx,eax
-		      cmova  ecx,eax
-			cmp  edx,eax
+			cmp  r14, qword [rbp+PosEx.moveTable]
+			 jb  .next_move
+
+			mov  edx, r13d
+			add  edx, dword [rbp+Pos.sideToMove]
+			shr  edx, 1
+		       imul  edx, 15
+			add  edx, 80+3
+			lea  ecx, [rdx+16]
+			mov  eax, [SWrc.bottom]
+			sub  eax, 64+3
+			cmp  ecx, eax
+		      cmova  ecx, eax
+			cmp  edx, eax
 			jge  .next_move
 
-			mov  [rect.top],edx
-			mov  [rect.bottom],ecx
-
+			mov  [rect.top], edx
+			mov  [rect.bottom], ecx
 
 
 		     invoke  SetTextColor,[hStatusMemDC],dword[GuiColor6]
 
-			mov  [rect.left],20
-			mov  [rect.right],60
-			lea  rdi,[Message]
-			mov  rax,'  ...'
-			mov  qword[rdi],rax
 			mov  eax,r12d
 			shr  eax,1
-			jnc  @f
+			jnc  .PrintBlack
 			add  eax,1
+	.PrintWhite:
+			mov  [rect.left],18
+			mov  [rect.right],60
+			lea  rdi, [Message]
 		       call  PrintUnsignedInteger
-			mov  dword[rdi],'.'
-	     @@:     invoke  DrawTextA,[hStatusMemDC],Message,-1,rect,DT_EDITCONTROL
+			mov  eax, '.'
+		      stosd
+		     invoke  DrawTextA,[hStatusMemDC],Message,-1,rect,DT_EDITCONTROL
+			mov  dword[rect.left],60
+			mov  dword[rect.right],120
+			jmp  .Print
+	.PrintBlack:
+			mov  dword[rect.left],120
+			mov  dword[rect.right],180
+	.Print:
+			lea  rdx, [r14+MoveData.moveSan]
+		     invoke  DrawTextA,[hStatusMemDC],rdx,-1,rect,DT_EDITCONTROL
 
-			mov   dword [rect.left],60
-			mov   dword [rect.right],125
-			lea   rdx, [r14+MoveData.moveSan]
-		     invoke   DrawTextA,[hStatusMemDC],rdx,-1,rect,DT_EDITCONTROL
+
+			mov  ecx, dword[r14+MoveData.score]
+			cmp  ecx, 0x80000000
+			 je  .next_move
+			mov  eax, -512
+			cmp  ecx, eax
+		      cmovl  ecx, eax
+			mov  eax, 512
+			cmp  ecx, eax
+		      cmovg  ecx, eax
+			add  eax, ecx
+
+			mov  r8d, r15d
+			sub  r8d, 180+12
+			cmp  r8d, 60
+			jle  .next_move
 
 
-		     invoke  SetTextColor,[hStatusMemDC],dword[GuiColor5]
+		       imul  eax, r8d
+			shr  eax, 10
+			add  eax, 180
 
-			mov   [rect.left],125
-			mov   [rect.right],190
-			lea   rdx, [r14+MoveData.score]
-		     invoke   DrawTextA,[hStatusMemDC],rdx,-1,rect,DT_EDITCONTROL
-			mov   [rect.left], 190
-			mov   [rect.right],240
-			lea   rdx, [r14+MoveData.ponderSan]
-		     invoke   DrawTextA,[hStatusMemDC],rdx,-1,rect,DT_EDITCONTROL
+			mov  edx, 512
+		       imul  edx, r8d
+			shr  edx, 10
+			add  edx, 180
+
+			cmp  eax, edx
+			 je  .next_move
+			 jb  @f
+		       xchg  eax, edx
+		 @@:	mov  [rect.left],eax
+			mov  [rect.right],edx
+
+			mov  eax, dword[rect.top]
+		       test  r12d, 1
+			 jz  @f
+			add  eax, 7
+		 @@:	mov  [rect.top], eax
+			add  eax, 7
+			mov  [rect.bottom], eax
+
+			mov  ecx, [rect.bottom]
+			mov  edx, [rect.top]
+			mov  eax, [SWrc.bottom]
+			sub  eax, 64+3
+			cmp  ecx, eax
+		      cmova  ecx, eax
+			cmp  edx, eax
+			 ja  .next_move
+			mov  [rect.bottom], ecx
+
+		     invoke  Rectangle,[hStatusMemDC],[rect.left],[rect.top],[rect.right],[rect.bottom]
 
 	 .next_move:
 			sub   r13d, 1
 			jns   .move
 
 
-			pop  r15 r14 r13 r12 rdi rsi rbp
-			ret
 
+
+	     invoke  SetBkColor,[hStatusMemDC],dword[GuiColor1]
+	     invoke  SetTextColor,[hStatusMemDC],dword[GuiColor5]
+		lea  eax, [r15+5]
+		mov  ecx, dword[SWrc.right]
+		mov  [rect.left], eax
+		mov  [rect.right], ecx
+		mov  r13d, MAX_LOG_LINES-1
+		mov  r14d, dword[SWrc.bottom]
+		sub  r14d, 5
+.LogLineLoop:
+		mov  edx, dword[CurrentLogLine]
+		sub  edx, r13d
+		jns  @f
+		add  edx, MAX_LOG_LINES
+	@@:    imul  eax, r13d, 15
+	       imul  edx, LOG_LINE_LENGTH
+		lea  rdx, [LogLines+rdx]
+		add  eax, 20
+		mov  dword[rect.top], eax
+		add  eax, 20
+		cmp  eax, r14d
+	      cmova  eax, r14d
+		cmp  eax, dword[rect.top]
+		 jb  @f
+		mov  dword[rect.bottom], eax
+	     invoke  DrawTextA,[hStatusMemDC],rdx,-1,rect,DT_EDITCONTROL
+	@@:	sub  r13d, 1
+		jns  .LogLineLoop
+
+
+
+
+		pop  r15 r14 r13 r12 rdi rsi rbp
+		ret
+
+
+AddLogLine:
+	; in: rcx address of null-terminated string
+	       push  rsi rdi
+		mov  rsi, rcx
+		mov  edi, dword[CurrentLogLine]
+		add  edi, 1
+		mov  ecx, MAX_LOG_LINES
+		xor  eax, eax
+		cmp  edi, ecx
+	     cmovae  edi, eax
+		mov  dword[CurrentLogLine], edi
+	       imul  edi, LOG_LINE_LENGTH
+		lea  rdi, [LogLines+rdi]
+.Loop:
+	      lodsb
+	      stosb
+		cmp  al, ' '
+		 jb  .Return
+		sub  ecx, 1
+		jnz  .Loop
+.Return:
+		pop  rdi rsi
+		ret
 

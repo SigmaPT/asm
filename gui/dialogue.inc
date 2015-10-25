@@ -1,71 +1,140 @@
 
 
+;return:
+; eax = 0 cancel
+;     = 1 human selected
+;     = 2 computer selected  (in dword[PersonSelection])
+
 proc LoadPersonDialogProc,hwnddlg,wmsg,wparam,lparam
-			mov  [hwnddlg],rcx
-			mov  [wmsg],rdx
-			mov  [wparam],r8
-			mov  [lparam],r9
-			cmp  edx,WM_INITDIALOG
-			 je  .wminitdialog
-			cmp  edx,WM_COMMAND
-			 je  .wmcommand
-			cmp  edx,WM_CLOSE
-			 je  .wmclose
-			xor  eax,eax
-			jmp  .finish
-  .wminitdialog:       push  rsi rdi rbx rbp
-
-		     invoke  GetDlgItem,[hwnddlg],ID_LoadPersonDialog_PERSON
-			mov  rdi,rax
-
-			mov  rax,'Human'
-			mov  qword[Message],rax
-		     invoke  SendMessage,rdi,CB_ADDSTRING,NULL,Message
-
-			xor  ebx,ebx
-       .PopulateNext:	mov  ecx,ebx
-		       call  PersonGetNextEntry
-			mov  rbx,rdx
-		       test  eax,eax
-			 jz  .PopulateDone
-			cmp  eax,'NAME'
-			jne  .PopulateNext
-			mov  rcx,rdx
-			lea  rdx,[Message]
-		       call  CopyUntilEndQuote
-			mov  byte[rdx],0
-			mov  rbx,rcx
-		     invoke  SendMessage,rdi,CB_ADDSTRING,NULL,Message
-			jmp  .PopulateNext
-
-.PopulateDone:	     invoke  SendMessage,rdi,CB_SETCURSEL,dword[CurrentPerson],0
-			pop  rbp rbx rdi rsi
-			jmp  .processed
-
-
-  .wmcommand:		mov  eax,r8d
-			cmp  eax,(BN_CLICKED shl 16) + ID_LoadPersonDialog_CANCEL
-			 je  .wmclose
-			cmp  ax,IDCANCEL
-			 je  .wmclose
-			cmp  eax,(BN_CLICKED shl 16) + ID_LoadPersonDialog_OK
-			 je  .ok
-			jmp  .processed
-  .ok:		       push  rsi rdi
-		     invoke  GetDlgItem,[hwnddlg],ID_LoadPersonDialog_PERSON
-			mov  rdi,rax
-		     invoke  SendMessage,rdi,CB_GETCURSEL,0,0
-			mov  dword[CurrentPerson],eax
-			xor  edx,edx
-		     invoke  EndDialog,[hwnddlg],edx
-			mov  eax,esi
-			pop  rsi rsi
-			jmp  .processed
-  .wmclose:		 or  edx,-1
-		     invoke  EndDialog,[hwnddlg],edx
-  .processed:		mov  eax,1
-  .finish:		ret
+	       push  rsi rdi rbx rbp
+		mov  [hwnddlg], rcx
+		mov  [wmsg], rdx
+		mov  [wparam], r8
+		mov  [lparam], r9
+		cmp  edx, WM_INITDIALOG
+		 je  .wminitdialog
+		cmp  edx, WM_COMMAND
+		 je  .wmcommand
+		cmp  edx, WM_CLOSE
+		 je  .wmclose
+		xor  eax, eax
+		jmp  .finish
+.wminitdialog:
+		mov  rax, qword[hwnddlg]
+		mov  qword[hLoadPersonDialog], rax
+.reset_text:
+		mov  eax, dword[PersonSelection]
+		mov  esi, dword[PersonOffsets+4*rax]
+		mov  ecx, dword[PersonOffsets+4*rax+4]
+		mov  dword[PersonSelection], eax
+		sub  ecx, esi
+		add  rsi, qword[PersonText]
+		lea  rdi, [Message]
+	  rep movsb
+		xor  eax, eax
+	      stosb
+	     invoke  SetDlgItemText,[hwnddlg],ID_LoadPersonDialog_TEXT,Message
+.reset_list:
+	     invoke  GetDlgItem, qword[hwnddlg], ID_LoadPersonDialog_LIST
+		mov  rdi, rax
+	     invoke  SendMessage, rdi, LB_RESETCONTENT, 0, 0
+		xor  ebx, ebx
+ .PopulateNext:
+		mov  ecx, ebx
+	       call  PersonGetNextEntry
+		mov  rbx, rdx
+	       test  eax, eax
+		 jz  .PopulateDone
+		cmp  eax,'NAME'
+		jne  .PopulateNext
+		mov  rcx, rdx
+		lea  rdx, [Message]
+	       call  CopyUntilEndQuote
+		mov  byte[rdx], 0
+		mov  rbx, rcx
+	     invoke  SendMessage, rdi, LB_INSERTSTRING, -1, Message
+		jmp  .PopulateNext
+  .PopulateDone:
+	     invoke  SendMessage, rdi, LB_SETCURSEL, dword[PersonSelection], 0
+		jmp  .processed
+.wmcommand:
+		mov  eax, r8d
+		cmp  eax, (LBN_SELCHANGE shl 16) + ID_LoadPersonDialog_LIST
+		 je  .wmclickedlist
+		cmp  ax, ID_LoadPersonDialog_CANCEL
+		 je  .wmclose
+		cmp  ax, IDCANCEL
+		 je  .wmclose
+		cmp  ax, ID_LoadPersonDialog_OK
+		 je  .ok
+		cmp  ax, ID_LoadPersonDialog_UP
+		 je  .wcmd_up
+		cmp  ax, ID_LoadPersonDialog_DOWN
+		 je  .wcmd_down
+		cmp  ax, ID_LoadPersonDialog_CLONE
+		 je  .wcmd_clone
+		cmp  ax, ID_LoadPersonDialog_HUMAN
+		 je  .wcmd_human
+		cmp  ax, ID_LoadPersonDialog_DELETE
+		 je  .wcmd_delete
+		cmp  eax, (EN_CHANGE shl 16) + ID_LoadPersonDialog_TEXT
+		 je  .wmeditchange
+		jmp  .processed
+.wmeditchange:
+	     invoke  GetDlgItem, [hwnddlg], ID_LoadPersonDialog_TEXT
+	     invoke  SendMessage, rax, WM_GETTEXTLENGTH, 0, 0
+		mov  esi, eax
+		lea  r9, [rax+1]
+	     invoke  GetDlgItemText, [hwnddlg], ID_LoadPersonDialog_TEXT, Message, r9
+		lea  rcx, [Message]
+		mov  edx, esi
+	       call  Person_Update
+		jmp  .reset_list
+.wcmd_up:
+	       call  Person_MoveUp
+		jmp  .reset_list
+.wcmd_down:
+	       call  Person_MoveDown
+		jmp  .reset_list
+.wcmd_clone:
+	       call  Person_Clone
+		jmp  .reset_list
+.wcmd_delete:
+	       call  Person_Delete
+		jmp  .reset_text
+.wcmd_human:
+	     invoke  EndDialog, qword[hwnddlg], 1
+		jmp  .processed
+.wmclickedlist:
+	     invoke  GetDlgItem, qword[hwnddlg], ID_LoadPersonDialog_LIST
+		mov  rdi,rax
+	     invoke  SendMessage, rdi, LB_GETCURSEL, 0, 0
+		mov  dword[PersonSelection], eax
+		jmp  .reset_text
+ .ok:
+	     invoke  GetDlgItem,[hwnddlg],ID_LoadPersonDialog_LIST
+		mov  rdi, rax
+	     invoke  SendMessage, rdi, LB_GETCURSEL, 0, 0
+		mov  dword[PersonSelection], eax
+	     invoke  GetDlgItem, [hwnddlg], ID_LoadPersonDialog_TEXT
+	     invoke  SendMessage, rax, WM_GETTEXTLENGTH, 0, 0
+		mov  esi, eax
+		lea  r9, [rax+1]
+	     invoke  GetDlgItemText, [hwnddlg], ID_LoadPersonDialog_TEXT, Message, r9
+		lea  rcx, [Message]
+		mov  edx, esi
+	       call  Person_Update
+	     invoke  EndDialog, qword[hwnddlg], 2
+		jmp  .processed
+ .wmclose:
+	     invoke  EndDialog, qword[hwnddlg], 0
+ .processed:
+		mov  eax, 1
+ .finish:
+		pop  rbp rbx rdi rsi
+		ret
 endp
+
 
 
 
@@ -73,264 +142,190 @@ endp
 
 
 proc SetupGameDialogProc,hwnddlg,wmsg,wparam,lparam
-			mov  [hwnddlg],rcx
-			mov  [wmsg],rdx
-			mov  [wparam],r8
-			mov  [lparam],r9
-		       push  rsi rdi rbx r15
+		mov  [hwnddlg],rcx
+		mov  [wmsg],rdx
+		mov  [wparam],r8
+		mov  [lparam],r9
+	       push  rsi rdi rbx r15
 
-			cmp  edx,WM_INITDIALOG
-			 je  .wminitdialog
-			cmp  edx,WM_COMMAND
-			 je  .wmcommand
-			cmp  edx,WM_CLOSE
-			 je  .wmclose
-			xor  eax,eax
-			jmp  .finish
+		cmp  edx,WM_INITDIALOG
+		 je  .wminitdialog
+		cmp  edx,WM_COMMAND
+		 je  .wmcommand
+		cmp  edx,WM_CLOSE
+		 je  .wmclose
+		xor  eax,eax
+		jmp  .finish
 
   .wminitdialog:
 
-irps i, WTIME WINC BTIME BINC {
-			mov  rax,qword[InitTime#i]
-			lea  rdi,[Message]
-		       call  PrintUnsignedInteger
-			mov  byte[rdi],0
-		     invoke  SetDlgItemText,[hwnddlg],ID_SetupGameDialog_#i,Message
-	      }
+		lea  rdi, [Message]
+		mov  rax, qword[InitTimeWTIME]
+		mov  rcx, qword[TimeWTIME]
+		cmp  byte[NewGameWindowMode], 0
+	     cmovne  rax, rcx
+	       call  PrintSeconds
+		xor  eax, eax
+	      stosb
+	     invoke  SetDlgItemText, qword[hwnddlg], ID_SetupGameDialog_WTIME, Message
 
-		     invoke  GetDlgItem,[hwnddlg],ID_SetupGameDialog_WHITEPERSONLIST
-			mov  rdi,rax
-		     invoke  GetDlgItem,[hwnddlg],ID_SetupGameDialog_BLACKPERSONLIST
-			mov  rsi,rax
+		lea  rdi, [Message]
+		mov  rax, qword[InitTimeWINC]
+		mov  rcx, qword[TimeWINC]
+		cmp  byte[NewGameWindowMode], 0
+	     cmovne  rax, rcx
+	       call  PrintSeconds
+		xor  eax, eax
+	      stosb
+	     invoke  SetDlgItemText, qword[hwnddlg], ID_SetupGameDialog_WINC, Message
 
-			mov  rax,'Human'
-			mov  qword[Message],rax
-		     invoke  SendMessage,rdi,LB_INSERTSTRING,-1,Message
-		     invoke  SendMessage,rsi,LB_INSERTSTRING,-1,Message
+		lea  rdi, [Message]
+		mov  rax, qword[InitTimeBTIME]
+		mov  rcx, qword[TimeBTIME]
+		cmp  byte[NewGameWindowMode], 0
+	     cmovne  rax, rcx
+	       call  PrintSeconds
+		xor  eax, eax
+	      stosb
+	     invoke  SetDlgItemText, qword[hwnddlg], ID_SetupGameDialog_BTIME, Message
 
-			xor  ebx,ebx
-		  .1:	mov  ecx,ebx
-		       call  PersonGetNextEntry
-			mov  rbx,rdx
-		       test  eax,eax
-			 jz  .2
-			cmp  eax,'NAME'
-			jne  .1
-			mov  rcx,rdx
-			lea  rdx,[Message]
-		       call  CopyUntilEndQuote
-			mov  byte[rdx],0
-			mov  rbx,rcx
-		     invoke  SendMessage,rdi,LB_INSERTSTRING,-1,Message
-		     invoke  SendMessage,rsi,LB_INSERTSTRING,-1,Message
-			jmp  .1
+		lea  rdi, [Message]
+		mov  rax, qword[InitTimeBINC]
+		mov  rcx, qword[TimeBINC]
+		cmp  byte[NewGameWindowMode], 0
+	     cmovne  rax, rcx
+	       call  PrintSeconds
+		xor  eax, eax
+	      stosb
+	     invoke  SetDlgItemText, qword[hwnddlg], ID_SetupGameDialog_BINC, Message
 
-	   .2:	     invoke  SendMessage,rdi,LB_SETCURSEL,dword[CurrentPersonW],0
-		     invoke  SendMessage,rsi,LB_SETCURSEL,dword[CurrentPersonB],0
+		mov  r8, qword[SetupWPerson_String]
+	       test  r8, r8
+		 jz  @f
+	     invoke  SetDlgItemText, qword[hwnddlg], ID_SetupGameDialog_WPERSON, r8
+		@@:
 
-			mov  ecx,dword[CurrentPersonW]
-		       test  ecx,ecx
-			 jz  @f
-		       call  PersonGetNAME
-			mov  ebx,eax
-			mov  ecx,ebx
-			mov  edx,'DESC'
-		       call  PersonGetXXXXFromNAME
-			mov  ecx,eax
-			lea  rdx,[Message]
-		       call  CopyUntilEndQuote
-			mov  byte[rdx],0
+		mov  r8, qword[SetupBPerson_String]
+	       test  r8, r8
+		 jz  @f
+	     invoke  SetDlgItemText, qword[hwnddlg], ID_SetupGameDialog_BPERSON, r8
+		@@:
 
-		     invoke  SetDlgItemText,[hwnddlg],ID_SetupGameDialog_WHITEPERSONDESC,Message
-		   @@:
+		jmp  .processed
+.wmcommand:
+		mov  eax, r8d
+		cmp  ax, IDCANCEL
+		 je  .wmclose
+		cmp  eax, (BN_CLICKED shl 16) + ID_SetupGameDialog_CANCEL
+		 je  .wmclose
+		cmp  eax, (BN_CLICKED shl 16) + ID_SetupGameDialog_OK
+		 je  .ok
+		mov  ebx, ID_SetupGameDialog_WPERSON
+		cmp  eax, (BN_CLICKED shl 16) + ID_SetupGameDialog_WLOAD
+		 je  .load
+		mov  ebx, ID_SetupGameDialog_BPERSON
+		cmp  eax, (BN_CLICKED shl 16) + ID_SetupGameDialog_BLOAD
+		 je  .load
+		jmp  .processed
+.load:
+	     invoke  DialogBoxParamA, qword[hInstance], ID_LoadPersonDialog, qword[hwnddlg], LoadPersonDialogProc, 0
+		lea  rdi,[Message]
+	       test  eax, eax
+		 je  .processed
+		cmp  eax, 1
+		mov  rax, 'Human'
+		 je  .load_human
+.load_comp:
+		mov  eax, dword[PersonSelection]
+		mov  esi, dword[PersonOffsets+4*rax]
+		mov  ecx, dword[PersonOffsets+4*rax+4]
+		sub  ecx, esi
+		add  rsi, qword[PersonText]
+	  rep movsb
+		xor  eax, eax
+.load_human:
+	      stosq
+	     invoke  SetDlgItemText, qword[hwnddlg], rbx, Message
+		jmp  .processed
 
-			mov  ecx,dword[CurrentPersonB]
-		       test  ecx,ecx
-			 jz  @f
-		       call  PersonGetNAME
-			mov  ebx,eax
-			mov  ecx,ebx
-			mov  edx,'DESC'
-		       call  PersonGetXXXXFromNAME
-			mov  ecx,eax
-			lea  rdx,[Message]
-		       call  CopyUntilEndQuote
-			mov  byte[rdx],0
+.ok:
+		lea  rsi, [Message]
+	     invoke  GetDlgItemText, qword[hwnddlg], ID_SetupGameDialog_WTIME, rsi, 31
+	       call  ParseSeconds
+		mov  qword[TimeWTIME],rax
+		cmp  byte[NewGameWindowMode], 0
+		jne  @f
+		mov  qword[InitTimeWTIME],rax
+		@@:
 
-		     invoke  SetDlgItemText,[hwnddlg],ID_SetupGameDialog_BLACKPERSONDESC,Message
-		   @@:
-			jmp  .processed
+		lea  rsi, [Message]
+	     invoke  GetDlgItemText, qword[hwnddlg], ID_SetupGameDialog_WINC, rsi, 31
+	       call  ParseSeconds
+		mov  qword[TimeWINC],rax
+		cmp  byte[NewGameWindowMode], 0
+		jne  @f
+		mov  qword[InitTimeWINC],rax
+		@@:
 
-  .wmcommand:		mov  eax,r8d
-			cmp  eax,(BN_CLICKED shl 16) + ID_SetupGameDialog_CANCEL
-			 je  .wmclose
-			cmp  ax,IDCANCEL
-			 je  .wmclose
-			cmp  ax,ID_SetupGameDialog_BLACKPERSONLIST
-			 je  .wmblacklist
-			cmp  ax,ID_SetupGameDialog_WHITEPERSONLIST
-			 je  .wmwhitelist
-			cmp  eax,(BN_CLICKED shl 16) + ID_SetupGameDialog_OK
-			 je  .ok
-			jmp  .processed
+		lea  rsi, [Message]
+	     invoke  GetDlgItemText, qword[hwnddlg], ID_SetupGameDialog_BTIME, rsi, 31
+	       call  ParseSeconds
+		mov  qword[TimeBTIME],rax
+		cmp  byte[NewGameWindowMode], 0
+		jne  @f
+		mov  qword[InitTimeBTIME],rax
+		@@:
 
-  .wmblacklist: 	shr  eax,16
-			cmp  ax,LBN_SELCHANGE
-			 je  .wmblacklist_change
-			jmp  .processed
+		lea  rsi, [Message]
+	     invoke  GetDlgItemText, qword[hwnddlg], ID_SetupGameDialog_BINC, rsi, 31
+	       call  ParseSeconds
+		mov  qword[TimeBINC],rax
+		mov  qword[InitTimeBINC],rax
 
-    .wmblacklist_change:
+	     invoke  VirtualFree, qword[SetupWPerson_String], 0, MEM_RELEASE
+	     invoke  VirtualFree, qword[SetupBPerson_String], 0, MEM_RELEASE
+		xor  eax, eax
+		mov  qword[SetupWPerson_String], rax
+		mov  qword[SetupBPerson_String], rax
+		mov  dword[SetupWPerson_Length], eax
+		mov  dword[SetupBPerson_Length], eax
 
-		     invoke  GetDlgItem,[hwnddlg],ID_SetupGameDialog_BLACKPERSONLIST
-			mov  rdi,rax
-		     invoke  SendMessage,rdi, LB_GETCURSEL, 0, 0
+	     invoke  GetDlgItem, qword[hwnddlg], ID_SetupGameDialog_WPERSON
+	     invoke  SendMessage, rax, WM_GETTEXTLENGTH, 0, 0
+		mov  ebx, eax
+		cmp  eax, 16
+		 jb  .human_white
+		lea  edx, [rbx+1]
+	     invoke  VirtualAlloc, 0, rdx, MEM_COMMIT, PAGE_READWRITE
+		mov  qword[SetupWPerson_String], rax
+		mov  dword[SetupWPerson_Length], ebx
+	     invoke  GetDlgItemText, qword[hwnddlg], ID_SetupGameDialog_WPERSON, rax, rbx
+	.human_white:
 
-			mov  ecx,eax
-
-			mov  rax,'Human'
-			mov  qword[Message],rax
-
-		       test  ecx,ecx
-			 jz  @f
-		       call  PersonGetNAME
-			mov  ebx,eax
-			mov  ecx,ebx
-			mov  edx,'DESC'
-		       call  PersonGetXXXXFromNAME
-			mov  ecx,eax
-			lea  rdx,[Message]
-		       call  CopyUntilEndQuote
-			mov  byte[rdx],0
-		   @@:
-		     invoke  SetDlgItemText,[hwnddlg],ID_SetupGameDialog_BLACKPERSONDESC,Message
-
-			jmp  .processed
-
-
-  .wmwhitelist: 	shr  eax,16
-			cmp  ax,LBN_SELCHANGE
-			 je  .wmwhitelist_change
-			jmp  .processed
-
-    .wmwhitelist_change:
-
-		     invoke  GetDlgItem,[hwnddlg],ID_SetupGameDialog_WHITEPERSONLIST
-			mov  rdi,rax
-		     invoke  SendMessage,rdi, LB_GETCURSEL, 0, 0
-
-			mov  ecx,eax
-
-			mov  rax,'Human'
-			mov  qword[Message],rax
-
-		       test  ecx,ecx
-			 jz  @f
-		       call  PersonGetNAME
-			mov  ebx,eax
-			mov  ecx,ebx
-			mov  edx,'DESC'
-		       call  PersonGetXXXXFromNAME
-			mov  ecx,eax
-			lea  rdx,[Message]
-		       call  CopyUntilEndQuote
-			mov  byte[rdx],0
-		   @@:
-		     invoke  SetDlgItemText,[hwnddlg],ID_SetupGameDialog_WHITEPERSONDESC,Message
-
-			jmp  .processed
-
-
-
-
-
-  .ok:
-		     invoke  GetDlgItem,[hwnddlg],ID_SetupGameDialog_WHITEPERSONLIST
-			mov  rdi,rax
-		     invoke  SendMessage,rdi,LB_GETCURSEL,0,0
-			mov  dword[CurrentPersonW],eax
-
-		     invoke  GetDlgItem,[hwnddlg],ID_SetupGameDialog_BLACKPERSONLIST
-			mov  rdi,rax
-		     invoke  SendMessage,rdi,LB_GETCURSEL,0,0
-			mov  dword[CurrentPersonB],eax
-
-irps i, WTIME WINC BTIME BINC {
-			lea  rsi,[Message]
-		     invoke  GetDlgItemText,[hwnddlg],ID_SetupGameDialog_#i,rsi,31
-		       call  ParseInteger
-			mov  qword[Time#i],rax
-			mov  qword[InitTime#i],rax
-   }
+	     invoke  GetDlgItem, qword[hwnddlg], ID_SetupGameDialog_BPERSON
+	     invoke  SendMessage, rax, WM_GETTEXTLENGTH, 0, 0
+		mov  ebx, eax
+		cmp  eax, 16
+		 jb  .human_black
+		lea  edx, [rbx+1]
+	     invoke  VirtualAlloc, 0, rdx, MEM_COMMIT, PAGE_READWRITE
+		mov  qword[SetupBPerson_String], rax
+		mov  dword[SetupBPerson_Length], ebx
+	     invoke  GetDlgItemText, qword[hwnddlg], ID_SetupGameDialog_BPERSON, rax, rbx
+	.human_black:
 
 
-
-			xor  edx,edx
-		     invoke  EndDialog,[hwnddlg],edx
-			mov  eax,esi
-			jmp  .processed
-
-  .wmclose:		 or  edx,-1
-		     invoke  EndDialog,[hwnddlg],edx
-
-  .processed:		mov  eax,1
-  .finish:
-			pop  r15 rbx rdi rsi
-			ret
-endp
-
-
-proc ManagePersonDialogProc,hwnddlg,wmsg,wparam,lparam
-			mov  [hwnddlg],rcx
-			mov  [wmsg],rdx
-			mov  [wparam],r8
-			mov  [lparam],r9
-			cmp  edx,WM_INITDIALOG
-			 je  .wminitdialog
-			cmp  edx,WM_COMMAND
-			 je  .wmcommand
-			cmp  edx,WM_CLOSE
-			 je  .wmclose
-			xor  eax,eax
-			jmp  .finish
-
-  .wminitdialog:       push  rsi rdi rbx rbp
-
-		     invoke  SetDlgItemText,[hwnddlg],ID_ManageGameDialog_LIST,qword[PersonText]
-
-			pop  rbp rbx rdi rsi
-			jmp  .processed
-
-  .wmcommand:		mov  eax,r8d
-			cmp  eax,(BN_CLICKED shl 16) + ID_SetupGameDialog_CANCEL
-			 je  .wmclose
-			cmp  ax,IDCANCEL
-			 je  .wmclose
-			cmp  eax,(BN_CLICKED shl 16) + ID_SetupGameDialog_OK
-			 je  .ok
-			jmp  .processed
-  .ok:
-
-		       push  rsi rdi
-		     invoke  VirtualFree,qword[PersonText],0,MEM_RELEASE
-		     invoke  GetDlgItem,[hwnddlg],ID_ManageGameDialog_LIST
-		     invoke  SendMessage,rax,WM_GETTEXTLENGTH,0,0
-			mov  qword[PersonTextSizeB],rax
-			lea  rsi,[rax+10]
-		     invoke  VirtualAlloc,0,rsi,MEM_COMMIT,PAGE_READWRITE
-			mov  qword[PersonText],rax
-		     invoke  GetDlgItemText,[hwnddlg],ID_ManageGameDialog_LIST,qword[PersonText],rsi
-		      ;  mov  byte[+rsi-10],0
-
-
-			xor  edx,edx
-		     invoke  EndDialog,[hwnddlg],edx
-			mov  eax,esi
-			pop  rdi rsi
-			jmp  .processed
-  .wmclose:		 or  edx,-1
-		     invoke  EndDialog,[hwnddlg],edx
-  .processed:		mov  eax,1
-  .finish:		ret
+		 or  edx, -1
+	     invoke  EndDialog,[hwnddlg],edx
+		jmp  .processed
+.wmclose:
+		xor  edx, edx
+	     invoke  EndDialog, qword[hwnddlg], edx
+.processed:
+		mov  eax,1
+.finish:
+		pop  r15 rbx rdi rsi
+		ret
 endp
 
 
@@ -338,592 +333,190 @@ endp
 
 
 
+proc SetupTourDialogProc,hwnddlg,wmsg,wparam,lparam
+		mov  [hwnddlg],rcx
+		mov  [wmsg],rdx
+		mov  [wparam],r8
+		mov  [lparam],r9
+	       push  rsi rdi rbx r15
+
+		cmp  edx,WM_INITDIALOG
+		 je  .wminitdialog
+		cmp  edx,WM_COMMAND
+		 je  .wmcommand
+		cmp  edx,WM_CLOSE
+		 je  .wmclose
+		xor  eax,eax
+		jmp  .finish
+
+.wminitdialog:
+		mov  rax, qword[hwnddlg]
+		mov  qword[hSetupTourDialog], rax
 
 
-if 0
-			lea  r15,[SetupState]
+		lea  rdi, [Message]
+		mov  rax, qword[Tour.Time]
+	       call  PrintSeconds
+		xor  eax, eax
+	      stosb
+	     invoke  SetDlgItemText, qword[hSetupTourDialog], ID_SetupTourDialog_TIME, Message
 
-			xor  eax,eax
-			mov  ecx,sizeof.STATE
-			lea  rdi,[SetupState]
-		  rep stosb
+		lea  rdi, [Message]
+		mov  rax, qword[Tour.Inc]
+	       call  PrintSeconds
+		xor  eax, eax
+	      stosb
+	     invoke  SetDlgItemText, qword[hSetupTourDialog], ID_SetupTourDialog_INC, Message
 
-			xor  ebx,ebx
-	 .loop2:	lea  edx,[rbx+ID_SetupGameDialog_SQUARES]
-			mov  dword[Message],0
-		     invoke  GetDlgItemText,[hwnddlg],rdx,Message,31
-		      movzx  eax,byte[Message]
-
-			cmp  eax,'k'
-			 je  .loop2k
-			cmp  eax,'l'
-			 je  .loop2l
-			cmp  eax,'q'
-			 je  .loop2q
-			cmp  eax,'w'
-			 je  .loop2w
-			cmp  eax,'r'
-			 je  .loop2r
-			cmp  eax,'t'
-			 je  .loop2t
-			cmp  eax,'p'
-			 je  .loop2p
-			cmp  eax,'o'
-			 je  .loop2o
-			cmp  eax,'n'
-			 je  .loop2n
-			cmp  eax,'m'
-			 je  .loop2m
-			cmp  eax,'b'
-			 je  .loop2b
-			cmp  eax,'v'
-			 je  .loop2v
-			jmp  .loop2skip
-
-	.loop2k:	bts  qword[r15+STATE.WPIECES],rbx
-			bts  qword[r15+STATE.WKING],rbx
-			mov  byte[r15+STATE.BOARD_+rbx],KING
-			jmp  .loop2skip
-
-	.loop2l:	bts  qword[r15+STATE.BPIECES],rbx
-			bts  qword[r15+STATE.BKING],rbx
-			mov  byte[r15+STATE.BOARD_+rbx],KING
-			jmp  .loop2skip
-
-	.loop2q:	bts  qword[r15+STATE.WPIECES],rbx
-			bts  qword[r15+STATE.WQUEENS],rbx
-			mov  byte[r15+STATE.BOARD_+rbx],QUEEN
-			jmp  .loop2skip
-
-	.loop2w:	bts  qword[r15+STATE.BPIECES],rbx
-			bts  qword[r15+STATE.BQUEENS],rbx
-			mov  byte[r15+STATE.BOARD_+rbx],QUEEN
-			jmp  .loop2skip
-
-	.loop2r:	bts  qword[r15+STATE.WPIECES],rbx
-			bts  qword[r15+STATE.WROOKS],rbx
-			mov  byte[r15+STATE.BOARD_+rbx],ROOK
-			jmp  .loop2skip
-
-	.loop2t:	bts  qword[r15+STATE.BPIECES],rbx
-			bts  qword[r15+STATE.BROOKS],rbx
-			mov  byte[r15+STATE.BOARD_+rbx],ROOK
-			jmp  .loop2skip
-
-	.loop2b:	bts  qword[r15+STATE.WPIECES],rbx
-			bts  qword[r15+STATE.WBISHOPS],rbx
-			mov  byte[r15+STATE.BOARD_+rbx],BISHOP
-			jmp  .loop2skip
-
-	.loop2v:	bts  qword[r15+STATE.BPIECES],rbx
-			bts  qword[r15+STATE.BBISHOPS],rbx
-			mov  byte[r15+STATE.BOARD_+rbx],BISHOP
-			jmp  .loop2skip
-
-	.loop2n:	bts  qword[r15+STATE.WPIECES],rbx
-			bts  qword[r15+STATE.WKNIGHTS],rbx
-			mov  byte[r15+STATE.BOARD_+rbx],KNIGHT
-			jmp  .loop2skip
-
-	.loop2m:	bts  qword[r15+STATE.BPIECES],rbx
-			bts  qword[r15+STATE.BKNIGHTS],rbx
-			mov  byte[r15+STATE.BOARD_+rbx],KNIGHT
-			jmp  .loop2skip
-
-	.loop2p:	bts  qword[r15+STATE.WPIECES],rbx
-			bts  qword[r15+STATE.WPAWNS],rbx
-			mov  byte[r15+STATE.BOARD_+rbx],PAWN
-			jmp  .loop2skip
-
-	.loop2o:	bts  qword[r15+STATE.BPIECES],rbx
-			bts  qword[r15+STATE.BPAWNS],rbx
-			mov  byte[r15+STATE.BOARD_+rbx],PAWN
-			jmp  .loop2skip
+		lea  rdi, [Message]
+		mov  rax, qword[Tour.PlayerCount]
+	       call  PrintUnsignedInteger
+		xor  eax, eax
+	      stosb
+	     invoke  SetDlgItemText, qword[hSetupTourDialog], ID_SetupTourDialog_COUNT, Message
 
 
+.redo_text:
+		mov  eax, dword[Tour.Selected]
+		lea  rdi, [Message]
+		mov  rsi, qword[Tour.PlayersString+8*rax]
+		mov  ecx, dword[Tour.PlayersLength+4*rax]
+	       test  rsi, rsi
+		 jz  @f
+	  rep movsb
+	@@:	xor  eax, eax
+	      stosb
+	     invoke  SetDlgItemText, qword[hSetupTourDialog], ID_SetupTourDialog_TEXT, Message
 
-	    .loop2skip:
-			add  ebx,1
-			cmp  ebx,64
-			 jb  .loop2
+.redo_stuff:
+	     invoke  GetDlgItem, qword[hSetupTourDialog], ID_SetupTourDialog_LIST
+		mov  rdi, rax
+	     invoke  SendMessage, rdi, LB_RESETCONTENT, 0, 0
+		xor  ebx, ebx
+.PopulateNext:
+		cmp  ebx, dword[Tour.PlayerCount]
+		jae  .PopulateDone
+		mov  rax, '[BLANK]'
+		mov  qword[Message], rax
+		mov  rcx, qword[Tour.PlayersString+8*rbx]
+		mov  edx, dword[Tour.PlayersLength+4*rbx]
+		add  rdx, rcx
+		mov  r15, rdx
+		mov  r8d, 'NAME'
+	       test  rcx, rcx
+		 jz  @f
+	       call  Person_GetXXXX
+		mov  rcx, rax
+		lea  rdx,[Message]
+	       test  rax, rax
+		 jz  @f
+		mov  r8, r15
+	       call  Person_CopyUntilEndQuote
+		mov  byte[rdx],0
+	@@:  invoke  SendMessage, rdi, LB_INSERTSTRING, -1, Message
+		add  ebx, 1
+		jmp  .PopulateNext
+.PopulateDone:
+	     invoke  SendMessage, rdi, LB_SETCURSEL, dword[Tour.Selected], 0
+		jmp  .processed
+.wmcommand:
+		mov  eax, r8d
+		cmp  ax, IDCANCEL
+		 je  .wmclose
+		cmp  eax, (BN_CLICKED shl 16) + ID_SetupTourDialog_CANCEL
+		 je  .wmclose
+		cmp  eax, (BN_CLICKED shl 16) + ID_SetupTourDialog_OK
+		 je  .ok
+		cmp  eax, (BN_CLICKED shl 16) + ID_SetupTourDialog_LOAD
+		 je  .load
+		cmp  eax, (EN_CHANGE shl 16) + ID_SetupTourDialog_TEXT
+		 je  .text_change
+		cmp  eax, (EN_CHANGE shl 16) + ID_SetupTourDialog_COUNT
+		 je  .count_change
+		cmp  eax, (LBN_SELCHANGE shl 16) + ID_SetupTourDialog_LIST
+		 je  .clicked_list
+		jmp  .processed
+.load:
+	     invoke  DialogBoxParamA, qword[hInstance], ID_LoadPersonDialog, qword[hSetupTourDialog], LoadPersonDialogProc, 0
+		lea  rdi,[Message]
+		cmp  eax, 2
+		jne  .processed
+		mov  eax, dword[PersonSelection]
+		mov  esi, dword[PersonOffsets+4*rax]
+		mov  ecx, dword[PersonOffsets+4*rax+4]
+		sub  ecx, esi
+		add  rsi, qword[PersonText]
+	  rep movsb
+		xor  eax, eax
+	      stosb
+	     invoke  SetDlgItemText, qword[hSetupTourDialog], ID_SetupTourDialog_TEXT, Message
+	       call  SetupTourDialogProc_SaveSelected
+		jmp  .redo_stuff
+.clicked_list:
+	     invoke  GetDlgItem, qword[hSetupTourDialog], ID_SetupTourDialog_LIST
+	     invoke  SendMessage, rax, LB_GETCURSEL, 0, 0
+		mov  dword[Tour.Selected], eax
+		jmp  .redo_text
+.count_change:
+		lea  rsi, [Message]
+	     invoke  GetDlgItemText, qword[hSetupTourDialog], ID_SetupTourDialog_COUNT, rsi, 31
+	       call  ParseInteger
+		mov  edx, dword[Tour.Selected]
+		mov  ecx, 2
+		cmp  eax, ecx
+	      cmovb  eax, ecx
+		mov  ecx, MAX_TOUR_PLAYERS
+		cmp  eax, ecx
+	      cmova  eax, ecx
+		mov  dword[Tour.PlayerCount], eax
+		cmp  edx, eax
+	      cmova  edx, eax
+		mov  dword[Tour.Selected], edx
+		jmp  .redo_text
+.text_change:
+	       call  SetupTourDialogProc_SaveSelected
+		jmp  .redo_stuff
+.ok:
 
+		lea  rsi, [Message]
+	     invoke  GetDlgItemText, qword[hwnddlg], ID_SetupTourDialog_TIME, rsi, 31
+	       call  ParseSeconds
+		mov  qword[Tour.Time], rax
 
-
-			mov  byte[r15+STATE.SIDE],0
-			mov  byte[r15+STATE.XSIDE],-1
-			mov  qword[Message],0
-		     invoke  GetDlgItemText,[hwnddlg],ID_SetupGameDialog_SIDE,Message,8
-			cmp  byte[Message],'b'
-			jne  @f
-			mov  byte[r15+STATE.SIDE],-1
-			mov  byte[r15+STATE.XSIDE],0
-			@@:
-
-
-
-			mov  qword[Message],0
-		     invoke  GetDlgItemText,[hwnddlg],ID_SetupGameDialog_CASTLING,Message,8
-			mov  rax,qword[Message]
-		.castling_read:
-		       test  rax,rax
-			 jz  .castling_read_done
-			xor  ecx,ecx
-			mov  edx,1
-			cmp  al,'K'
-		      cmove  ecx,edx
-			 or  byte[r15+STATE.CASTLING],cl
-			xor  ecx,ecx
-			mov  edx,2
-			cmp  al,'Q'
-		      cmove  ecx,edx
-			 or  byte[r15+STATE.CASTLING],cl
-			xor  ecx,ecx
-			mov  edx,4
-			cmp  al,'k'
-		      cmove  ecx,edx
-			 or  byte[r15+STATE.CASTLING],cl
-			xor  ecx,ecx
-			mov  edx,8
-			cmp  al,'q'
-		      cmove  ecx,edx
-			 or  byte[r15+STATE.CASTLING],cl
-			shr  rax,8
-			jmp  .castling_read
-		.castling_read_done:
-
-
-			lea  rsi,[Message]
-		     invoke  GetDlgItemText,[hwnddlg],ID_SetupGameDialog_EPSQUARE,rsi,8
-		      movzx  eax,byte[rsi+0]
-			sub  eax,'a'
-			 js  @f
-			cmp  eax,7
-			 ja  @f
-		      movzx  edx,byte[rsi+1]
-			sub  edx,'1'
-			 js  @f
-			cmp  edx,7
-			 ja  @f
-			xor  edx,7
-			lea  eax,[rax+8*rdx]
-			xor  ecx,ecx
-			bts  rcx,rax
-			mov  qword[r15+STATE.EPSQUARE],rcx
-			@@:
-
-
-			lea  rsi,[Message]
-			mov  dword[rsi],0
-		     invoke  GetDlgItemText,[hwnddlg],ID_SetupGameDialog_50MOVES,rsi,8
-		       call  ParseInteger
-			mov  dword[r15+STATE.MOVE50],eax
-
-
-
-
-			lea  rcx,[SetupState]
-		       call  VerifyState
-		       test  eax,eax
-			 jz  .wmclose
-end if
-
-
-
-
-
-
-if 0
-proc LoadPersonDialogProc,hwnddlg,wmsg,wparam,lparam
-			mov  [hwnddlg],rcx
-			mov  [wmsg],rdx
-			mov  [wparam],r8
-			mov  [lparam],r9
-			cmp  edx,WM_INITDIALOG
-			 je  .wminitdialog
-			cmp  edx,WM_COMMAND
-			 je  .wmcommand
-			cmp  edx,WM_CLOSE
-			 je  .wmclose
-			xor  eax,eax
-			jmp  .finish
-  .wminitdialog:       push  rsi rdi rbx rbp
-
-		     invoke  GetDlgItem,[hwnddlg],ID_LoadPersonDialog_PERSON
-			mov  rdi,rax
-
-			mov  rax,'Human'
-			mov  qword[Message],rax
-		     invoke  SendMessage,rdi,CB_ADDSTRING,NULL,Message
-
-			xor  ebx,ebx
-       .PopulateNext:	mov  ecx,ebx
-		       call  PersonGetNextEntry
-			mov  rbx,rdx
-		       test  eax,eax
-			 jz  .PopulateDone
-			cmp  eax,'NAME'
-			jne  .PopulateNext
-			mov  rcx,rdx
-			lea  rdx,[Message]
-		       call  CopyUntilEndQuote
-			mov  byte[rdx],0
-			mov  rbx,rcx
-		     invoke  SendMessage,rdi,CB_ADDSTRING,NULL,Message
-			jmp  .PopulateNext
-
-.PopulateDone:	     invoke  SendMessage,rdi,CB_SETCURSEL,dword[CurrentPerson],0
-			pop  rbp rbx rdi rsi
-			jmp  .processed
+		lea  rsi, [Message]
+	     invoke  GetDlgItemText, qword[hwnddlg], ID_SetupTourDialog_INC, rsi, 31
+	       call  ParseSeconds
+		mov  qword[Tour.Inc], rax
 
 
-  .wmcommand:		mov  eax,r8d
-			cmp  eax,(BN_CLICKED shl 16) + ID_LoadPersonDialog_CANCEL
-			 je  .wmclose
-			cmp  ax,IDCANCEL
-			 je  .wmclose
-			cmp  eax,(BN_CLICKED shl 16) + ID_LoadPersonDialog_OK
-			 je  .ok
-			jmp  .processed
-  .ok:		       push  rsi rdi
-		     invoke  GetDlgItem,[hwnddlg],ID_LoadPersonDialog_PERSON
-			mov  rdi,rax
-		     invoke  SendMessage,rdi,CB_GETCURSEL,0,0
-			mov  dword[CurrentPerson],eax
-			xor  edx,edx
-		     invoke  EndDialog,[hwnddlg],edx
-			mov  eax,esi
-			pop  rsi rsi
-			jmp  .processed
-  .wmclose:		 or  edx,-1
-		     invoke  EndDialog,[hwnddlg],edx
-  .processed:		mov  eax,1
-  .finish:		ret
+		 or  edx, -1
+	     invoke  EndDialog, qword[hSetupTourDialog], edx
+		jmp  .processed
+.wmclose:
+		xor  edx, edx
+	     invoke  EndDialog, qword[hSetupTourDialog], edx
+.processed:
+		mov  eax, 1
+.finish:
+		pop  r15 rbx rdi rsi
+		ret
 endp
 
 
-
-
-
-piece_lookup: db '  ponmbvrtqwkl  '
-
-
-proc SetupGameDialogProc,hwnddlg,wmsg,wparam,lparam
-			mov  [hwnddlg],rcx
-			mov  [wmsg],rdx
-			mov  [wparam],r8
-			mov  [lparam],r9
-		       push  rsi rdi rbx r15
-
-			cmp  edx,WM_INITDIALOG
-			 je  .wminitdialog
-			cmp  edx,WM_COMMAND
-			 je  .wmcommand
-			cmp  edx,WM_CLOSE
-			 je  .wmclose
-			xor  eax,eax
-			jmp  .finish
-
-
-
-
-
-  .wminitdialog:
-
-		    ;   call  SetTimeFromInit
-
-irps i, WTIME WINC BTIME BINC {
-			mov  rax,qword[InitTime#i]
-			lea  rdi,[Message]
-		       call  PrintSignedInteger
-			mov  byte[rdi],0
-		     invoke  SetDlgItemText,[hwnddlg],ID_SetupGameDialog_#i,Message
-	      }
-
-
-
-		     invoke  GetDlgItem,[hwnddlg],ID_SetupGameDialog_WHITEPERSONLIST
-			mov  rdi,rax
-		     invoke  GetDlgItem,[hwnddlg],ID_SetupGameDialog_BLACKPERSONLIST
-			mov  rsi,rax
-
-			mov  rax,'Human'
-			mov  qword[Message],rax
-		     invoke  SendMessage,rdi,LB_INSERTSTRING,-1,Message
-		     invoke  SendMessage,rsi,LB_INSERTSTRING,-1,Message
-
-			xor  ebx,ebx
-		  .1:	mov  ecx,ebx
-		       call  PersonGetNextEntry
-			mov  rbx,rdx
-		       test  eax,eax
-			 jz  .2
-			cmp  eax,'NAME'
-			jne  .1
-			mov  rcx,rdx
-			lea  rdx,[Message]
-		       call  CopyUntilEndQuote
-			mov  byte[rdx],0
-			mov  rbx,rcx
-		     invoke  SendMessage,rdi,LB_INSERTSTRING,-1,Message
-		     invoke  SendMessage,rsi,LB_INSERTSTRING,-1,Message
-			jmp  .1
-
-	   .2:	     invoke  SendMessage,rdi,LB_SETCURSEL,dword[CurrentPersonW],0
-		     invoke  SendMessage,rsi,LB_SETCURSEL,dword[CurrentPersonB],0
-
-			mov  ecx,dword[CurrentPersonW]
-		       test  ecx,ecx
-			 jz  @f
-		       call  PersonGetNAME
-			mov  ebx,eax
-			mov  ecx,ebx
-			mov  edx,'DESC'
-		       call  PersonGetXXXXFromNAME
-			mov  ecx,eax
-			lea  rdx,[Message]
-		       call  CopyUntilEndQuote
-			mov  byte[rdx],0
-
-		     invoke  SetDlgItemText,[hwnddlg],ID_SetupGameDialog_WHITEPERSONDESC,Message
-		   @@:
-
-			mov  ecx,dword[CurrentPersonB]
-		       test  ecx,ecx
-			 jz  @f
-		       call  PersonGetNAME
-			mov  ebx,eax
-			mov  ecx,ebx
-			mov  edx,'DESC'
-		       call  PersonGetXXXXFromNAME
-			mov  ecx,eax
-			lea  rdx,[Message]
-		       call  CopyUntilEndQuote
-			mov  byte[rdx],0
-
-		     invoke  SetDlgItemText,[hwnddlg],ID_SetupGameDialog_BLACKPERSONDESC,Message
-		   @@:
-
-
-
-
-  .set_board:
-			lea  r15,[SetupState]
-
-			xor  ebx,ebx
-	     @@:	lea  edx,[rbx+ID_SetupGameDialog_SQUARES]
-		     invoke  GetDlgItem,[hwnddlg],rdx
-			mov  rsi,rax
-		     invoke  SendMessage,rsi,WM_SETFONT,[hFontMerida],FALSE
-		     invoke  SendMessage,rsi,EM_SETLIMITTEXT,1,0
-		      movzx  eax,byte[r15+STATE.BOARD_+rbx]
-			 bt  qword[r15+STATE.BPIECES],rbx
-			adc  eax,eax
-		      movzx  eax,byte[piece_lookup+rax]
-			mov  dword[Message],eax
-		     invoke  SendMessage,rsi,WM_SETTEXT,0,Message
-			add  ebx,1
-			cmp  ebx,64
-			 jb  @b
-
-
-			mov  eax,'w'
-			mov  ecx,'b'
-			cmp  byte[r15+STATE.SIDE],0
-		     cmovne  eax,ecx
-			mov  dword[Message],eax
-		     invoke  SetDlgItemText,[hwnddlg],ID_SetupGameDialog_SIDE,Message
-
-
-			lea  rdi,[Message]
-		      movzx  ecx,byte[r15+STATE.CASTLING]
-			mov  byte[rdi],'K'
-			 bt  ecx,0
-			adc  rdi,0
-			mov  byte[rdi],'Q'
-			 bt  ecx,1
-			adc  rdi,0
-			mov  byte[rdi],'k'
-			 bt  ecx,2
-			adc  rdi,0
-			mov  byte[rdi],'q'
-			 bt  ecx,3
-			adc  rdi,0
-			xor  eax,eax
-		      stosd
-		     invoke  SetDlgItemText,[hwnddlg],ID_SetupGameDialog_CASTLING,Message
-
-
-			lea  rdi,[Message]
-			bsf  rcx,qword[r15+STATE.EPSQUARE]
-			 jz  @f
-			mov  eax,ecx
-			and  eax,7
-			add  eax,'a'
-		      stosb
-			mov  eax,ecx
-			shr  eax,3
-			and  eax,7
-			xor  eax,7
-			add  eax,'1'
-		      stosb
-		 @@:	xor  eax,eax
-		      stosd
-		     invoke  SetDlgItemText,[hwnddlg],ID_SetupGameDialog_EPSQUARE,Message
-
-
-			lea  rdi,[Message]
-			mov  eax,dword[r15+STATE.MOVE50]
-		       call  PrintUnsignedInteger
-			xor  eax,eax
-		      stosd
-		     invoke  SetDlgItemText,[hwnddlg],ID_SetupGameDialog_50MOVES,Message
-
-
-			jmp  .processed
-
-
-
-  .wmcommand:		mov  eax,r8d
-			cmp  eax,(BN_CLICKED shl 16) + ID_SetupGameDialog_CANCEL
-			 je  .wmclose
-			cmp  ax,IDCANCEL
-			 je  .wmclose
-			cmp  ax,ID_SetupGameDialog_BLACKPERSONLIST
-			 je  .wmblacklist
-			cmp  ax,ID_SetupGameDialog_WHITEPERSONLIST
-			 je  .wmwhitelist
-			cmp  eax,(BN_CLICKED shl 16) + ID_SetupGameDialog_OK
-			 je  .ok
-		 ;       cmp  eax,(BN_CLICKED shl 16) + ID_SetupGameDialog_RESET
-		 ;        je  .reset
-		 ;       cmp  eax,(BN_CLICKED shl 16) + ID_SetupGameDialog_CLEAR
-		 ;        je  .clear
-			jmp  .processed
-
-  .wmblacklist: 	shr  eax,16
-			cmp  ax,LBN_SELCHANGE
-			 je  .wmblacklist_change
-			jmp  .processed
-
-    .wmblacklist_change:
-
-		     invoke  GetDlgItem,[hwnddlg],ID_SetupGameDialog_BLACKPERSONLIST
-			mov  rdi,rax
-		     invoke  SendMessage,rdi, LB_GETCURSEL, 0, 0
-
-			mov  ecx,eax
-
-			mov  rax,'Human'
-			mov  qword[Message],rax
-
-		       test  ecx,ecx
-			 jz  @f
-		       call  PersonGetNAME
-			mov  ebx,eax
-			mov  ecx,ebx
-			mov  edx,'DESC'
-		       call  PersonGetXXXXFromNAME
-			mov  ecx,eax
-			lea  rdx,[Message]
-		       call  CopyUntilEndQuote
-			mov  byte[rdx],0
-		   @@:
-		     invoke  SetDlgItemText,[hwnddlg],ID_SetupGameDialog_BLACKPERSONDESC,Message
-
-			jmp  .processed
-
-
-  .wmwhitelist: 	shr  eax,16
-			cmp  ax,LBN_SELCHANGE
-			 je  .wmwhitelist_change
-			jmp  .processed
-
-    .wmwhitelist_change:
-
-		     invoke  GetDlgItem,[hwnddlg],ID_SetupGameDialog_WHITEPERSONLIST
-			mov  rdi,rax
-		     invoke  SendMessage,rdi, LB_GETCURSEL, 0, 0
-
-			mov  ecx,eax
-
-			mov  rax,'Human'
-			mov  qword[Message],rax
-
-		       test  ecx,ecx
-			 jz  @f
-		       call  PersonGetNAME
-			mov  ebx,eax
-			mov  ecx,ebx
-			mov  edx,'DESC'
-		       call  PersonGetXXXXFromNAME
-			mov  ecx,eax
-			lea  rdx,[Message]
-		       call  CopyUntilEndQuote
-			mov  byte[rdx],0
-		   @@:
-		     invoke  SetDlgItemText,[hwnddlg],ID_SetupGameDialog_WHITEPERSONDESC,Message
-
-			jmp  .processed
-
-
-
-;  .clear:
-;  .reset:
-;                        lea  rcx,[StartState]
-;                        lea  rdx,[SetupState]
-;             ReadStateToXMM  rcx
-;          WriteStateFromXMM  rdx
-;                        jmp  .set_board
-
-
-  .ok:
-
-
-		     invoke  GetDlgItem,[hwnddlg],ID_SetupGameDialog_WHITEPERSONLIST
-			mov  rdi,rax
-		     invoke  SendMessage,rdi,LB_GETCURSEL,0,0
-			mov  dword[CurrentPersonW],eax
-
-		     invoke  GetDlgItem,[hwnddlg],ID_SetupGameDialog_BLACKPERSONLIST
-			mov  rdi,rax
-		     invoke  SendMessage,rdi,LB_GETCURSEL,0,0
-			mov  dword[CurrentPersonB],eax
-
-irps i, WTIME WINC BTIME BINC {
-			lea  rsi,[Message]
-		     invoke  GetDlgItemText,[hwnddlg],ID_SetupGameDialog_#i,rsi,31
-		       call  ParseInteger
-			mov  qword[Time#i],eax
-   }
-
-		       call  SetInitFromTime
-
-
-
-			xor  edx,edx
-		     invoke  EndDialog,[hwnddlg],edx
-			mov  eax,esi
-			jmp  .processed
-
-  .wmclose:		 or  edx,-1
-		     invoke  EndDialog,[hwnddlg],edx
-
-  .processed:		mov  eax,1
-  .finish:
-			pop  r15 rbx rdi rsi
-			ret
-endp
-
-
-
-
-
-
-
-
-
-
-
+SetupTourDialogProc_SaveSelected:
+	       push  rsi rdi rbx
+		mov  esi, dword[Tour.Selected]
+	     invoke  VirtualFree, qword[Tour.PlayersString+8*rsi], 0, MEM_RELEASE
+	     invoke  GetDlgItem, qword[hSetupTourDialog], ID_SetupTourDialog_TEXT
+	     invoke  SendMessage, rax, WM_GETTEXTLENGTH, 0, 0
+		mov  ebx, eax
+		lea  edx, [rbx+1]
+	     invoke  VirtualAlloc, 0, rdx, MEM_COMMIT, PAGE_READWRITE
+		mov  qword[Tour.PlayersString+8*rsi], rax
+		mov  dword[Tour.PlayersLength+4*rsi], ebx
+	     invoke  GetDlgItemText, qword[hSetupTourDialog], ID_SetupTourDialog_TEXT, rax, rbx
+		pop  rbx rdi rsi
+		ret
 
 
 
@@ -951,26 +544,26 @@ proc ManagePersonDialogProc,hwnddlg,wmsg,wparam,lparam
 			pop  rbp rbx rdi rsi
 			jmp  .processed
 
-  .wmcommand:		mov  eax,r8d
-			cmp  eax,(BN_CLICKED shl 16) + ID_SetupGameDialog_CANCEL
-			 je  .wmclose
-			cmp  ax,IDCANCEL
-			 je  .wmclose
-			cmp  eax,(BN_CLICKED shl 16) + ID_SetupGameDialog_OK
-			 je  .ok
-			jmp  .processed
-  .ok:
-
-		       push  rsi rdi
-		     invoke  VirtualFree,qword[PersonText],0,MEM_RELEASE
-		     invoke  GetDlgItem,[hwnddlg],ID_ManageGameDialog_LIST
-		     invoke  SendMessage,rax,WM_GETTEXTLENGTH,0,0
-			mov  qword[PersonTextSizeB],rax
-			lea  rsi,[rax+10]
-		     invoke  VirtualAlloc,0,rsi,MEM_COMMIT,PAGE_READWRITE
-			mov  qword[PersonText],rax
-		     invoke  GetDlgItemText,[hwnddlg],ID_ManageGameDialog_LIST,qword[PersonText],rsi
-		      ;  mov  byte[+rsi-10],0
+.wmcommand:
+		mov  eax, r8d
+		cmp  ax, ID_SetupGameDialog_CANCEL
+		 je  .wmclose
+		cmp  ax, IDCANCEL
+		 je  .wmclose
+		cmp  ax, ID_SetupGameDialog_OK
+		 je  .ok
+		jmp  .processed
+ .ok:
+	       push  rsi rdi
+	     invoke  VirtualFree,qword[PersonText],0,MEM_RELEASE
+	     invoke  GetDlgItem,[hwnddlg],ID_ManageGameDialog_LIST
+	     invoke  SendMessage,rax,WM_GETTEXTLENGTH,0,0
+		mov  qword[PersonTextSizeB],rax
+		lea  rsi,[rax+10]
+	     invoke  VirtualAlloc,0,rsi,MEM_COMMIT,PAGE_READWRITE
+		mov  qword[PersonText],rax
+	     invoke  GetDlgItemText,[hwnddlg],ID_ManageGameDialog_LIST,qword[PersonText],rsi
+		     ;  mov  byte[+rsi-10],0
 
 
 			xor  edx,edx
@@ -984,4 +577,19 @@ proc ManagePersonDialogProc,hwnddlg,wmsg,wparam,lparam
   .finish:		ret
 endp
 
-end if
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -97,26 +97,58 @@ expd:
 		      align   16
 logd:
 	; xmm0 = Log[xmm0]
-		       push   rbx
-			sub   rsp, 32
-		      movsd   qword [rsp+8H], xmm0
-			fld   qword [rsp+8H]
-		      fwait
-		     fnstcw   word [rsp+1CH]
-		      fwait
-		     fnstcw   word [rsp+1EH]
-			 or   word [rsp+1EH], 0C00H
-		      fldcw   word [rsp+1EH]
-		     fldln2
-		       fxch   st1
-		      fyl2x
-		      fldcw   word [rsp+1CH]
-		       fstp   qword [rsp+8H]
-		      movsd   xmm0, qword [rsp+8H]
-			add   rsp, 32
-			pop   rbx
+	       push  rbx
+		sub  rsp, 32
+	     vmovsd  qword[rsp+8H], xmm0
+		fld  qword[rsp+8H]
+	      fwait
+	     fnstcw  word[rsp+1CH]
+	      fwait
+	     fnstcw  word[rsp+1EH]
+		 or  word[rsp+1EH], 0C00H
+	      fldcw  word[rsp+1EH]
+	     fldln2
+	       fxch  st1
+	      fyl2x
+	      fldcw  word[rsp+1CH]
+	       fstp  qword[rsp+8H]
+	     vmovsd  xmm0, qword[rsp+8H]
+		add  rsp, 32
+		pop  rbx
+		ret
+
+
+		      align   16
+erfd:
+	; xmm0 = Erf[xmm0]
+
+		     vmovsd   xmm4, qword[.mask]
+		     vmovsd   xmm5, qword[.a0]
+		    vandnpd   xmm3, xmm4, xmm0
+		     vandpd   xmm0, xmm0, xmm4
+
+		     vmulsd   xmm1, xmm0, qword[.a4]
+		     vaddsd   xmm1, xmm1, qword[.a3]
+		     vmulsd   xmm1, xmm1, xmm0
+		     vaddsd   xmm1, xmm1, qword[.a2]
+		     vmulsd   xmm1, xmm1, xmm0
+		     vaddsd   xmm1, xmm1, qword[.a1]
+		     vmulsd   xmm1, xmm1, xmm0
+		     vaddsd   xmm1, xmm1, xmm5
+
+		     vdivsd   xmm0, xmm5, xmm1
+		     vsubsd   xmm5, xmm5, xmm0
+
+		      vorpd   xmm0, xmm5, xmm3
 			ret
 
+align 8
+.mask dq 0x7FFFFFFFFFFFFFFF
+.a0 dq 1.0
+.a1 dq 0.278393
+.a2 dq 0.230389
+.a3 dq 0.000972
+.a4 dq 0.078108
 
 		      align   16
 powdd:

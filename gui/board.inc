@@ -250,31 +250,37 @@ ParseUciMove_SetMoveData:
 			jmp   .Return
 
 
-;MakeMoveSound:
-;        ; in: rcx address of MoveData
-;        ;     rbp address of Pos
-;
-;                        lea   rsi, [WMoveWaveFile]
-;                        mov   edx, r12d
-;                        shr   edx, 12
-;                        mov   ecx, r12d
-;                        and   ecx, 63
-;
-;                        lea   rax, [BMoveWaveFile]
-;                        cmp   byte [rbp+Pos.sideToMove], 0
-;                     cmovne   rsi, rax
-;
-;                        lea   rax, [CastleWaveFile]
-;                        cmp   edx, MOVE_TYPE_CASTLE
-;                      cmove   rsi, rax
-;
-;                        lea   rax, [CaptureWaveFile]
-;                        cmp   byte [rbp+Pos.board+rcx], 0
-;                     cmovne   rsi, rax
-;                     invoke   PlaySound,rsi,0,SND_ASYNC+SND_FILENAME
-;
-;                        ret
+MakeMoveSound:
+	; in: rcx address of MoveData
+	;     rbp address of Pos
+	; this should always take a few ms to return
 
+	       push  rsi
+
+	     invoke  Sleep, 50
+
+
+	       ;         lea   rsi, [WMoveWaveFile]
+	       ;         mov   edx, r12d
+	       ;         shr   edx, 12
+	       ;         mov   ecx, r12d
+	       ;         and   ecx, 63
+	       ;
+	       ;         lea   rax, [BMoveWaveFile]
+	       ;         cmp   byte [rbp+Pos.sideToMove], 0
+	       ;      cmovne   rsi, rax
+	       ;
+	       ;         lea   rax, [CastleWaveFile]
+	       ;         cmp   edx, MOVE_TYPE_CASTLE
+	       ;       cmove   rsi, rax
+	       ;
+	       ;         lea   rax, [CaptureWaveFile]
+	       ;         cmp   byte [rbp+Pos.board+rcx], 0
+	       ;      cmovne   rsi, rax
+	       ;      invoke   PlaySound,rsi,0,SND_ASYNC+SND_FILENAME
+
+		pop  rsi
+		ret
 
 
 
@@ -287,14 +293,14 @@ MainMakeMove:
 	; this will be played if it is legal and the rest of the info will be filled in
 
 		       push   rbp rdi rsi rbx r13 r14 r15
-
+  .Start:
 			lea   rbp, [BoardPos]
 			mov   rbx, qword [rbp+PosEx.state]
 			mov   r15, qword [rbp+PosEx.move]
 
 			xor   eax, eax
-			cmp   al, byte [r15+MoveData.result]
-			jne   .Ret
+			cmp   al, byte [rbp+PosEx.result]
+			jne   .Done
 
 			lea   rax, [rbx+sizeof.State]
 			cmp   rax, qword [rbp+Pos.stateEnd]
@@ -309,86 +315,155 @@ MainMakeMove:
 			cmp   rax, qword [rbp+PosEx.szPosEnd]
 			jae   .ReAllocPosString
 .ReAllocPosStringRet:
-			mov   byte [Engine3_GoingQ],0
-			mov   byte [Engine4_GoingQ],0
 
-		; make the move and write stuff to MoveData
-			mov   rcx, r15
-		       call   ParseUciMove_SetMoveData
-			mov   rbx, qword [rbp+PosEx.state]
-		       test   eax, eax
-			 jz   .Illegal
+	; test for legality first
+		lea  rdi, [rbp+PosEx.moveList]
+	@@:	mov  ecx, dword[rdi+EMove.move]
+	       test  ecx, ecx
+		 jz  .Illegal
+	       call  _PrintUciMove	  ; string result is in rax
+		lea  rdi, [rdi+sizeof.EMove]
+		cmp  rax, qword[r15+MoveData.moveUci]
+		jne  @b
 
-		; append the move to the position string
-			mov   rdi, qword [rbp+PosEx.szPos]
-			mov   al, ' '
-		      stosb
-			lea   rsi, [r15+MoveData.moveUci]
-		       call   Append
-			mov   qword [rbp+PosEx.szPos], rdi
+	; stop the kibiters
+		mov  byte[Engine1_GoingQ],0
+		mov  byte[Engine2_GoingQ],0
+	       call  Engine_StopKibitzers
 
-		; sub time taken for move
-			mov   eax, dword [rbp+Pos.sideToMove]
-			xor   eax, 1
-			mov   rcx, qword [r15+MoveData.time2]
-			sub   rcx, qword [r15+MoveData.time1]
-			sub   rcx, qword [Time_INC+8*rax]
-			sub   qword [Time_TIME+8*rax], rcx
+	; make the move and write stuff to MoveData
+		mov  rcx, r15
+	       call  ParseUciMove_SetMoveData
+		mov  rbx, qword[rbp+PosEx.state]
 
-		; update result
-		      movsx   ecx, byte [r15+MoveData.mate]
-		      movsx   eax, byte [r15+MoveData.check]
-			and   eax, RESULT_CHECKMATE-RESULT_STALEMATE
-			add   eax, RESULT_STALEMATE
-			and   eax, ecx
-			 jz   .CheckDraw
-	  .CheckDrawRet:
-			add   r15, sizeof.MoveData
-			mov   qword [rbp+PosEx.move], r15
-			mov   byte [r15+MoveData.result], al
+	; call sound at least to limit the the move rate
+	       call  MakeMoveSound
 
-		; update highlights
-		       call   UpdateHighlightMask
+	; append the move to the position string
+		mov  rdi, qword[rbp+PosEx.szPos]
+		mov  al, ' '
+	      stosb
+		lea  rsi, [r15+MoveData.moveUci]
+	       call  Append
+		mov  qword[rbp+PosEx.szPos], rdi
 
-		; update the engines
-		       call   UpdateEngineMove
-			mov   qword [r15+MoveData.time1], rax
-			 or   eax, -1
-	.Ret:
-			pop   r15 r14 r13 rbx rsi rdi rbp
-			ret
+	; sub time taken for move
+		mov  eax, dword[rbp+Pos.sideToMove]
+		xor  eax, 1
+		mov  rcx, qword[r15+MoveData.time2]
+		sub  rcx, qword[r15+MoveData.time1]
+		sub  rcx, qword[Time_INC+8*rax]
+		sub  qword[Time_TIME+8*rax], rcx
+
+	; update result
+	      movsx  ecx, byte[r15+MoveData.mate]
+	      movsx  edx, byte[r15+MoveData.check]
+	       test  ecx, ecx
+		 jz  .CheckDraw
+		mov  eax, RESULT_STALEMATE shl 2
+	       test  edx, edx
+		 jz  .StoreResult
+		mov  eax, dword[rbp+Pos.gamePly]
+		xor  eax, 1
+		and  eax, 1
+		add  eax, 1 + (RESULT_CHECKMATE shl 2)
+.StoreResult:
+		mov  byte[rbp+PosEx.result], al
+;                cmp  al, 0
+;                jne  .TerminateDone
+;        ; check for termination in tournament
+;                cmp  dword[Tournament.GoingQ], 0
+;  jmp  .TerminateDone
+;                 je  .TerminateDone
+;                cmp  dword[rbp+Pos.gamePly], 1
+;                jbe  .TerminateDone
+;               call  TerminateByDrawCheck
+;               test  eax, eax
+;                jnz  .TerminateSuccess
+;               call  TerminateByWhiteCheck
+;               test  eax, eax
+;                jnz  .TerminateSuccess
+;               call  TerminateByBlackCheck
+;               test  eax, eax
+;                jnz  .TerminateSuccess
+;                jmp  .TerminateDone
+;.TerminateSuccess:
+;                mov  byte[rbp+PosEx.result], al
+.TerminateDone:
+		add  r15, sizeof.MoveData
+		mov  qword[rbp+PosEx.move], r15
+		mov  eax, dword[rbp+PosEx.sideToMove]
+	      movzx  eax, byte[WhiteCompQ+rax]
+		cmp  byte[rbp+PosEx.result], 0
+		jne  .NoBook
+	       test  eax, eax
+		 jz  .NoBook
+	       call  GetBookMove
+		cmp  ax, 'no'
+		jne  .HaveBookMove
+.NoBook:
+	       call  UpdateHighlightMask
+	       call  Engine_UpdateMove
+		mov  qword [r15+MoveData.time1], rax
+		 or  eax, -1
+.Done:
+	      movzx  eax, byte[rbp+PosEx.result]
+	       test  eax, eax
+		 jz  @f
+	     stdcall  AddLogLine, 'game over'
+		@@:
+
+
+	       call  PaintGameStatusWindow
+		mov  byte[DrawQ_Board], -1
+		mov  byte[DrawQ_Status], -1
+.return:
+		pop  r15 r14 r13 rbx rsi rdi rbp
+		ret
+
+.HaveBookMove:
+		mov  qword [r15+MoveData.moveUci], rax
+		mov  dword [r15+MoveData.score], 0x80000000
+	     invoke  GetTickCount
+		mov  qword [r15+MoveData.ponderUci], rax
+		mov  qword [r15+MoveData.time1], rax
+		mov  qword [r15+MoveData.time2], rax
+	     invoke  SendMessage, qword [hBoardWindow], WM_PAINT, 0, 0
+	       call  PaintGameStatusWindow
+	     invoke  SendMessage,[hStatusWindow],WM_COMMAND,0,0
+		jmp  .Start
+
 .CheckDraw:
-			mov   eax, RESULT_DRAW
-			mov   ecx, dword [rbp+Pos.gamePly]
-		      movzx   edx, byte [rbx+State.rule50]
-			cmp   ecx, 500
-			 ja   .CheckDrawRet
-			cmp   edx, 100
-			jae   .CheckDrawRet
+		mov  eax, RESULT_DRAW shl 2
+		mov  ecx, dword [rbp+Pos.gamePly]
+	      movzx  edx, byte [rbx+State.rule50]
+		cmp  ecx, 500
+		 ja  .StoreResult
+		cmp  edx, 100
+		jae  .StoreResult
 
-		      movzx   eax, byte [rbx+State.pliesFromNull]
-			cmp   eax, edx
-		      cmova   eax, edx
-			mov   r8, qword [rbx+State.key]
-			shr   eax, 1
-			 jz   .CheckDrawRet
+	      movzx  eax, byte [rbx+State.pliesFromNull]
+		cmp  eax, edx
+	      cmova  eax, edx
+		mov  r8, qword [rbx+State.key]
+		shr  eax, 1
+		 jz  .StoreResult
+		xor  ecx, ecx
+	       imul  rax, -2*sizeof.State
+.CheckPrev:
+		xor  edx, edx
+		cmp  r8, qword [rbx+rax+State.key]
+	       sete  dl
+		add  ecx, edx
+		add  rax, 2*sizeof.State
+		jnz  .CheckPrev
+		cmp  ecx, 2
+		 jb  .StoreResult
+		mov  eax, RESULT_DRAW shl 2
+		jmp  .StoreResult
 
-			xor   ecx, ecx
-		       imul   rax, -2*sizeof.State
-.CheckPrev:		xor   edx, edx
-			cmp   r8, qword [rbx+rax+State.key]
-		       sete   dl
-			add   ecx, edx
-			add   rax, 2*sizeof.State
-			jnz   .CheckPrev
-			cmp   ecx, 3
-			 jb   .CheckDrawRet
-			mov   eax, RESULT_DRAW
-			jmp   .CheckDrawRet
 
 .Illegal:
-			mov   byte [Engine3_GoingQ],-1
-			mov   byte [Engine4_GoingQ],-1
 
 ;                     invoke   PlaySound,IllegalWaveFile,0,SND_ASYNC+SND_FILENAME
 		     invoke   Sleep, 50
@@ -402,10 +477,10 @@ MainMakeMove:
 		    ; invoke  SendMessage,[hExtraWindow],WM_SETTEXT,0,Message
 
 			xor  eax,eax
-			jmp  .Ret
+			jmp  .Done
 
 
-.ReAllocState:
+.ReAllocState:	 int3
 			mov   r13, qword [rbp+PosEx.state]
 			mov   r14, qword [rbp+PosEx.stateTable]
 			sub   r13, r14
@@ -427,7 +502,7 @@ MainMakeMove:
 		     invoke   VirtualFree, r14, 0, MEM_RELEASE
 			jmp   .ReAllocStateRet
 
-.ReAllocMove:
+.ReAllocMove:  int3
 			mov   r13, qword [rbp+PosEx.move]
 			mov   r14, qword [rbp+PosEx.moveTable]
 			sub   r13, r14
@@ -451,7 +526,7 @@ MainMakeMove:
 			jmp   .ReAllocStateRet
 
 
-.ReAllocPosString:
+.ReAllocPosString:  int3
 			mov   r13, qword [rbp+PosEx.szPos]
 			mov   r14, qword [rbp+PosEx.szPosTable]
 			sub   r13, r14
@@ -474,52 +549,207 @@ MainMakeMove:
 
 
 
+
+
+TerminateByDrawCheck:
+; rbp address of pos
+; r15 address of move
+
+			mov  edx, dword[rbp+Pos.gamePly]
+		       push  rdx
+		       fild  dword[rsp]
+		      fsqrt
+			mov  dword[rsp], 70
+		       fild  dword[rsp]
+		      fsqrt
+		      fsubp  st1, st0
+		      fistp  dword[rsp]
+			pop  rdx
+
+			mov  ecx, dword[r15+MoveData.score]
+		      movzx  eax, byte[r15+MoveData.drawCheck-sizeof.MoveData]
+			cmp  ecx, 0x80000000
+			 je  .no
+			cmp  ecx, edx
+			 jg  .no
+			neg  edx
+			cmp  ecx, edx
+			 jl  .no
+			cmp  dword[rbp+Pos.gamePly], 80
+			 jb  .no
+			add  eax, 1
+			mov  byte[r15+MoveData.drawCheck], al
+			cmp  eax, 20
+			sbb  eax, eax
+			not  eax
+			and  eax, (RESULT_TERMINATE shl 2) + 0
+			ret
+	.no:
+			xor  eax, eax
+			mov  byte[r15+MoveData.drawCheck], al
+			ret
+
+
+TerminateByWhiteCheck:
+; rbp address of pos
+; r15 address of move
+			mov  ecx, dword[r15+MoveData.score]
+		      movzx  eax, byte[r15+MoveData.whiteCheck-sizeof.MoveData]
+			cmp  ecx, 0x80000000
+			 je  .no
+			cmp  ecx, +1024
+			jle  .no
+			add  eax, 1
+			mov  byte[r15+MoveData.whiteCheck], al
+			cmp  eax, 10
+			sbb  eax, eax
+			not  eax
+			and  eax, (RESULT_TERMINATE shl 2) + 1
+			ret
+	.no:
+			xor  eax, eax
+			mov  byte[r15+MoveData.whiteCheck], al
+			ret
+
+TerminateByBlackCheck:
+; rbp address of pos
+; r15 address of move
+			mov  ecx, dword[r15+MoveData.score]
+		      movzx  eax, byte[r15+MoveData.blackCheck-sizeof.MoveData]
+			cmp  ecx, 0x80000000
+			 je  .no
+			cmp  ecx, -1024
+			jge  .no
+			add  eax, 1
+			mov  byte[r15+MoveData.blackCheck], al
+			cmp  eax, 10
+			sbb  eax, eax
+			not  eax
+			and  eax, (RESULT_TERMINATE shl 2) + 2
+			ret
+	.no:
+			xor  eax, eax
+			mov  byte[r15+MoveData.blackCheck], al
+			ret
+
+
+
+
+
+
+
+
+
 TakeBackMove:
-		       push   rbp rdi rsi rbx r15
-			lea   rbp, [BoardPos]
-			mov   rbx, qword [rbp+PosEx.state]
-			cmp   rbx, qword [rbp+PosEx.stateTable]
-			jbe   .Ret
+	       push  rbp rdi rsi rbx r15
+		lea  rbp, [BoardPos]
+		mov  rbx, qword[rbp+PosEx.state]
+		cmp  rbx, qword[rbp+PosEx.stateTable]
+		jbe  .Ret
+	; stop the engines that might be thinking
+	       call  Game_StopEngines
+	; undo the move
+		mov  r15, qword[rbp+PosEx.move]
+		sub  r15, sizeof.MoveData
+		mov  ecx, dword[r15+MoveData.moveInt]
+	       call  UndoMove
+		mov  qword[rbp+PosEx.move], r15
+	; create move list
+		lea  rdi, [rbp+PosEx.moveList]
+	       call  Gen_Legal
+		xor  eax, eax
+	      stosq
+	; take the move off of the position string
+		mov  rax, qword [rbp+PosEx.szPos]
+	  @@:	sub  rax, 1
+		cmp  byte [rax], ' '
+		 ja  @b
+		mov  qword [rbp+PosEx.szPos], rax
+	; add time taken for move
+		mov  eax, dword[rbp+Pos.sideToMove]
+		mov  rcx, qword[r15+MoveData.time2]
+		sub  rcx, qword[r15+MoveData.time1]
+		sub  rcx, qword[Time_INC+8*rax]
+		add  qword[Time_TIME+8*rax], rcx
+	; update highlights
+	       call  UpdateHighlightMask
+	; update the engines
+	       call  Engine_UpdateMove
+		mov  qword[r15+MoveData.time1], rax
+.Ret:
+		pop  r15 rbx rsi rdi rbp
+		ret
 
-		; stop the engines that might be thinking
-		       call   StopEngines
 
-		; undo the move
-			mov   r15, qword [rbp+PosEx.move]
-			sub   r15, sizeof.MoveData
-			mov   ecx, dword [r15+MoveData.moveInt]
-		       call   UndoMove
-			mov   qword [rbp+PosEx.move], r15
+TakeBackMove2:
+	       push  rbp rdi rsi rbx r15
+		lea  rbp, [BoardPos]
+		mov  rbx, qword[rbp+PosEx.state]
+		cmp  rbx, qword[rbp+PosEx.stateTable]
+		jbe  .Ret
+	; stop the engines that might be thinking
+	       call  Game_StopEngines
+	; undo the move
+		mov  r15, qword [rbp+PosEx.move]
+		sub  r15, sizeof.MoveData
+		mov  ecx, dword [r15+MoveData.moveInt]
+	       call  UndoMove
+		mov  qword[rbp+PosEx.move], r15
+	; create move list
+		lea  rdi, [rbp+PosEx.moveList]
+	       call  Gen_Legal
+		xor  eax, eax
+	      stosq
+	; take the move off of the position string
+		mov  rax, qword [rbp+PosEx.szPos]
+	  @@:	sub  rax, 1
+		cmp  byte[rax], ' '
+		 ja  @b
+		mov  qword[rbp+PosEx.szPos], rax
+	; add time taken for move
+		mov  eax, dword[rbp+Pos.sideToMove]
+		mov  rcx, qword[r15+MoveData.time2]
+		sub  rcx, qword[r15+MoveData.time1]
+		sub  rcx, qword[Time_INC+8*rax]
+		add  qword[Time_TIME+8*rax], rcx
 
-		; create move list
-			lea   rdi, [rbp+PosEx.moveList]
-		       call   Gen_Legal
-			xor   eax, eax
-		      stosq
-
-		; take the move off of the position string
-			mov   rax, qword [rbp+PosEx.szPos]
-		  @@:	sub   rax, 1
-			cmp   byte [rax], ' '
-			 ja   @b
-			mov   qword [rbp+PosEx.szPos], rax
-
-		; add time taken for move
-			mov   eax, dword [rbp+Pos.sideToMove]
-			mov   rcx, qword [r15+MoveData.time2]
-			sub   rcx, qword [r15+MoveData.time1]
-			add   qword [Time_TIME+8*rax], rcx
-
-		; update highlights
-		       call   UpdateHighlightMask
-
-		; update the engines
-		       call   UpdateEngineMove
-			mov   qword [r15+MoveData.time1], rax
+		mov  rbx, qword[rbp+PosEx.state]
+		cmp  rbx, qword[rbp+PosEx.stateTable]
+		jbe  .RetStart
+	; undo the move
+		mov  r15, qword[rbp+PosEx.move]
+		sub  r15, sizeof.MoveData
+		mov  ecx, dword[r15+MoveData.moveInt]
+	       call  UndoMove
+		mov  qword[rbp+PosEx.move], r15
+	; create move list
+		lea  rdi, [rbp+PosEx.moveList]
+	       call  Gen_Legal
+		xor  eax, eax
+	      stosq
+	; take the move off of the position string
+		mov  rax, qword[rbp+PosEx.szPos]
+	  @@:	sub  rax, 1
+		cmp  byte[rax], ' '
+		 ja  @b
+		mov  qword[rbp+PosEx.szPos], rax
+	; add time taken for move
+		mov  eax, dword[rbp+Pos.sideToMove]
+		mov  rcx, qword[r15+MoveData.time2]
+		sub  rcx, qword[r15+MoveData.time1]
+		sub  rcx, qword[Time_INC+8*rax]
+		add  qword[Time_TIME+8*rax], rcx
+.RetStart:
+	; update highlights
+	       call  UpdateHighlightMask
+	; update the engines
+	       call  Engine_UpdateMove
+		mov  qword[r15+MoveData.time1], rax
 
 .Ret:
-			pop   r15 rbx rsi rdi rbp
-			ret
+		pop  r15 rbx rsi rdi rbp
+		ret
+
 
 
 
@@ -643,6 +873,7 @@ SetupBoard:
 			mov   rsi, rcx
 			lea   rbp, [BoardPos]
 
+if 0
 		; state array
 		     invoke   VirtualFree, qword [rbp+PosEx.stateTable] , 0, MEM_RELEASE
 		     invoke   VirtualAlloc, 0, 256*sizeof.State, MEM_COMMIT, PAGE_READWRITE
@@ -652,6 +883,7 @@ SetupBoard:
 			add   rax, 256*sizeof.State
 			mov   qword [rbp+PosEx.stateEnd], rax
 
+
 		; move data array
 		     invoke   VirtualFree, qword [rbp+PosEx.moveTable] , 0, MEM_RELEASE
 		     invoke   VirtualAlloc, 0, 256*sizeof.MoveData, MEM_COMMIT, PAGE_READWRITE
@@ -660,6 +892,7 @@ SetupBoard:
 			add   rax, 256*sizeof.MoveData
 			mov   qword [rbp+PosEx.moveEnd], rax
 
+
 		; position string
 		     invoke   VirtualFree, qword [rbp+PosEx.szPosTable] , 0, MEM_RELEASE
 		     invoke   VirtualAlloc, 0, 256*8, MEM_COMMIT, PAGE_READWRITE
@@ -667,6 +900,27 @@ SetupBoard:
 			mov   qword [rbp+PosEx.szPos], rax
 			add   rax, 256*8
 			mov   qword [rbp+PosEx.szPosEnd], rax
+
+end if
+
+
+		lea   rax, [StateArray]
+		mov   qword [rbp+PosEx.state], rax
+		mov   qword [rbp+PosEx.stateTable], rax
+		add   rax, MAX_MOVES_PER_GAME*sizeof.State
+		mov   qword [rbp+PosEx.stateEnd], rax
+		lea   rax, [MoveDataArray]
+		mov   qword[rbp+PosEx.move], rax
+		mov   qword[rbp+PosEx.moveTable], rax
+		add   rax, MAX_MOVES_PER_GAME*sizeof.MoveData
+		mov   qword[rbp+PosEx.moveEnd], rax
+		lea   rax, [MoveStringArray]
+		mov   qword [rbp+PosEx.szPosTable], rax
+		mov   qword [rbp+PosEx.szPos], rax
+		add   rax, MAX_MOVES_PER_GAME*8
+		mov   qword [rbp+PosEx.szPosEnd], rax
+
+
 
 		; set position string
 		       call   ParseFEN
@@ -684,6 +938,7 @@ SetupBoard:
 
 		; set list of legal moves
 			lea   rdi, [rbp+PosEx.moveList]
+			mov   rbx, qword [rbp+PosEx.state]
 		       call   Gen_Legal
 			mov   dword [rdi], 0
 
@@ -692,20 +947,6 @@ SetupBoard:
 
 
 
-TakeBackMove2:
-			ret
-
-
-
-UpdateGameStatus:
-		       push  rbp rsi rdi rbx r15
-		;        mov  rbp,qword[BoardPosition+POS.STATE_PTR]
-
-		     invoke  SendMessage,[hStatusWindow],WM_COMMAND,0,0
-
-
-			pop  r15 rbx rdi rsi rbp
-			ret
 
 
 

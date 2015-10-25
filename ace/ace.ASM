@@ -11,10 +11,10 @@ include 'Debug.asm'
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; compile options       ;
 CPU_HAS_POPCNT	 equ 1	;  popcnt                                (very nice function)
-CPU_HAS_AVX1	 equ 1	;  256 bit floating point                (probably only used for memory copy)
-CPU_HAS_AVX2	 equ 1	;  256 bit integer + fused multiply add  (probably not used)
-CPU_HAS_BMI1	 equ 1	;  andn                                  (why not use it if we can)
-CPU_HAS_BMI2	 equ 1	;  pext + pdep                           (nice for move generation, but not much faster than magics)
+CPU_HAS_AVX1	 equ 0	;  256 bit floating point                (probably only used for memory copy)
+CPU_HAS_AVX2	 equ 0	;  256 bit integer + fused multiply add  (probably not used)
+CPU_HAS_BMI1	 equ 0	;  andn                                  (why not use it if we can)
+CPU_HAS_BMI2	 equ 0	;  pext + pdep                           (nice for move generation, but not much faster than magics)
 DEBUG		 equ 0	;  turns on the asserts and some printing
 PROFILE 	 equ 0	;  eventually will be used to profile the branches
 DISPLAY_CURRMOVE equ 0	;  displays currmove in the root

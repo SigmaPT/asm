@@ -1,112 +1,103 @@
-LoadBook:	       push  rsi
-		     invoke  VirtualFree,qword[OpeningBook],0,MEM_RELEASE
-			xor  eax,eax
-			mov  qword[OpeningBook],rax
-		     invoke  CreateFile,'books\varied.bin',GENERIC_READ,0,0,OPEN_EXISTING,0,0
-		       test  rax,rax
-			 js  .Failed
-			mov  rsi,rax
-		     invoke  GetFileSize,rax,0
-			mov  qword[OpeningBookSizeB],rax
-		     invoke  VirtualAlloc,0,rax,MEM_COMMIT,PAGE_READWRITE
-			mov  qword[OpeningBook],rax
-		     invoke  ReadFile,rsi,rax,qword[OpeningBookSizeB],Temp,0
-		     invoke  CloseHandle,rsi
-
+LoadBook:
+	       push  rsi
+		mov  rsi, rcx
+	     invoke  VirtualFree,qword[OpeningBook],0,MEM_RELEASE
+		xor  eax,eax
+		mov  qword[OpeningBook],rax
+	     invoke  CreateFile,rsi,GENERIC_READ,0,0,OPEN_EXISTING,0,0
+	       test  rax,rax
+		 js  .Failed
+		mov  rsi,rax
+	     invoke  GetFileSize,rax,0
+		mov  qword[OpeningBookSizeB],rax
+	     invoke  VirtualAlloc,0,rax,MEM_COMMIT,PAGE_READWRITE
+		mov  qword[OpeningBook],rax
+	     invoke  ReadFile,rsi,rax,qword[OpeningBookSizeB],Temp,0
+	     invoke  CloseHandle,rsi
 	; convert to little endian
-			mov  rsi,qword[OpeningBook]
-			xor  ecx,ecx
-	   .convert:	cmp  rcx,qword[OpeningBookSizeB]
-			jae  .convert_done
-
-			mov  rax,qword[rsi+rcx+0]
-		      bswap  rax
-			mov  qword[rsi+rcx+0],rax
-
-			mov  ax,word[rsi+rcx+8]
-		       xchg  al,ah
-			mov  word[rsi+rcx+8],ax
-
-			mov  ax,word[rsi+rcx+10]
-		       xchg  al,ah
-			mov  word[rsi+rcx+10],ax
-
-			mov  eax,dword[rsi+rcx+12]
-		      bswap  eax
-			mov  dword[rsi+rcx+12],eax
-
-			add  rcx,16
-			jmp  .convert
+		mov  rsi,qword[OpeningBook]
+		xor  ecx,ecx
+   .convert:	cmp  rcx,qword[OpeningBookSizeB]
+		jae  .convert_done
+		mov  rax,qword[rsi+rcx+0]
+	      bswap  rax
+		mov  qword[rsi+rcx+0],rax
+		mov  ax,word[rsi+rcx+8]
+	       xchg  al,ah
+		mov  word[rsi+rcx+8],ax
+		mov  ax,word[rsi+rcx+10]
+	       xchg  al,ah
+		mov  word[rsi+rcx+10],ax
+		mov  eax,dword[rsi+rcx+12]
+	      bswap  eax
+		mov  dword[rsi+rcx+12],eax
+		add  rcx,16
+		jmp  .convert
 .convert_done:
-
-.Failed:
-			pop  rsi
-			ret
+.Failed:	pop  rsi
+		ret
 
 
 
 
 GetBookMove:
-		       push  rbx rsi rdi r14 r15
-			mov  r15,rsp
-
-			mov   rax, qword [BoardPos+Pos.state]
-			mov   rax, qword [rax+State.key]
-			xor   rax, qword [Zobrist_side]
-			mov   rbx, rax
-
-			mov   rax, 'no book'
-
-			mov   rsi, qword[OpeningBook]
-		       test   rsi, rsi
-			 jz   .done
-
-			mov   rax, 'no move'
-			cmp   dword [BoardPos+Pos.gamePly], 8
-			jae   .done
-
-			xor   r14,r14
-			xor   ecx,ecx
-	    .next:	cmp   rcx, qword [OpeningBookSizeB]
-			jae   .select
-			cmp   rbx, qword [rsi+rcx+0]
-		      movzx   eax, word [rsi+rcx+8]
-			jne   @f
-		       push   rax
-		       push   r14
-		      movzx   eax, word [rsi+rcx+10]
-			add   r14d, eax
-	       @@:	add   rcx, 16
-			jmp   .next
-	    .select:
-
-			mov   rax, 'no move'
-		       test   r14, r14
-			 jz   .done
-
-		       call   GetRand_Book
-
-			xor   edx, edx
-			div   r14
-
-	.next1: 	mov   rax, 'no move'
-			cmp   rsp, r15
-			jae   .done
-
-			mov   eax, r14d
-			pop   r14
-			pop   rcx
-
-			cmp   edx, eax
-			jae   .next1
-			cmp   edx, r14d
-			 jb   .next1
-
-		       call   PolyglotToUci
-
-	    .done:	mov   rsp, r15
-			pop   r15 r14 rdi rsi rbx
-			ret
+	       push  rbp rbx rsi rdi r12 r13 r14 r15
+		mov  r15,rsp
+		mov  rax, qword[BoardPos+Pos.state]
+		mov  rax, qword[rax+State.key]
+		xor  rax, qword[Zobrist_side]
+		mov  rbx, rax
+		mov  rax, 'no book'
+		mov  rsi, qword[OpeningBook]
+	       test  rsi, rsi
+		 jz  .done
+		mov  rax, 'no move'
+		cmp  dword[BoardPos+Pos.gamePly], 16
+		jae  .done
+		xor  r14,r14
+		xor  ebp,ebp
+    .next:	cmp  rbp, qword[OpeningBookSizeB]
+		jae  .select
+		cmp  rbx, qword[rsi+rbp+0]
+	      movzx  ecx, word[rsi+rbp+8]
+		jne  .noMove
+	       call  PolyglotToUci
+		mov  r13, rax
+		lea  r12, [BoardPos+PosEx.moveList]
+	 @@:	mov  ecx, dword[r12]
+	       test  ecx, ecx
+		 jz  .noMove
+	       call  _PrintUciMove
+		add  r12, 8
+		cmp  rax, r13
+		jne  @b
+	       push  rax
+	       push  r14
+	      movzx  eax, word[rsi+rbp+10]
+		add  r14d, eax
+ .noMove:	add  rbp, 16
+		jmp  .next
+    .select:	mov  rax, 'no move'
+	       test  r14, r14
+		 jz  .done
+		lea  rcx, [BoardPos+PosEx.rand]
+	       call  GetRand
+		xor  edx, edx
+		div  r14
+.next1: 	mov  rax, 'no move'
+		cmp  rsp, r15
+		jae  .done
+		mov  eax, r14d
+		pop  r14
+		pop  rcx
+		cmp  edx, eax
+		jae  .next1
+		cmp  edx, r14d
+		 jb  .next1
+		mov  rax, rcx
+    .done:	mov  rsp, r15
+		pop  r15 r14 r13 r12 rdi rsi rbx rbp
+		ret
 
 
 
@@ -229,7 +220,8 @@ xor  eax,eax
 			shl  edx,8*4
 			 or  rax,rdx
 
-;                      movzx  ecx,byte[rbp+STATE.CASTLING]
+			mov   rcx, qword [BoardPos+PosEx.state]
+		      movzx   ecx, byte[rcx+State.castlingRights]
 
 			cmp  eax,'e1h1'
 			jne  @f

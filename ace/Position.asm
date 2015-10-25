@@ -780,29 +780,27 @@ ParseFEN:
 		       call   ParseInteger
 			mov   byte [rbx+State.rule50], al
 
-	.MoveNumber:
-		       call   SkipSpaces
-		       call   ParseInteger
-			sub   eax, 1
-			adc   eax, 0
-			shl   eax, 1
-			add   eax, dword [rbp+Pos.sideToMove]
-			mov   dword [rbp+Pos.gamePly], eax
+.MoveNumber:
+	       call   SkipSpaces
+	       call   ParseInteger
+		sub   eax, 1
+		adc   eax, 0
+		shl   eax, 1
+		add   eax, dword [rbp+Pos.sideToMove]
+		mov   dword [rbp+Pos.gamePly], eax
 
-		    ;   call   VerifyPosition
-		    ;   test   eax,eax
-		    ;     jz  .Failed
+	       call  IsPositionOk
+	       test   eax,eax
+		 jz  .Failed
 
-			call  SetPositionState
-
-			 or   eax, -1
-			pop   r15 rdi rbx
-			ret
-
-	.Failed:
-			xor   eax, eax
-			pop   r15 rdi rbx
-			ret
+	       call  SetPositionState
+		 or   eax, -1
+		pop   r15 rdi rbx
+		ret
+.Failed:
+		xor   eax, eax
+		pop   r15 rdi rbx
+		ret
 
 
 PrintFen:
