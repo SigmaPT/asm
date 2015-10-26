@@ -958,7 +958,7 @@ align 8
   PersonTextSizeB dq ?
 
 
-align 8
+align 16
 Tour:
 .Rand	      dq ?,?
 .MaxRounds    dd ?
