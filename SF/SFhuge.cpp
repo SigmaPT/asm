@@ -31,7 +31,23 @@
 
 
 
-
+#include "misc.cpp"
+#include "bitbase.cpp"
+#include "bitboard.cpp"
+#include "movegen.cpp"
+#include "movepick.cpp"
+#include "evaluate.cpp"
+#include "pawns.cpp"
+#include "search.cpp"
+#include "position.cpp"
+#include "psqt.cpp"
+#include "endgame.cpp"
+#include "material.cpp"
+#include "tt.cpp"
+#include "timeman.cpp"
+#include "thread.cpp"
+#include "uci.cpp"
+#include "benchmark.cpp"
 
 
 int main(int argc, char* argv[]) {
@@ -47,15 +63,9 @@ int main(int argc, char* argv[]) {
   Threads.init();
   Tablebases::init(Opt.SyzygyPath());
   TT.resize(Opt.Hash());
+
   UCI::loop(argc, argv);
+
   Threads.exit();
   return 0;
 }
-
-
-Bitboard test(Square s) {
-  return SquareBB[s];
-}
-
-
-

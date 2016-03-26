@@ -17,45 +17,23 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-//#include <iostream>
+#ifndef EVALUATE_H_INCLUDED
+#define EVALUATE_H_INCLUDED
 
-#include "bitboard.h"
-#include "evaluate.h"
-#include "position.h"
-#include "search.h"
-#include "thread.h"
-#include "tt.h"
-#include "uci.h"
-#include "syzygy/tbprobe.h"
+//#include <string>
 
+#include "types.h"
 
+class Position;
 
+namespace Eval {
 
+const Value Tempo = Value(20); // Must be visible to search
 
+void init();
+//std::string trace(const Position& pos);
 
-
-int main(int argc, char* argv[]) {
-
-  MiscInit();
-  PSQT::init();
-  Bitboards::init();
-  Position::init();
-  Bitbases::init();
-  Search::init();
-  Eval::init();
-  Pawns::init();
-  Threads.init();
-  Tablebases::init(Opt.SyzygyPath());
-  TT.resize(Opt.Hash());
-  UCI::loop(argc, argv);
-  Threads.exit();
-  return 0;
+Value evaluate(const Position& pos);
 }
 
-
-Bitboard test(Square s) {
-  return SquareBB[s];
-}
-
-
-
+#endif // #ifndef EVALUATE_H_INCLUDED

@@ -17,45 +17,31 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-//#include <iostream>
+#ifndef TIMEMAN_H_INCLUDED
+#define TIMEMAN_H_INCLUDED
 
-#include "bitboard.h"
-#include "evaluate.h"
-#include "position.h"
+#include "misc.h"
 #include "search.h"
 #include "thread.h"
-#include "tt.h"
-#include "uci.h"
-#include "syzygy/tbprobe.h"
 
+/// The TimeManagement class computes the optimal time to think depending on
+/// the maximum available time, the game move number and other parameters.
 
+class TimeManagement {
+public:
+  void init(Search::LimitsType& limits, Color us, int ply);
+  int optimum() const { return optimumTime; }
+  int maximum() const { return maximumTime; }
+  int elapsed() const { return int(Search::Limits.npmsec ? Threads.nodes_searched() : now() - startTime); }
 
+  int64_t availableNodes; // When in 'nodes as time' mode
 
+private:
+  TimePoint startTime;
+  int optimumTime;
+  int maximumTime;
+};
 
+extern TimeManagement Time;
 
-
-int main(int argc, char* argv[]) {
-
-  MiscInit();
-  PSQT::init();
-  Bitboards::init();
-  Position::init();
-  Bitbases::init();
-  Search::init();
-  Eval::init();
-  Pawns::init();
-  Threads.init();
-  Tablebases::init(Opt.SyzygyPath());
-  TT.resize(Opt.Hash());
-  UCI::loop(argc, argv);
-  Threads.exit();
-  return 0;
-}
-
-
-Bitboard test(Square s) {
-  return SquareBB[s];
-}
-
-
-
+#endif // #ifndef TIMEMAN_H_INCLUDED
