@@ -18,35 +18,24 @@
   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <iostream>
+#ifndef EVALUATE_H_INCLUDED
+#define EVALUATE_H_INCLUDED
 
-#include "bitboard.h"
-#include "evaluate.h"
-#include "position.h"
-#include "search.h"
-#include "thread.h"
-#include "tt.h"
-#include "uci.h"
-#include "syzygy/tbprobe.h"
+#include <string>
 
-int main(int argc, char* argv[]) {
+#include "types.h"
 
-  std::cout << engine_info() << std::endl;
+class Position;
 
-  UCI::init(Options);
-  PSQT::init();
-  Bitboards::init();
-  Position::init();
-  Bitbases::init();
-  Search::init();
-  Eval::init();
-  Pawns::init();
-  Threads.init();
-  Tablebases::init(Options["SyzygyPath"]);
-  TT.resize(Options["Hash"]);
+namespace Eval {
 
-  UCI::loop(argc, argv);
+const Value Tempo = Value(20); // Must be visible to search
 
-  Threads.exit();
-  return 0;
+void init();
+std::string trace(const Position& pos);
+
+template<bool DoTrace = false>
+Value evaluate(const Position& pos);
 }
+
+#endif // #ifndef EVALUATE_H_INCLUDED
