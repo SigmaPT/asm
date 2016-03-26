@@ -11,10 +11,10 @@ include 'Debug.asm'
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; compile options       ;
 CPU_HAS_POPCNT	 equ 1	;  popcnt                                (very nice function)
-CPU_HAS_AVX1	 equ 0	;  256 bit floating point                (probably only used for memory copy)
-CPU_HAS_AVX2	 equ 0	;  256 bit integer + fused multiply add  (probably not used)
-CPU_HAS_BMI1	 equ 0	;  andn                                  (why not use it if we can)
-CPU_HAS_BMI2	 equ 0	;  pext + pdep                           (nice for move generation, but not much faster than magics)
+CPU_HAS_AVX1	 equ 1	;  256 bit floating point                (probably only used for memory copy)
+CPU_HAS_AVX2	 equ 1	;  256 bit integer + fused multiply add  (probably not used)
+CPU_HAS_BMI1	 equ 1	;  andn                                  (why not use it if we can)
+CPU_HAS_BMI2	 equ 1	;  pext + pdep                           (nice for move generation, but not much faster than magics)
 DEBUG		 equ 0	;  turns on the asserts and some printing
 PROFILE 	 equ 0	;  eventually will be used to profile the branches
 DISPLAY_CURRMOVE equ 0	;  displays currmove in the root
@@ -83,36 +83,36 @@ match =1, SEARCH_DEBUG {
 
 
 align 1
- szGreeting	      db 'fasm chess engine based on stockfish '
- szDate:	      create_build_time DAY, MONTH, YEAR
- szUCIresponse	      db 'id name another chess engine',10
-		      db 'id author fasm',10
-		      db 'option name Hash type spin min 1 max 65536 default 16',10
-		      db 'option name MultiPV type spin min 1 max 64 default 1',10
-		      db 'option name Ponder type check default false',10
-		      db 'option name Threads type spin min 1 max 8 default 1',10
-		      db 'option name Weakness type spin min 0 max 1000 default 0',10
-		      db 'uciok',10,0
- szCPUError	      db 'Error: processor does not support',0
-   .POPCNT	      db ' POPCNT',0
-   .AVX1	      db ' AVX1',0
-   .AVX2	      db ' AVX2',0
-   .BMI1	      db ' BMI1',0
-   .BMI2	      db ' BMI2',0
- szReadyOK	      db 'readyok',10,0
- szOK		      db 'ok',10,0
- szError	      db 'error',10,0
- szParseError	      db 'command parsing error',10,0
- szStartPosition      db 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',0
- PieceToChar	      db '.?PNBRQK??pnbrqk'
+ szGreeting	  db 'fasm chess engine based on stockfish '
+ szDate:	  create_build_time DAY, MONTH, YEAR
+ szUCIresponse	  db 'id name another chess engine',10
+		  db 'id author fasm',10
+		  db 'option name Hash type spin min 1 max 65536 default 16',10
+		  db 'option name MultiPV type spin min 1 max 64 default 1',10
+		  db 'option name Ponder type check default false',10
+		  db 'option name Threads type spin min 1 max 8 default 1',10
+		  db 'option name Weakness type spin min 0 max 1000 default 0',10
+		  db 'uciok',10,0
+ szCPUError	  db 'Error: processor does not support',0
+   .POPCNT	  db ' POPCNT',0
+   .AVX1	  db ' AVX1',0
+   .AVX2	  db ' AVX2',0
+   .BMI1	  db ' BMI1',0
+   .BMI2	  db ' BMI2',0
+ szReadyOK	  db 'readyok',10,0
+ szOK		  db 'ok',10,0
+ szError	  db 'error',10,0
+ szParseError	  db 'command parsing error',10,0
+ szStartPosition  db 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',0
+ PieceToChar	  db '.?PNBRQK??pnbrqk'
  ToLowerCase:	  ; use assembler to make table for case conversion
-			 db   0
+		  db   0
 repeat 127
-		if (% >= 'A') & ( % <='Z')
-			 db   % +('a'-'A')
-		else
-			 db   %
-		end if
+	if (% >= 'A') & ( % <='Z')
+		  db   % +('a'-'A')
+	else
+		  db   %
+	end if
 end repeat
 
 
