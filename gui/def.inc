@@ -1,7 +1,7 @@
 
 MAX_LOG_LINES = 32
 LOG_LINE_LENGTH = 64
-MAX_TOUR_PLAYERS = 16
+MAX_TOUR_PLAYERS = 24
 
 CLEARTYPE_QUALITY = 5
 HANDLE_FLAG_INHERIT = 0x00000001
@@ -133,10 +133,11 @@ ID_SetupTourDialog_LOAD    = 05005h
 ID_SetupTourDialog_TIME    = 05006h
 ID_SetupTourDialog_INC	   = 05007h
 ID_SetupTourDialog_COUNT   = 05008h
+ID_SetupTourDialog_WIDTH   = 05009h
 
 
-ID_ManagePersonDialog		   = 04041h
-ID_ManageGameDialog_LIST	   = 04042h
+ID_ManagePersonDialog	  = 04041h
+ID_ManageGameDialog_LIST  = 04042h
 
 
 

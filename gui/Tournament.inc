@@ -53,6 +53,15 @@ StartTourGame:
 	@@:	cmp  esi, edi
 		 je  .Advance
 .AdvanceDone:
+		mov  eax, esi
+		sub  eax, edi
+		cdq
+		xor  eax, edx
+		sub  eax, edx
+		cmp  eax, dword[Tour.PlayerWidth]
+		 ja  .Advance
+
+
 		mov  dword[Tour.CurrentRound], ebx
 		mov  dword[Tour.WPlayerInd], esi
 		mov  dword[Tour.BPlayerInd], edi
@@ -78,7 +87,7 @@ StartTourGame:
 		add  rdx, rcx
 		add  r9, r8
 		lea  r10, [szStartFen]
-		lea  r11, [RandSeed]
+		lea  r11, [Tour.Rand]
 	       call  Game_StartNewGame
 .done:
 		pop  r15 rbx rdi rsi rbp
@@ -122,7 +131,7 @@ UpdateELO:
 		cmp  edi, r15d
 		 jb  .loop1a
 
-		mov  ebp, 50
+		mov  ebp, 16
 .loopMain:
 	; y = z = ConstantArray[0.0, n];
 	     vxorps  xmm0, xmm0, xmm0
@@ -311,6 +320,16 @@ UpdateTournamentStats:
 		add  ebp, 1
 		cmp  ebp, dword[Tour.PlayerCount]
 		 jb  .Loop
+		lea  rdi, [Message]
+		mov  rax, 'Round '
+	      stosq
+		sub  rdi, 2
+		mov  eax, dword[Tour.CurrentRound]
+	       call  PrintUnsignedInteger
+		mov  eax, ':'
+	      stosd
+		lea  rcx, [Message]
+	       call  AddLogLine
 
 		pop  r15 r14 rsi rdi rbp
 		ret

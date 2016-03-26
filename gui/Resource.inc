@@ -92,17 +92,20 @@ enddialog
 
 dialog _SetupTourDialog,'setup tournament',20,20,300,200,WS_CAPTION+WS_POPUP+WS_SYSMENU+DS_MODALFRAME
  dialogitem 'LISTBOX','',ID_SetupTourDialog_LIST     ,005 , 005  ,095  ,190 ,WS_VISIBLE+WS_VSCROLL+WS_TABSTOP+WS_BORDER+LBS_NOTIFY
- dialogitem 'EDIT'   ,'',ID_SetupTourDialog_TEXT     ,105 , 060  ,190  ,090 ,WS_VISIBLE+WS_VSCROLL+WS_BORDER+ES_AUTOHSCROLL+ES_WANTRETURN+ES_MULTILINE
- dialogitem 'BUTTON' ,'players',-1		     ,110 ,5   ,60  ,50 ,BS_GROUPBOX+WS_VISIBLE,0
- dialogitem 'EDIT'   ,'',ID_SetupTourDialog_COUNT    ,118 ,16  ,40  ,12  ,WS_VISIBLE+WS_BORDER+ES_AUTOHSCROLL+WS_TABSTOP
- dialogitem 'BUTTON' ,'Load',ID_SetupTourDialog_LOAD ,118 ,33  ,40  ,15   ,WS_VISIBLE+WS_TABSTOP
- dialogitem 'BUTTON' ,'time',-1 		     ,180 ,5   ,85  ,50 ,BS_GROUPBOX+WS_VISIBLE,0
+ dialogitem 'EDIT'   ,'',ID_SetupTourDialog_TEXT     ,105 , 075  ,190  ,090 ,WS_VISIBLE+WS_VSCROLL+WS_BORDER+ES_AUTOHSCROLL+ES_WANTRETURN+ES_MULTILINE
+ dialogitem 'BUTTON' ,'players',-1		     ,110 ,5   ,60  ,45 ,BS_GROUPBOX+WS_VISIBLE,0
+ dialogitem 'EDIT'   ,'',ID_SetupTourDialog_COUNT    ,139 ,17  ,20  ,12  ,WS_VISIBLE+WS_BORDER+ES_AUTOHSCROLL+WS_TABSTOP
+ dialogitem 'EDIT'   ,'',ID_SetupTourDialog_WIDTH    ,139 ,30  ,20  ,12  ,WS_VISIBLE+WS_BORDER+ES_AUTOHSCROLL+WS_TABSTOP
+ dialogitem 'STATIC' ,'count',-1		     ,115 ,19  ,18   ,12  ,WS_VISIBLE+SS_EDITCONTROL
+ dialogitem 'STATIC' ,'width',-1		     ,115 ,32  ,18   ,12  ,WS_VISIBLE+SS_EDITCONTROL
+ dialogitem 'BUTTON' ,'Load',ID_SetupTourDialog_LOAD ,115 ,55  ,40  ,15   ,WS_VISIBLE+WS_TABSTOP
+ dialogitem 'BUTTON' ,'time',-1 		     ,180 ,5   ,85  ,45 ,BS_GROUPBOX+WS_VISIBLE,0
  dialogitem 'EDIT'   ,'',ID_SetupTourDialog_TIME     ,205 ,17  ,50   ,12  ,WS_VISIBLE+WS_BORDER+ES_AUTOHSCROLL+WS_TABSTOP
  dialogitem 'EDIT'   ,'',ID_SetupTourDialog_INC      ,205 ,30  ,50   ,12  ,WS_VISIBLE+WS_BORDER+ES_AUTOHSCROLL+WS_TABSTOP
  dialogitem 'STATIC' ,'base',-1 		     ,185 ,19  ,18   ,12  ,WS_VISIBLE+SS_EDITCONTROL
  dialogitem 'STATIC' ,'inc',-1			     ,185 ,32  ,18   ,12  ,WS_VISIBLE+SS_EDITCONTROL
- dialogitem 'BUTTON' ,'&Ok'   ,ID_SetupTourDialog_OK	 ,110  ,170 ,40  ,15   ,WS_VISIBLE+WS_TABSTOP+BS_DEFPUSHBUTTON
- dialogitem 'BUTTON' ,'Cancel',ID_SetupTourDialog_CANCEL ,170  ,170 ,40  ,15   ,WS_VISIBLE+WS_TABSTOP
+ dialogitem 'BUTTON' ,'&Ok'   ,ID_SetupTourDialog_OK	 ,110  ,175 ,40  ,15   ,WS_VISIBLE+WS_TABSTOP+BS_DEFPUSHBUTTON
+ dialogitem 'BUTTON' ,'Cancel',ID_SetupTourDialog_CANCEL ,170  ,175 ,40  ,15   ,WS_VISIBLE+WS_TABSTOP
 enddialog
 
 
