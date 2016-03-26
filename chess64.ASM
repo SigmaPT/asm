@@ -4,7 +4,6 @@ format PE64 GUI 5.0
 entry Start
 
 include 'win64axp.inc'
-;include 'gui\fDef.inc'
 include 'ace\Def.asm'
 include 'ace\Structs.asm'
 include 'ace\BasicMacros.asm'
@@ -16,12 +15,12 @@ include 'gui\def.inc'
 include 'ace\GenMacros.asm'
 
 
-CPU_HAS_POPCNT	 equ 1	;  popcnt                                (very nice function)
-CPU_HAS_AVX1	 equ 1	;  256 bit floating point                (probably only used for memory copy)
-CPU_HAS_AVX2	 equ 0	;  256 bit integer + fused multiply add  (probably not used)
-CPU_HAS_BMI1	 equ 0	;  andn                                  (why not use it if we can)
-CPU_HAS_BMI2	 equ 0	;  pext + pdep                           (nice for move generation, but not much faster than magics)
-DEBUG	      equ 0
+CPU_HAS_POPCNT equ 1  ; popcnt                  (very nice function)
+CPU_HAS_AVX1   equ 1  ; 256 bit floating point  (probably only used for memory copy)
+CPU_HAS_AVX2   equ 0  ; 256 bit integer + fma   (probably not used)
+CPU_HAS_BMI1   equ 0  ; andn                    (why not use it if we can)
+CPU_HAS_BMI2   equ 0  ; pext + pdep             (nice for move generation, but not much faster than magics)
+DEBUG	       equ 0
 
 
 
@@ -120,8 +119,8 @@ Start:
 	       call  Init_MoveGen
 	       call  Init_PosGui
 
-		mov  qword[Tour.Time], 10000
-		mov  qword[Tour.Inc], 1000
+		mov  qword[Tour.Time], 120000
+		mov  qword[Tour.Inc], 2000
 		mov  qword[Tour.PlayerCount], 2
 		mov  qword[Tour.PlayerWidth], 2
 	       call  Game_SetTimeFromInit
@@ -263,7 +262,7 @@ Start:
 			 [MainWindowRect.left],[MainWindowRect.top],[MainWindowRect.right],[MainWindowRect.bottom],\
 			 NULL,rsi,[hInstance],NULL
 		mov  qword[hMainWindow], rax
-	     invoke  SetTimer,[hMainWindow],IDT_UPDATETIMER,330,NULL
+	     invoke  SetTimer,[hMainWindow],IDT_UPDATETIMER,240,NULL
 
 		xor  ecx, ecx
 		xor  r8, r8
