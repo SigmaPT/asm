@@ -265,7 +265,7 @@ void MainThread::search() {
   Color us = rootPos.side_to_move();
   Time.init(Limits, us, rootPos.game_ply());
 
-  char OutputString[32], *os; os = OutputString;
+  char OutputString[32], *os;
   int contempt = Opt.Contempt() * PawnValueEg / 100; // From centipawns
   DrawValue[ us] = VALUE_DRAW - Value(contempt);
   DrawValue[~us] = VALUE_DRAW + Value(contempt);
@@ -382,11 +382,10 @@ void MainThread::search() {
 
 
   // Send new PV when needed.
-  if (bestThread != this) {
-    os = UCI::print_pv(OutputString, bestThread->rootPos, bestThread->completedDepth, -VALUE_INFINITE, VALUE_INFINITE);
-    *os++ = '\n'; write_out(OutputString,os);
-
-  } 
+  //if (bestThread != this) {
+  //  os = UCI::print_pv(OutputString, bestThread->rootPos, bestThread->completedDepth, -VALUE_INFINITE, VALUE_INFINITE);
+  //  *os++ = '\n'; write_out(OutputString,os);
+  //}
 
   os = print_string(OutputString,"bestmove ");
   os = UCI::print_move(os, bestThread->rootMoves[0].pv[0], rootPos.is_chess960());
@@ -403,7 +402,7 @@ void MainThread::search() {
 // consumed, user stops the search, or the maximum search depth is reached.
 
 void Thread::search() {
-  char OutputString[4*MAX_PLY], *os;
+  char OutputString[6*MAX_PLY], *os;
   Stack stack[MAX_PLY+4], *ss = stack+2; // To allow referencing (ss-2) and (ss+2)
   Value bestValue, alpha, beta, delta;
   Move easyMove = MOVE_NONE;
