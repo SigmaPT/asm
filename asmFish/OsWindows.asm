@@ -130,7 +130,7 @@ _GetTime:
 	;      rdx  fractional part of time in ms
 		sub   rsp, 8*9
 		lea   rcx, [rsp+8*8]
-	       call   qword [__imp_QueryPerformanceCounter]
+	       call   qword[__imp_QueryPerformanceCounter]
 		mov   rax, qword[Period]
 		mul   qword[rsp+8*8]
 	       xchg   rax, rdx
@@ -168,26 +168,42 @@ _Sleep:
 
 _VirtualAlloc:
 	; rcx is size
+	;  if this fails, we want to exit immediately
 		sub   rsp, 8*5
 		mov   rdx, rcx
 		xor   ecx, ecx
 		mov   r8d, MEM_COMMIT
 		mov   r9d, PAGE_READWRITE
 	       call   qword[__imp_VirtualAlloc]
-match =1,DEBUG{ add   dword[DebugBalance], 1}
+	       test   rax, rax
+		 jz   .failed
+match =1, DEBUG {
+		add   dword[DebugBalance], 1
+}
 		add   rsp, 8*5
 		ret
+.failed:
+		lea   rdi, [.message]
+	       call   _ErrorBox
+		xor   ecx, ecx
+	       call   _ExitProcess
+
+.message: db '_VirtualAlloc failed', 0
 
 
 _VirtualFree:
 	; rcx is address
+	;  if 0 is passed, we should do nothing
 		sub   rsp, 8*5
 		xor   edx, edx
 		mov   r8d, MEM_RELEASE
 	       test   rcx, rcx
 		 jz   .null
 	       call   qword[__imp_VirtualFree]
-match =1,DEBUG{ sub   dword[DebugBalance], 1}
+	     Assert   ne, rax, 0, '_VirtualFree failed'
+match =1, DEBUG {
+		sub   dword[DebugBalance], 1
+}
  .null: 	add   rsp, 8*5
 		ret
 
@@ -430,7 +446,7 @@ match =1, CPU_HAS_BMI2 {
 	      stosd
 		lea   rdi, [Output]
 	       call   _ErrorBox
-		xor   ecx,ecx
+		xor   ecx, ecx
 	       call   _ExitProcess
 
 

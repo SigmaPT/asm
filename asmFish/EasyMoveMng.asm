@@ -41,24 +41,26 @@ EasyMoveMng_Update:
 
 	       call   SetCheckInfo
 		mov   ecx, dword[easyMoveMng.pv+4*0]
-	       call   GivesCheck
+	       call   Move_GivesCheck
 		mov   ecx, dword[easyMoveMng.pv+4*0]
 		mov   edx, eax
-	       call   DoMove__EasyMoveMng
+		add   qword[rbp-Thread.rootPos+Thread.nodes], 1
+	       call   Move_Do__EasyMoveMng
 	       call   SetCheckInfo
 		mov   ecx, dword[easyMoveMng.pv+4*1]
-	       call   GivesCheck
+	       call   Move_GivesCheck
 		mov   ecx, dword[easyMoveMng.pv+4*1]
 		mov   edx, eax
-	       call   DoMove__EasyMoveMng
+		add   qword[rbp-Thread.rootPos+Thread.nodes], 1
+	       call   Move_Do__EasyMoveMng
 
 		mov   rax, qword[rbx+State.key]
 		mov   qword[easyMoveMng.expectedPosKey], rax
 
 		mov   ecx, dword[easyMoveMng.pv+4*1]
-	       call   UndoMove
+	       call   Move_Undo
 		mov   ecx, dword[easyMoveMng.pv+4*0]
-	       call   UndoMove
+	       call   Move_Undo
 
 .done:
 		pop   rbp

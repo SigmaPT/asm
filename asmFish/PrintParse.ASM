@@ -174,7 +174,7 @@ CmpString:
 		ret
 
 
-CmpStringCaseLess:
+CmpStringCaseless:
 	; if beginning of string at rsi matches null terminated string at rcx
 	;    then advance rsi to end of match and return non zero,
 	;    else return zero and do nothing

@@ -637,14 +637,14 @@ else
 
 		      align   8
 .CheckOOQuiteCheck:
-	       call   GivesCheck
+	       call   Move_GivesCheck
 		and   eax, 8
 		add   rdi, rax
 		jmp   .CastlingOODone
 
 	      align   8
 .CheckOOOQuiteCheck:
-	       call   GivesCheck
+	       call   Move_GivesCheck
 		and   eax, 8
 		add   rdi, rax
 		jmp   .CastlingDone

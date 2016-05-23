@@ -30,9 +30,9 @@ end virtual
 	       test   ecx, ecx
 		 jz   .MoveLoopDone
 		mov   ecx, dword[rsi]
-	       call   GivesCheck
+	       call   Move_GivesCheck
 		mov   ecx, dword[rsi]
-	       call   DoMove__PerftGen_Root
+	       call   Move_Do__PerftGen_Root
 		mov   eax, 1
 		lea   ecx, [r15-1]
 		cmp   r15d, 1
@@ -41,7 +41,7 @@ end virtual
 	@@:	add   r14, rax
 	       push   rax
 		mov   ecx, dword[rsi]
-	       call   UndoMove
+	       call   Move_Undo
 
 		lea   rdi, [Output]
 		mov   ecx, dword[rsi]
@@ -130,16 +130,16 @@ end virtual
 	       test   ecx, ecx
 		 jz   .DepthNDone
 .DepthNLoop:
-	       call   GivesCheck
+	       call   Move_GivesCheck
 		mov   edx, eax
 		mov   ecx, dword[rsi]
-	       call   DoMove__PerftGen_Branch
+	       call   Move_Do__PerftGen_Branch
 		mov   ecx, r15d
 	       call   PerftGen_Branch
 		add   r14, rax
 		mov   ecx, dword[rsi]
 		add   rsi, sizeof.ExtMove
-	       call   UndoMove
+	       call   Move_Undo
 		mov   ecx, dword[rsi]
 	       test   ecx, ecx
 		jnz   .DepthNLoop

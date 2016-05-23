@@ -26,6 +26,7 @@
 
 
 RootMovesVec_Create:
+	; in: rcx address of RootMovesVec struct
 	       push   rbx
 		mov   rbx, rcx
 		mov   ecx, sizeof.RootMove*MAX_MOVES
@@ -37,11 +38,16 @@ RootMovesVec_Create:
 
 
 RootMovesVec_Destroy:
+	; in: rcx address of RootMovesVec struct
+	       push   rbx
+		mov   rbx, rcx
 		mov   rcx, qword[rbx+RootMovesVec.table]
 		xor   eax, eax
 		mov   qword[rbx+RootMovesVec.table], rax
 		mov   qword[rbx+RootMovesVec.ender], rax
-		jmp   _VirtualFree
+	       call   _VirtualFree
+		pop   rbx
+		ret
 
 match =1, VERBOSE {
 RootMovesVec_Print:
@@ -212,10 +218,11 @@ RootMove_InsertPVInTT:
 		jae   .InsertPvUndoLoop
 	       call   SetCheckInfo
 		mov   ecx, dword[rsi]
-	       call   GivesCheck
+	       call   Move_GivesCheck
 		mov   edx, eax
 		mov   ecx, dword[rsi]
-	       call   DoMove__RootMove_InsertPVInTT
+		add   qword[rbp-Thread.rootPos+Thread.nodes], 1
+	       call   Move_Do__RootMove_InsertPVInTT
 		add   rsi, 4
 		jmp   .InsertPvDoLoop
 
@@ -224,7 +231,7 @@ RootMove_InsertPVInTT:
 		cmp   rsi, r14
 		 jb   .InsertPvDone
 		mov   ecx, dword[rsi]
-	       call   UndoMove
+	       call   Move_Undo
 		mov   rcx, qword[rbx+State.key]
 		mov   r13, rcx
 	       call   MainHash_Probe

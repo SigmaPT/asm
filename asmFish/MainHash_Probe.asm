@@ -73,6 +73,8 @@ MainHash_Probe:
 		cmp   r8d, r10d
 	      cmovg   rax, rdx
 .Found:
+
+
 		mov   rcx, VALUE_NONE shl (8*MainHashEntry.value)
 		xor   edx, edx
 		ret
@@ -80,6 +82,35 @@ MainHash_Probe:
 
 	      align   8
 .FoundRefresh:
+
+match =1, VERBOSE {
+push rax rcx rdx r8 r9 r10 r11 r15 r14 rdi
+mov r15, rax
+movzx  r14d, dx
+lea rdi, [VerboseOutput]
+szcall PrintString, 'tt hit key='
+mov rax, r14
+call PrintUnsignedInteger
+szcall PrintString, ' move='
+movzx ecx, word[r15+MainHashEntry.move]
+xor edx, edx
+call PrintUciMove
+szcall PrintString, ' value='
+movsx rax, word[r15+MainHashEntry.value]
+call PrintSignedInteger
+szcall PrintString, ' eval='
+movsx rax, word[r15+MainHashEntry.eval]
+call PrintSignedInteger
+szcall PrintString, ' depth='
+movsx rax, byte[r15+MainHashEntry.depth]
+call PrintSignedInteger
+mov al, 10
+stosb
+lea rcx, [VerboseOutput]
+call _WriteOut
+pop rdi r14 r15 r11 r10 r9 r8 rdx rcx rax
+}
+
 		mov   rcx, qword[rax]
 		and   rcx, 0xFFFFFFFFFFFFFF03
 		 or   edx, -1

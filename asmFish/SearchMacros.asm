@@ -48,19 +48,24 @@ match =_ROOT_NODE, NT
 \{
  .PvNode equ 1
  .RootNode equ 1
+VerboseDisplay db 'search root '
 \}
 
 match =_PV_NODE, NT
 \{
  .PvNode equ 1
  .RootNode equ 0
+VerboseDisplay db 'search pv '
 \}
 
 match =_NONPV_NODE, NT
 \{
  .PvNode equ 0
  .RootNode equ 0
+VerboseDisplay db 'search nonpv '
 \}
+
+VerboseDisplayInt r8
 
 
 virtual at rsp
@@ -122,7 +127,6 @@ end if
   .lend rb 0
 end virtual
 .localsize = ((.lend-rsp+15) and (-16))
-
 
 
 	       push   rbx rsi rdi r12 r13 r14 r15
@@ -413,7 +417,7 @@ match =1, DEBUG \{
 		sub   esi, eax
 	; esi = depth-R
 
-	       call   DoNullMove
+	       call   Move_DoNull
 		mov   byte[rbx+State.skipEarlyPruning], -1
 		mov   r8d, esi
 		xor   eax, eax
@@ -511,7 +515,7 @@ match =1, DEBUG \{
 	       test   edx, edx
 		 jz   .9NoTTMove
 	@@:	mov   ecx, dword[.ttMove]
-	       call   IsMovePseudoLegal
+	       call   Move_IsPseudoLegal
 	       test   rax, rax
 		 jz   .9NoTTMove
 		mov   ecx, dword[.ttMove]
@@ -540,7 +544,7 @@ match =1, DEBUG \{
 	       test   eax, eax
 		 jz   .9moveloop_done
 		mov   ecx, eax
-	       call   IsMoveLegal
+	       call   Move_IsLegal
 	       test   eax, eax
 		 jz   .9moveloop
 
@@ -559,10 +563,11 @@ match =1, DEBUG \{
 		mov   qword[rbx+State.counterMoves], rax
 
 		mov   ecx, dword[.move]
-	       call   GivesCheck
+	       call   Move_GivesCheck
 		mov   ecx, dword[.move]
 		mov   edx, eax
-	       call   DoMove__ProbCut
+		add   qword[rbp-Thread.rootPos+Thread.nodes], 1
+	       call   Move_Do__ProbCut
 		mov   ecx, edi
 		neg   ecx
 		lea   edx, [rcx+1]
@@ -575,7 +580,7 @@ match =1, DEBUG \{
 		neg   eax
 		mov   esi, eax
 		mov   ecx, dword[.move]
-	       call   UndoMove
+	       call   Move_Undo
 		mov   eax, esi
 		cmp   esi, edi
 		 jl   .9moveloop
@@ -635,6 +640,8 @@ match =1, DEBUG \{
 .moves_loop:	    ; this is actually not the head of the loop
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+VerboseDisplay <db 'entering moves_loop',10>
+
 		mov   eax, dword[rbx-1*sizeof.State+State.currentMove]
 		and   eax, 63
 		mov   dword[.prevSq], eax
@@ -643,8 +650,8 @@ match =1, DEBUG \{
 		mov   rcx, qword[rbx-2*sizeof.State+State.counterMoves]
 		mov   rdx, qword[rbx-4*sizeof.State+State.counterMoves]
 		mov   qword[.cmh], rax
-		mov   qword[.fmh], rax
-		mov   qword[.fmh2], rax
+		mov   qword[.fmh], rcx
+		mov   qword[.fmh2], rdx
 
 		lea   rsi, [.movepick]
 		mov   ecx, dword[.ttMove]
@@ -754,7 +761,7 @@ match =1, DEBUG \{
 		and   al, byte[CaptureOrPromotion_and+rcx]
 		mov   byte[.captureOrPromotion], al
 		mov   ecx, dword[.move]
-	       call   GivesCheck
+	       call   Move_GivesCheck
 		mov   byte[.givesCheck], al
 
 
@@ -779,7 +786,7 @@ match =1, DEBUG \{
 		mov   eax, dword[.extension]
 	       test   eax, eax
 		jnz   .12done
-	       call   IsMoveLegal
+	       call   Move_IsLegal
 		mov   edx, dword[.ttValue]
 		mov   r8d, dword[.depth]
 		mov   r9l, byte[.cutNode]
@@ -873,15 +880,15 @@ match =1, DEBUG \{
 	       test   r8, r8
 		 jz   @f
 		cmp   dword[r8+4*rax], 0
-		 jl   .13DontSkip2
+		jge   .13DontSkip2
 	@@:    test   r9, r9
 		 jz   @f
 		cmp   dword[r9+4*rax], 0
-		 jl   .13DontSkip2
+		jge   .13DontSkip2
 	@@:    test   r10, r10
 		 jz   .MovePickLoop
 		cmp   dword[r10+4*rax], 0
-		jge   .MovePickLoop
+		 jl   .MovePickLoop
 	       test   r8, r8
 		 jz   .13DontSkip2
 	       test   r9, r9
@@ -947,7 +954,7 @@ match =1, DEBUG \{
 	; Check for legality just before making the move
     if .RootNode eq 0
 		mov   ecx, dword[.move]
-	       call   IsMoveLegal
+	       call   Move_IsLegal
 	       test   rax, rax
 		 jz   .IllegalMove
     end if
@@ -968,7 +975,7 @@ match =1, DEBUG \{
 		mov   ecx, dword[.move]
 	      movsx   edx, byte[.givesCheck]
 		add   qword[rbp-Thread.rootPos+Thread.nodes], 1
-	       call   DoMove__Search
+	       call   Move_Do__Search
 
 
 	; Step 15. Reduced depth search (LMR)
@@ -1209,10 +1216,16 @@ match =1, DEBUG \{
     end if
 
 
+
+
+
 	; Step 17. Undo move
 .17entry:
+VerboseDisplay db 'search value: '
+VerboseDisplayInt qword[.value]
+
 		mov   ecx, dword[.move]
-	       call   UndoMove
+	       call   Move_Undo
 
 	; Step 18. Check for new best move
 
@@ -1512,7 +1525,7 @@ end if
 
 
 	      align   8
-.20ValueToTT:  ;int3
+.20ValueToTT:
 		mov   edx, dword[rbx+State.ply]
 		mov   eax, edi
 		sar   eax, 31
@@ -1522,7 +1535,7 @@ end if
 		jmp   .20ValueToTTRet
 
 	      align   8
-.ValueFromTT:	;int3
+.ValueFromTT:
 		mov   r8d, dword[rbx+State.ply]
 		mov   r9d, edi
 		sar   r9d, 31

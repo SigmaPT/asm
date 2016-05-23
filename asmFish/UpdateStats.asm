@@ -48,6 +48,57 @@ end virtual
 		mov   qword[.quiets], r8
 		mov   dword[.quietsCnt], r9d
 
+
+match =1, VERBOSE {
+lea rdi, [VerboseOutput]
+szcall PrintString, 'updating stats for '
+mov ecx, dword[.move]
+xor  edx, edx
+call PrintUciMove
+mov al, 10
+stosb
+szcall PrintString, 'depth: '
+movsxd rax, dword[.depth]
+call PrintSignedInteger
+mov al, 10
+stosb
+szcall PrintString, 'ss->killers[0]: '
+mov ecx, dword[rbx+State.killers+4*0]
+xor  edx, edx
+call PrintUciMove
+mov al, 10
+stosb
+szcall PrintString, 'ss->killers[1]: '
+mov ecx, dword[rbx+State.killers+4*1]
+xor  edx, edx
+call PrintUciMove
+mov al, 10
+stosb
+szcall PrintString, 'cmh:  '
+mov rcx, qword[rbx-1*sizeof.State+State.counterMoves]
+call PrintAddress
+mov al, 10
+stosb
+szcall PrintString, 'fmh:  '
+mov rcx, qword[rbx-2*sizeof.State+State.counterMoves]
+call PrintAddress
+mov al, 10
+stosb
+szcall PrintString, 'fmh2: '
+mov rcx, qword[rbx-4*sizeof.State+State.counterMoves]
+call PrintAddress
+mov al, 10
+stosb
+lea rcx, [VerboseOutput]
+call _WriteOut
+mov   ecx, dword[.move]
+mov   edx, dword[.depth]
+mov   r8, qword[.quiets]
+mov   r9d, dword[.quietsCnt]
+}
+
+
+
 		mov   eax, edx
 	       imul   eax, edx
 		lea   eax, [rax+rdx-1]
@@ -72,12 +123,13 @@ end virtual
 		mov   qword[.moveoff], rax
 
 		mov   eax, dword[rbx-1*sizeof.State+State.currentMove]
-		mov   ecx, eax
-		and   ecx, 63
-		shr   eax, 6
 		and   eax, 63
-	      movzx   eax, byte[rbp+Pos.board+rax]
-		shl   eax, 6
+VerboseDisplay db 'prevSq: '
+VerboseDisplayInt rax
+
+
+	      movzx   ecx, byte[rbp+Pos.board+rax]
+		shl   ecx, 6
 		add   eax, ecx
 		shl   eax, 2
 		mov   qword[.prevoff], rax
@@ -134,6 +186,24 @@ end virtual
 		cmp   edi, dword[.quietsCnt]
 		jae   .quiets_done
 
+
+
+match =1, VERBOSE {
+push r12 rdi
+mov r12d, dword[r15+4*rdi]
+lea rdi, [VerboseOutput]
+szcall PrintString, 'decreasing quiet '
+mov ecx, r12d
+xor  edx, edx
+call PrintUciMove
+mov al, 10
+stosb
+lea rcx, [VerboseOutput]
+call _WriteOut
+pop rdi r12
+}
+
+
 		mov   eax, dword[r15+4*rdi]
 		mov   ecx, eax
 		and   ecx, 63
@@ -173,10 +243,13 @@ end virtual
 .quiets_done:
 
 		mov   eax, dword[rbx-1*sizeof.State+State.moveCount]
+		cmp   eax, 1
 		jne   .done
 		mov   al, byte[rbx+State.capturedPiece]
 	       test   al, al
 		jnz   .done
+
+VerboseDisplay <db 'extra penalty',10>
 
 		mov   eax, dword[.depth]
 		mov   ecx, dword[.absbonus]

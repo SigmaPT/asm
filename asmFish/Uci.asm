@@ -2,7 +2,7 @@ Options_Init:
 		lea   rax, [options]
 		lea   rcx, [Position_WriteOutInfo_Uci]
 		mov   qword[rax+Options.printFxn], rcx
-		mov   dword[rax+Options.hash], 32
+		mov   dword[rax+Options.hash], 16
 		mov   dword[rax+Options.multiPV], 1
 		mov   dword[rax+Options.slowMover], 80
 		mov   dword[rax+Options.minThinkTime], 20
@@ -18,31 +18,16 @@ UciLoop:
 	       push   rbp rsi rdi r12 r13 r14 r15
 
 		lea   rbp, [pos1]
-
-		xor   eax, eax
-		mov   qword[pos1.stateTable], rax
-		mov   qword[pos2.stateTable], rax
-
-		lea   rsi, [szStartPosition]
+		lea   rsi, [szStartFEN]
 	       call   Position_ParseFEN
+		jmp   UciUci
 
-		jmp   UciGetInput
 
-UciQuit:
-		lea   rcx, [mainThread]
-		mov   byte[signals.stop], -1
-	       call   Thread_StartSearching_TRUE
 
-		lea   rcx, [mainThread]
-	       call   Thread_WaitForSearchFinished
-
-		mov   rcx, qword[pos2.stateTable]
-	       call   _VirtualFree
-		mov   rcx, qword[pos1.stateTable]
-	       call   _VirtualFree
-
-		pop   r15 r14 r13 r12 rdi rsi rbp
-		ret
+UciUci:
+		lea   rdi, [Output]
+		lea   rcx, [szUCIresponse]
+	       call   PrintString
 
 
 UciWriteOut:
@@ -97,6 +82,12 @@ UciChoose:
 	    stdcall   CmpString, 'go'
 	       test   eax, eax
 		jnz   UciGo
+	    stdcall   CmpString, 'isready'
+	       test   eax, eax
+		jnz   UciIsReady
+	    stdcall   CmpString, 'ucinewgame'
+	       test   eax, eax
+		jnz   UciNewGame
 	    stdcall   CmpString, 'uci'
 	       test   eax, eax
 		jnz   UciUci
@@ -106,9 +97,6 @@ UciChoose:
 	    stdcall   CmpString, 'quit'
 	       test   eax, eax
 		jnz   UciQuit
-	    stdcall   CmpString, 'isready'
-	       test   eax, eax
-		jnz   UciIsReady
 
 	    stdcall   CmpString, 'perft'
 	       test   eax, eax
@@ -155,8 +143,33 @@ UciUnknown:
 		jmp   UciWriteOut
 
 
+
+
+UciQuit:
+		lea   rcx, [mainThread]
+		mov   byte[signals.stop], -1
+	       call   Thread_StartSearching_TRUE
+
+		lea   rcx, [mainThread]
+	       call   Thread_WaitForSearchFinished
+
+		mov   rcx, qword[pos2.stateTable]
+	       call   _VirtualFree
+		mov   rcx, qword[pos1.stateTable]
+	       call   _VirtualFree
+		xor   eax, eax
+		mov   qword[pos1.stateTable], rax
+		mov   qword[pos2.stateTable], rax
+
+		pop   r15 r14 r13 r12 rdi rsi rbp
+		ret
+
+UciNewGame:
+	       call   Search_Clear
+		jmp   UciGetInput
+
 ;;;;;;;;;;;;
-; is ready
+; isready
 ;;;;;;;;;;;;
 
 UciIsReady:
@@ -165,7 +178,9 @@ UciIsReady:
 	      stosq
 		jmp   UciWriteOut
 
-
+;;;;;;;;
+; stop
+;;;;;;;;
 
 UciStop:
 		mov   byte[signals.stop], -1
@@ -301,7 +316,7 @@ UciPosition:
 		 jz   .BadCmd
 .Start:
 		mov   r15, rsi
-		lea   rsi, [szStartPosition]
+		lea   rsi, [szStartFEN]
 	       call   Position_ParseFEN
 		mov   rsi, r15
 		jmp   .check
@@ -372,10 +387,10 @@ UciParseMoves:
 		mov   rbx, qword[rbp+Pos.state]
 		mov   ecx, edi
 		mov   word[rbx+State.move+sizeof.State], cx
-	       call   GivesCheck
+	       call   Move_GivesCheck
 	      movzx   ecx, word[rbx+State.move+sizeof.State]
 		mov   edx, eax
-	       call   DoMove__UciParseMoves
+	       call   Move_Do__UciParseMoves
 		mov   qword[rbp+Pos.state], rbx
 	       call   SetCheckInfo
 		jmp   .get_move
@@ -405,23 +420,23 @@ ParseSetOption:
 		 jz   .Error
 	       call   SkipSpaces
 
-	     szcall   CmpStringCaseLess, 'Hash'
+	     szcall   CmpStringCaseless, 'Hash'
 		lea   rbx, [.Hash]
 	       test   eax, eax
 		jnz   .CheckValue
-	     szcall   CmpStringCaseLess, 'Threads'
+	     szcall   CmpStringCaseless, 'Threads'
 		lea   rbx, [.Threads]
 	       test   eax, eax
 		jnz   .CheckValue
-	     szcall   CmpStringCaseLess, 'MultiPv'
+	     szcall   CmpStringCaseless, 'MultiPv'
 		lea   rbx, [.MultiPv]
 	       test   eax, eax
 		jnz   .CheckValue
-	     szcall   CmpStringCaseLess, 'Weakness'
+	     szcall   CmpStringCaseless, 'Weakness'
 		lea   rbx, [.Weakness]
 	       test   eax, eax
 		jnz   .CheckValue
-	     szcall   CmpStringCaseLess, 'UCI_Chess960'
+	     szcall   CmpStringCaseless, 'UCI_Chess960'
 		lea   rbx, [.Weakness]
 	       test   eax, eax
 		jnz   .CheckValue
@@ -476,15 +491,7 @@ ParseSetOption:
 
 
 
-;;;;;;;
-; uci
-;;;;;;;
 
-UciUci:
-		lea   rdi, [Output]
-		lea   rcx, [szUCIresponse]
-	       call   PrintString
-		jmp   UciWriteOut
 
 
 
@@ -525,7 +532,7 @@ UciDoNull:
 	       call   Position_SetExtraCapacity
 		mov   rbx, qword[rbp+Pos.state]
 		mov   word[rbx+State.move+sizeof.State], MOVE_NULL
-	       call   DoNullMove
+	       call   Move_DoNull
 		mov   qword[rbp+Pos.state], rbx
 	       call   SetCheckInfo
 		jmp   UciShow
@@ -606,7 +613,7 @@ UciUndo:
 		cmp   rbx, qword[rbp+Pos.stateTable]
 		jbe   UciShow
 	      movzx   ecx, word[rbx+State.move]
-	       call   UndoMove
+	       call   Move_Undo
 		sub   r15d, 1
 		jns   .Undo
 		jmp   UciShow
@@ -1155,12 +1162,9 @@ match =1, VERBOSE {
 }
 
 		lea   rdi, [Output]
-		mov   rax, 'eval: '
-	      stosq
-		sub   rdi, 2
 	     movsxd   rax, r15d
 	       call   PrintSignedInteger
-		mov   eax, '  = '
+		mov   eax, ' == '
 	      stosd
 		mov   ecx, r15d
 	       call   PrintScore_Uci

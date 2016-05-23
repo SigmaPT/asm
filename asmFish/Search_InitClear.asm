@@ -1,4 +1,6 @@
 
+; this works but should be cleaned up
+
 Search_Init:
 	push	r14					; 09D0 _ 41: 56
 	push	r13					; 09D2 _ 41: 55
@@ -134,6 +136,7 @@ Search_Clear:
 	  rep stosb
 
 		lea   rbx, [mainThread]
+		mov   edx, VALUE_INFINITE
 .nexthread:
 		mov   rdi, qword[rbx+Thread.rootPos+Pos.history]
 		mov   ecx, 4*16*64
@@ -144,6 +147,10 @@ Search_Clear:
 		mov   ecx, 4*16*64
 		xor   eax, eax
 	  rep stosb
+
+	; mainThread.previousScore is used in the time management part of idloop
+	;  +VALUE_INFINITE causes us to think alot on the first move
+		mov   dword[rbx+Thread.previousScore], edx
 
 		sub   rbx, sizeof.Thread
 		cmp   rbx, qword[threadPool.stackPointer]

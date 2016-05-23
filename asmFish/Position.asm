@@ -30,11 +30,11 @@ end virtual
 			jmp   .MoveTest
 	.MoveLoop:
 		      movzx   ecx, word[rsi]
-		       call   IsMovePseudoLegal
+		       call   Move_IsPseudoLegal
 		       test   rax, rax
 			 jz   .LegalFail1
 		      movzx   ecx, word[rsi]
-		       call   IsMoveLegal
+		       call   Move_IsLegal
 		       test   rax, rax
 			 jz   .LegalFail2
 			add   rsi, sizeof.ExtMove
@@ -62,7 +62,7 @@ end virtual
 		      ; esi is now a 'move' that is not in list of legal moves
 
 			mov   ecx, esi
-		       call   IsMovePseudoLegal
+		       call   Move_IsPseudoLegal
 		       test   rax, rax
 			jnz   .RandomFail1
 
@@ -82,7 +82,7 @@ end virtual
 			jmp   .Return
 .RandomFail1:
 			mov   ecx, esi
-		       call   IsMoveLegal
+		       call   Move_IsLegal
 		       test   rax, rax
 			 jz   .RandomFail1Ret
 .RandomFail2:
@@ -697,7 +697,14 @@ Position_PrintSmall:
 
 	       push   rbx rsi r13 r14 r15
 
-		mov   rbx, [rbp+Pos.state]
+		mov   rbx, qword[rbp+Pos.state]
+
+		mov   rax, 'side:   '
+	      stosq
+		mov   eax, dword[rbp+Pos.sideToMove]
+	       call   PrintUnsignedInteger
+		mov   al, 10
+	      stosb
 
 		xor   ecx, ecx
 	@@:	xor   ecx, 0111000b

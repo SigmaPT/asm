@@ -1449,7 +1449,7 @@ end virtual
 
 		mov   eax, dword[rbx+State.psq]
 		mov   dword[.ei.score], eax
-match =1,VERBOSE {
+match =1, VERBOSE {
 		mov   dword[trace.Material], eax
 		}
 
@@ -1463,18 +1463,16 @@ match =1,VERBOSE {
 	      movsx   eax, word[rsi+MaterialEntry.value]
 	      movzx   ecx, byte[rsi+MaterialEntry.evaluationFunction]
 		mov   qword[.ei.me], rsi
-
 		cmp   rdx, qword[rbx+State.materialKey]
 		jne   DoMaterialEval
 .DoMaterialEvalReturn:
 	       imul   eax, 0x00010001
 		add   dword[.ei.score], eax
-match =1,VERBOSE {
+match =1, VERBOSE {
 		mov   dword[trace.Imbalance], eax
 }
 	       test   ecx, ecx
 		jnz   .HaveSpecializedEval
-
 
 		mov   rdi, qword[rbx+State.pawnKey]
 		and   edi, PAWN_HASH_ENTRY_COUNT-1
@@ -1782,7 +1780,8 @@ VerboseDisplayInt rax
 .HaveSpecializedEval:
 		mov   eax, ecx
 		shr   eax, 1
-		mov   eax, dword[EndgameEval_FxnTable+4*rcx]
+		mov   eax, dword[EndgameEval_FxnTable+4*rax]
+		and   ecx, 1
 	       call   rax
 		add   rsp, sizeof.EvalInfo
 		pop   r15 r14 r13 r12 rdi rsi rbx

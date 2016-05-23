@@ -22,7 +22,7 @@ end virtual
 		mov   qword[pos2.stateTable], rax
 
 		lea   rbp, [pos1]
-		lea   rsi, [szStartPosition]
+		lea   rsi, [szStartFEN]
 	       call   Position_ParseFEN
 
 		jmp   .Observing
@@ -128,7 +128,7 @@ end virtual
 .New:
 		mov   dword[.comp_side], 2
 		lea   rbp, [pos1]
-		lea   rsi, [szStartPosition]
+		lea   rsi, [szStartFEN]
 	       call   Position_ParseFEN
 		jmp   .Observing
 
@@ -138,7 +138,6 @@ end virtual
 		mov   dword[.comp_side], eax
 
 .calculate:
-
 		lea   rcx, [.limits]
 	       call   Limits_Init
 		lea   rcx, [.limits]
@@ -171,10 +170,10 @@ end virtual
 		mov   rbx, qword[rbp+Pos.state]
 		mov   ecx, edi
 		mov   word[rbx+State.move+sizeof.State], cx
-	       call   GivesCheck
+	       call   Move_GivesCheck
 	      movzx   ecx, word[rbx+State.move+sizeof.State]
 		mov   edx, eax
-	       call   DoMove__UciParseMoves
+	       call   Move_Do__UciParseMoves
 		mov   qword[rbp+Pos.state], rbx
 	       call   SetCheckInfo
 		jmp   .Observing
@@ -195,10 +194,10 @@ end virtual
 		mov   rbx, qword[rbp+Pos.state]
 		mov   ecx, edi
 		mov   word[rbx+State.move+sizeof.State], cx
-	       call   GivesCheck
+	       call   Move_GivesCheck
 	      movzx   ecx, word[rbx+State.move+sizeof.State]
 		mov   edx, eax
-	       call   DoMove__UciParseMoves
+	       call   Move_Do__UciParseMoves
 		mov   qword[rbp+Pos.state], rbx
 	       call   SetCheckInfo
 

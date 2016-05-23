@@ -11,10 +11,16 @@ macro QSearch NT, InCheck {
 ;jmp _Evaluate
 
 match =_PV_NODE, NT \{
- .PvNode equ 1	\}
+ .PvNode equ 1
+VerboseDisplay db 'qsearch pv '
+ \}
 
 match =_NONPV_NODE, NT \{
- .PvNode equ 0	\}
+ .PvNode equ 0
+VerboseDisplay db 'qsearch nonpv '
+\}
+
+VerboseDisplayInt r8
 
 
 
@@ -129,6 +135,7 @@ end virtual
 		mov   rcx, qword[rbx+State.key]
 		sub   r12d, 1
 	       call   MainHash_Probe
+
 		mov   qword[.tte], rax
 		mov   qword[.ltte], rcx
 		mov   byte[.ttHit], dl
@@ -266,7 +273,7 @@ end virtual
 	       test   ecx, ecx
 		 jz   .MovePickNoTTMove
 
-	       call   IsMovePseudoLegal
+	       call   Move_IsPseudoLegal
 	       test   rax, rax
 	      cmovz   edi, eax
 		 jz   .MovePickNoTTMove
@@ -290,7 +297,7 @@ end virtual
 
 	; check for check and get address of search function
 		mov   ecx, eax
-	       call   GivesCheck
+	       call   Move_GivesCheck
 		mov   byte[.givesCheck], al
 	      movsx   r13d, al
 	if .PvNode eq 1
@@ -335,11 +342,23 @@ end virtual
 		cmp   eax, Pawn
 		 je   .CheckAdvancedPawnPush
 .DoFutilityPruning:
-		mov   edx, dword [PieceValue_EG+4*r15]
+
+
+		mov   edx, dword[PieceValue_EG+4*r15]
 		add   edx, r12d
-		cmp   edx, dword [.alpha]
+
+VerboseDisplay db 'futilityValue = '
+VerboseDisplayInt rdx
+VerboseDisplay db 'futilityBase = '
+VerboseDisplayInt r12
+VerboseDisplay db 'alpha = '
+VerboseDisplayInt qword[.alpha]
+
+
+
+		cmp   edx, dword[.alpha]
 		jle   .ContinueFromFutilityValue
-		cmp   r12d, dword [.beta]
+		cmp   r12d, dword[.alpha]
 		jle   .ContinueFromFutilityBase
 .SkipFutilityPruning:
 	end if
@@ -390,7 +409,7 @@ end virtual
 
 	; check for legality
 		mov   ecx, dword[.move]
-	       call   IsMoveLegal
+	       call   Move_IsLegal
 	       test   rax, rax
 		 jz   .MovePickLoop
 
@@ -400,7 +419,7 @@ end virtual
 		mov   dword[rbx+State.currentMove], ecx
 		add   qword[rbp-Thread.rootPos+Thread.nodes], 1
 		mov   rsi, qword[.searchFxn]
-	       call   DoMove__QSearch
+	       call   Move_Do__QSearch
 
 	; search the move
 		mov   ecx, dword[.beta]
@@ -416,7 +435,7 @@ end virtual
 
 	; undo the move
 		mov   ecx, dword[.move]
-	       call   UndoMove
+	       call   Move_Undo
 
 	; check for new best move
 		cmp   edi, dword[.bestValue]

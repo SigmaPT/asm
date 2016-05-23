@@ -5,8 +5,10 @@ macro apply_bonus address, bonus32, absbonus, denominator {
 		cdq
 		mov   ecx, denominator
 	       idiv   ecx
-		add   eax, bonus32
-		mov   dword[address], eax
+		mov   ecx, bonus32
+		sub   ecx, eax
+		add   ecx, dword[address]
+		mov   dword[address], ecx
 }
 
 
@@ -61,7 +63,11 @@ local ..Outer, ..Inner, ..InnerDone, ..OuterDone
 }
 
 
-macro Partition  cur, ender {
+
+
+; we have two implementation of partition
+
+macro Partition2  cur, ender {
 ; at return ender point to start of elements that are <=0
 local ._048, ._049, ._050, ._051, .Done
 		cmp	cur, ender
@@ -92,10 +98,40 @@ local ._048, ._049, ._050, ._051, .Done
 		jnz	._048
 
 .Done:
-
 }
 
 
+
+macro Partition1  first, last {
+; at return first point to start of elements that are <=0
+local ..Done, ..FindNext, ..FoundNot, ..PFalse, ..WLoop
+		cmp   first, last
+		 je   ..Done
+..FindNext:
+		cmp   dword[first+4], 0
+		jle   ..FoundNot
+		add   first, 8
+		cmp   first, last
+		jne   ..FindNext
+		jmp   ..Done
+..FoundNot:
+		lea   rcx, [first+8]
+..WLoop:
+		cmp   rcx, last
+		 je   ..Done
+		cmp   dword[rcx+4], 0
+		jle   ..PFalse
+		mov   rax, qword[first]
+		mov   rdx, qword[rcx]
+		mov   qword[first], rdx
+		mov   qword[rcx], rax
+		add   first, 8
+..PFalse:
+		add   rcx, 8
+		jmp   ..WLoop
+..Done:
+
+}
 
 
 macro PickBest	beg, start, ender {
@@ -268,7 +304,7 @@ match = 1, DEBUG \{
 		add   eax, dword[r9+4*rdx]
 		add   eax, dword[r10+4*rdx]
 		add   eax, dword[r11+4*rdx]
-		mov   dword[start-1*sizeof.ExtMove+ExtMove.score], 0;eax
+		mov   dword[start-1*sizeof.ExtMove+ExtMove.score], eax
 		cmp   start, ender
 		 jb   ..Loop
 ..Done:
@@ -277,18 +313,18 @@ match = 1, DEBUG \{
 
 
 macro ScoreEvasions start, ender {
-local .ok, .WhileLoop, .normal, .special, .Done, .Positive, .Capture, .Negative
+local ..ok, ..WhileLoop, ..normal, ..special, ..Done, ..Positive, ..Capture, ..Negative
 
 		mov   rdi, qword[rbp+Pos.history]
 		cmp   start, ender
-		jae   .Done
-.WhileLoop:
-		mov   ecx, [start]
+		jae   ..Done
+..WhileLoop:
+		mov   ecx, dword[start+ExtMove.move]
 		lea   start, [start+sizeof.ExtMove]
-	    SeeSign   .Positive
+	    SeeSign   ..Positive
 	       test   eax, eax
-		 js   .Negative
- .Positive:
+		 js   ..Negative
+..Positive:
 		mov   r8d, ecx
 		shr   r8d, 6
 		mov   r10d, ecx
@@ -298,39 +334,39 @@ local .ok, .WhileLoop, .normal, .special, .Done, .Positive, .Capture, .Negative
 	      movzx   edx, byte [rbp+Pos.board+r8]	 ; edx = from piece
 		lea   rcx, [rdi+4*rcx]
 		cmp   r10d, MOVE_TYPE_CASTLE shl 12
-		jae   .special
+		jae   ..special
 	       test   r11d, r11d
-		jnz   .Capture
- .normal:
-		shl   edx, 8
+		jnz   ..Capture
+..normal:
+		shl   edx, 6+2
 		mov   eax, dword[rdx+rcx]
-		mov   dword[start-1*sizeof.ExtMove+ExtMove.score], 0;eax
+		mov   dword[start-1*sizeof.ExtMove+ExtMove.score], eax
 		cmp   start, ender
-		 jb   .WhileLoop
-		jmp   .Done
- .Capture:
+		 jb   ..WhileLoop
+		jmp   ..Done
+..Capture:
 		mov   eax, dword[PieceValue_MG+4*r11]
- .captureEP:
+..captureEP:
 		and   edx, 7
 		sub   eax, edx
 		add   eax, HistoryStats_Max
-		mov   dword[start-1*sizeof.ExtMove+ExtMove.score], 0;eax
+		mov   dword[start-1*sizeof.ExtMove+ExtMove.score], eax
 		cmp   start, ender
-		 jb   .WhileLoop
-		jmp   .Done
+		 jb   ..WhileLoop
+		jmp   ..Done
 
- .special:
+..special:
 		cmp   r10d, MOVE_TYPE_EPCAP shl 12
-		 jb   .normal ; castling
+		 jb   ..normal ; castling
 		mov   eax, PawnValueMg
-		jmp   .captureEP
+		jmp   ..captureEP
 
- .Negative:
+..Negative:
 		sub   eax, HistoryStats_Max
-		mov   dword[start-1*sizeof.ExtMove+ExtMove.score], 0;eax
+		mov   dword[start-1*sizeof.ExtMove+ExtMove.score], eax
 		cmp   start, ender
-		 jb   .WhileLoop
-.Done:
+		 jb   ..WhileLoop
+..Done:
 
 
 

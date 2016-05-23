@@ -226,17 +226,18 @@ end virtual
 		mov   rbx, qword[rcx+Pos.state]
 	       call   SetCheckInfo
 		mov   ecx, dword[r15+RootMove.pv+4*0]
-	       call   GivesCheck
+	       call   Move_GivesCheck
 		mov   ecx, dword[r15+RootMove.pv+4*0]
 		mov   edx, eax
-	       call   DoMove__ExtractPonderFromTT
+		add   qword[rbp-Thread.rootPos+Thread.nodes], 1
+	       call   Move_Do__ExtractPonderFromTT
 		mov   rcx, qword[rbx+State.key]
 	       call   MainHash_Probe
 		mov   esi, ecx
 		shr   esi, 16
 		mov   edi, edx
 		mov   ecx, dword[r15+RootMove.pv+4*0]
-	       call   UndoMove
+	       call   Move_Undo
 		xor   eax, eax
 	       test   edi, edi
 		 jz   .done
@@ -286,7 +287,7 @@ end virtual
 
 		lea   rbp, [rcx+Thread.rootPos]
 		mov   rbx, qword[rbp+Pos.state]
-     VerboseDisplay   <db 'Thread_Think'>
+VerboseDisplay	 <db 'Thread_Think',10>
 
 		mov   dword[.easyMove], 0
 		mov   dword[.alpha], -VALUE_INFINITE
@@ -432,7 +433,8 @@ VerboseDisplayInt qword[.beta]
 		mov   dword[.bestValue], eax
 
 
-     VerboseDisplay   <db 'Search_Root returned'>
+VerboseDisplay <db 'Search_Root returned '>
+VerboseDisplayInt rax
 
 
 	       imul   ecx, r14d, sizeof.RootMove
@@ -665,7 +667,7 @@ match =1, VERBOSE {
 
 .done:
 
-     VerboseDisplay   <db 'Thread_Think returning'>
+     VerboseDisplay   <db 'Thread_Think returning',10>
 
 
 		add   rsp, .localsize

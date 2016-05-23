@@ -1,14 +1,14 @@
-; this is the source for windows  see asmsf.asm for unix
+; this is the source for windows  see asmFish.asm for unix
 OS_IS_WINDOWS	 fix 1
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; compile options 0 or 1
 CPU_HAS_POPCNT	 equ 1	;  popcnt                       very nice function
-CPU_HAS_AVX1	 equ 1	;  256 bit floating point       probably only used for memory copy
+CPU_HAS_AVX1	 equ 1	;  256 bit floating point       probably only used for memory copy if used at all
 CPU_HAS_AVX2	 equ 0	;  256 bit integer + fmadd      probably not used
 CPU_HAS_BMI1	 equ 0	;  andn                         why not use it if we can
 CPU_HAS_BMI2	 equ 0	;  pext + pdep                  nice for move generation, but not much faster than magics
-DEBUG		 equ 1	;  turns on the asserts         asserts are agressive but should be NO functional change
-VERBOSE 	 equ 0	;  lots of print + eval trace   caution
+DEBUG		 equ 0	;  turns on the asserts         use this for detecting bugs, should be no functional change
+VERBOSE 	 equ 0	;  LOTS of print + eval trace   use this for hunting down bugs
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
@@ -135,8 +135,8 @@ align 8
  XBoardMode db 0
 
 
- szGreeting	  db 'stockfish '
- szDate:	  create_build_time DAY, MONTH, YEAR
+ szGreeting	db 'asmFish '
+ szDate:	create_build_time DAY, MONTH, YEAR
  szCPUTarget:
 match =1, DEBUG {	    db ' DEBUG'     }
 match =1, CPU_HAS_POPCNT {  db ' POPCNT'    }
@@ -144,37 +144,38 @@ match =1, CPU_HAS_AVX1 {    db ' AVX1'	    }
 match =1, CPU_HAS_AVX2 {    db ' AVX2'	    }
 match =1, CPU_HAS_BMI1 {    db ' BMI1'	    }
 match =1, CPU_HAS_BMI2 {    db ' BMI2'	    }
-		  db 10,0
+		db 10,0
 
- szUCIresponse	  db 'id name stockfish '
-		  create_build_time DAY, MONTH, YEAR
-		  db 10
-		  db 'id author fasm',10
-		  db 'option name Hash type spin min 1 max 65536 default 16',10
-		  db 'option name MultiPV type spin min 1 max 64 default 1',10
-		  db 'option name Ponder type check default false',10
-		  db 'option name Threads type spin min 1 max 8 default 1',10
-		  db 'option name Weakness type spin min 0 max 1000 default 0',10
-		  db 'uciok',10,0
- szCPUError	  db 'Error: processor does not support',0
-   .POPCNT	  db ' POPCNT',0
-   .AVX1	  db ' AVX1',0
-   .AVX2	  db ' AVX2',0
-   .BMI1	  db ' BMI1',0
-   .BMI2	  db ' BMI2',0
- szReadyOK	  db 'readyok',10,0
- szOK		  db 'ok',10,0
- szError	  db 'error',10,0
- szParseError	  db 'command parsing error',10,0
- szStartPosition  db 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',0
- PieceToChar	  db '.?PNBRQK??pnbrqk'
+ szUCIresponse	db 'id name asmFish '
+		create_build_time DAY, MONTH, YEAR
+		db 10
+		db 'id author fasm',10
+		db 'option name Hash type spin min 1 max 65536 default 16',10
+		db 'option name MultiPV type spin min 1 max 64 default 1',10
+		db 'option name Ponder type check default false',10
+		db 'option name Threads type spin min 1 max 8 default 1',10
+		db 'option name Weakness type spin min 0 max 1000 default 0',10
+		db 'uciok',10,0
+ szCPUError	db 'Error: processor does not support',0
+   .POPCNT	db ' POPCNT',0
+   .AVX1	db ' AVX1',0
+   .AVX2	db ' AVX2',0
+   .BMI1	db ' BMI1',0
+   .BMI2	db ' BMI2',0
+ szReadyOK	db 'readyok',10,0
+ szOK		db 'ok',10,0
+ szError	db 'error',10,0
+ szStartFEN	db 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',0
+ PieceToChar	db '.?PNBRQK??pnbrqk'
  ToLowerCase:	  ; use assembler to make table for case conversion
-		  db   0
+
+
+		db   0
 repeat 127
 	if (% >= 'A') & ( % <='Z')
-		  db   % +('a'-'A')
+		db   % +('a'-'A')
 	else
-		  db   %
+		db   %
 	end if
 end repeat
 
@@ -225,7 +226,7 @@ align 64
 
 ; this section is only read from after initialization
 ; the castling data is filled in when parsing the fen
-; castling data should be moved to position struct
+; castling data should be moved to Pos struct in future versions
 section '.bss' data readable writeable
 
 ;;;;;;;;;;;;;;;;;;;;;;;; data for move generation  ;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -323,26 +324,18 @@ PassedFile rd 8
 
 
 
-
-
 ;;;;;;;;;;;;;; data for endgames ;;;;;;;;;;;;;;
 align 64
-
-EndgameEval_Map 	rb 2*ENDGAME_EVAL_MAX_INDEX*sizeof.EndgameMapEntry
-EndgameScale_Map	rb 2*ENDGAME_SCALE_MAX_INDEX*sizeof.EndgameMapEntry
-EndgameEval_FxnTable	rd ENDGAME_EVAL_MAX_INDEX
-EndgameScale_FxnTable	rd ENDGAME_SCALE_MAX_INDEX
-KPKEndgameTable   rq 48*64 ; bit table for lookup
-
-
-
-;;;;;;;;;;;;;;;;; old junk ;;;;;;;;;;;;;;;;;;;;;;
-;WhitePassedPawns  rq 64    ; bitboards
-;BlackPassedPawns  rq 64    ; bitboards
-;IsolatedPawns     rq 64    ; bitboards
-;WhiteDoubledPawns rq 64
-;BlackDoubledPawns rq 64
-
+EndgameEval_Map        rb 2*ENDGAME_EVAL_MAX_INDEX*sizeof.EndgameMapEntry
+EndgameScale_Map       rb 2*ENDGAME_SCALE_MAX_INDEX*sizeof.EndgameMapEntry
+EndgameEval_FxnTable   rd ENDGAME_EVAL_MAX_INDEX
+EndgameScale_FxnTable  rd ENDGAME_SCALE_MAX_INDEX
+KPKEndgameTable   rq 48*64
+PushToEdges   rb 64
+PushToCorners rb 64
+PushClose     rb 8
+PushAway      rb 8
+KRPPKRPScaleFactors rb 8
 
 
 
@@ -362,12 +355,14 @@ include 'QSearchMacros.asm'
 include 'MainHashMacros.asm'
 include 'PosIsDrawMacro.asm'
 
+
+
 include 'Pawn.asm'
 
 include 'Endgame.asm'
 
 include 'CheckTime.asm'
-include 'DoNullMove.asm'
+include 'Move_DoNull.asm'
 include 'Evaluate.asm'
 include 'MainHash_Probe.asm'
 include 'QSearch.asm'
@@ -377,9 +372,9 @@ include 'UpdateStats.asm'
 include 'AttackersTo.asm'
 include 'SetCheckInfo.asm'
 include 'SetPinned.asm'
-include 'DoMove.asm'
-include 'GivesCheck.asm'
-include 'UndoMove.asm'
+include 'Move_Do.asm'
+include 'Move_GivesCheck.asm'
+include 'Move_Undo.asm'
 include 'Gen_NonEvasions.asm'
 include 'Gen_Legal.asm'
 include 'Gen_Evasions.asm'
@@ -391,8 +386,8 @@ include 'Gen_Quiets.asm'
 include 'Gen_QuietChecks.asm'
 include 'Gen_Captures.asm'
 
-include 'IsMoveLegal.asm'
-include 'IsMovePseudoLegal.asm'
+include 'Move_IsLegal.asm'
+include 'Move_IsPseudoLegal.asm'
 include 'MovePick.asm'
 include 'See.asm'
 include 'EasyMoveMng.asm'
@@ -418,15 +413,9 @@ include 'OsWindows.asm'
 Start:
 	       push   rbp
 
-
 	       call   _SetStdHandles
 	       call   _SetFrequency
 	       call   _CheckCPU
-
-match =1, VERBOSE {
-	       call   _GetTime
-		mov   qword[VerboseTime1+8*0], rdx
-		mov   qword[VerboseTime1+8*1], rax  }
 
 	; init input buffer
 		mov   ecx, 4096
@@ -434,10 +423,16 @@ match =1, VERBOSE {
 	       call   _VirtualAlloc
 		mov   qword[InputBuffer], rax
 
+VerboseDisplay <db ' ******** Verbosity ON !! **********',10,0>
+match =1, VERBOSE {
+	       call   _GetTime
+		mov   qword[VerboseTime1+8*0], rdx
+		mov   qword[VerboseTime1+8*1], rax  }
+
 	; init the engine
 	       call   Options_Init
-	       call   BitBoard_Init
 	       call   MoveGen_Init
+	       call   BitBoard_Init
 	       call   Position_Init
 	       call   BitTable_Init
 	       call   Search_Init
@@ -455,7 +450,7 @@ match =1, VERBOSE {
 
 	; write engine name
 match =1, VERBOSE {
-		lea   rdi, [Output]
+		lea   rdi, [VerboseOutput]
 		mov   rax, 'response'
 	      stosq
 		mov   rax, ' time:  '
@@ -472,7 +467,8 @@ match =1, VERBOSE {
 	       call   PrintUnsignedInteger
 		mov   eax, ' us' + (10 shl 24)
 	      stosd
-	       call   _WriteOut_Output	    ; display how much time was taken for init
+		lea   rcx, [VerboseOutput]
+	       call   _WriteOut 		; display how much time was taken for init
 }
 		lea   rdi, [Output]
 		lea   rcx, [szGreeting]
@@ -487,10 +483,10 @@ match =1, VERBOSE {
 		mov   qword[VerboseTime1+8*0], rdx
 		mov   qword[VerboseTime1+8*1], rax
 }
-	    stdcall   CmpStringCaseLess, 'quit'
+	    stdcall   CmpStringCaseless, 'quit'
 	       test   eax, eax
 		jnz   @f
-	    stdcall   CmpStringCaseLess, 'xboard'
+	    stdcall   CmpStringCaseless, 'xboard'
 		lea   rcx, [UciLoop]
 		lea   rdx, [XBoardLoop]
 	       test   eax, eax

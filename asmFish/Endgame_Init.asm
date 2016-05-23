@@ -10,11 +10,11 @@
 ;   bit 0 is considered the strong side
 ;   bits 1-7 give an integer 1-127 used as an index into a fxn lookup table
 ;    this assumes that there are no more than 127 endgame types, which is reasonable
-; when an endgame is called, this byte is put in ecx
+; when an endgame is called, this byte is put in ecx and then &ed with 1
 ;
-; the same function is used to handle KRBvKN as KNvKRB, so it is nec
-; to compute ecx&1 to find out the strong side
-;  ecx&1=0 for  KRBvKN,  ecx&1=1 for KNvKRB
+; the same function would be used to handle KRBvKN as KNvKRB, so it is nec
+; to use ecx to find out the strong side
+;  ecx=0 for  KRBvKN,  ecx=1 for KNvKRB
 ;
 ; We build two global tables (not per-thread) of sorted material keys
 ;  one for evaluation functions and one for scale functions
@@ -220,8 +220,55 @@ Endgame_Init:
 		mov   r8d, EndgameScale_KPKP_index
 		mov   dword[rbx+4*r8], eax
 
+		lea   rsi, [.PushToEdges]
+		lea   rdi, [PushToEdges]
+		mov   ecx, 64
+	  rep movsb
+		lea   rsi, [.PushToCorners]
+		lea   rdi, [PushToCorners]
+		mov   ecx, 64
+	  rep movsb
+		lea   rsi, [.PushClose]
+		lea   rdi, [PushClose]
+		mov   ecx, 8
+	  rep movsb
+		lea   rsi, [.PushClose]
+		lea   rdi, [PushAway]
+		mov   ecx, 8
+	  rep movsb
+		lea   rsi, [.KRPPKRPScaleFactors]
+		lea   rdi, [KRPPKRPScaleFactors]
+		mov   ecx, 8
+	  rep movsb
+
 		pop   rdi rsi rbx
 		ret
+
+.PushToEdges:
+db  100, 90, 80, 70, 70, 80, 90, 100
+db   90, 70, 60, 50, 50, 60, 70,  90
+db   80, 60, 40, 30, 30, 40, 60,  80
+db   70, 50, 30, 20, 20, 30, 50,  70
+db   70, 50, 30, 20, 20, 30, 50,  70
+db   80, 60, 40, 30, 30, 40, 60,  80
+db   90, 70, 60, 50, 50, 60, 70,  90
+db  100, 90, 80, 70, 70, 80, 90, 100
+
+
+.PushToCorners:
+db    200, 190, 180, 170, 160, 150, 140, 130
+db    190, 180, 170, 160, 150, 140, 130, 140
+db    180, 170, 155, 140, 140, 125, 140, 150
+db    170, 160, 140, 120, 110, 140, 150, 160
+db    160, 150, 140, 110, 120, 140, 160, 170
+db    150, 140, 125, 140, 140, 155, 170, 180
+db    140, 130, 140, 150, 160, 170, 180, 190
+db    130, 140, 150, 160, 170, 180, 190, 200
+
+
+.PushClose: db	0, 0, 100, 80, 60, 40, 20, 10
+.PushAway: db  0, 5, 20, 40, 60, 80, 90, 100
+.KRPPKRPScaleFactors: db 0, 9, 10, 14, 21, 44, 0, 0
 
 .Map_Insert:
 	; in: rcx hash with strongside=0
