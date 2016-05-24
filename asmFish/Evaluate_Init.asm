@@ -7,9 +7,9 @@ Evaluate_Init:
 	mov	r9d, 7700
 	lea	r10, [KingDanger]
 	mov	r11d, 47410
-	jmp	?_0055
+	jmp	._0055
 
-?_0054: imul	eax, eax
+._0054: imul	eax, eax
 	add	ecx, 322
 	lea	edx, [rax-10H]
 	cmp	edx, ecx
@@ -17,14 +17,14 @@ Evaluate_Init:
 	cmp	ecx, 47410
 	cmovge	ecx, r11d
 	add	r8, 1
-?_0055: imul	eax, ecx, 268
+._0055: imul	eax, ecx, 268
 	cdq
 	idiv	r9d
 	shl	eax, 16
 	cmp	r8, 399
 	mov	dword [r10+r8*4], eax
 	lea	eax, [r8+1H]
-	jnz	?_0054
+	jnz	._0054
 
 		lea  rsi, [.MobilityBonus_Knight]
 		lea  rdi, [MobilityBonus_Knight]

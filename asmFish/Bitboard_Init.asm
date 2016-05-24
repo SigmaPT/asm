@@ -10,13 +10,6 @@ BitBoard_Init:
 	       call   Init_SquareDistance_DistanceRingBB
 	       call   Init_BetweenBB_LineBB
 
-if 0
-	       call   Init_IsolatedPawns
-	       call   Init_WhiteDoubledPawns
-	       call   Init_BlackDoubledPawns
-	       call   Init_WhitePassedPawns
-	       call   Init_BlackPassedPawns
-end if
 		pop   r15 r14 r13 r12 r11 rdi rsi rbx rbp
 		ret
 
@@ -65,7 +58,7 @@ Init_ForwardBB_PawnAttackSpan_PassedPawnMask:
 		lea   r11, [AdjacentFilesBB]
 		xor   r13d, r13d
 		xor   r14d, r14d
-?_0017: 	lea   rcx, [ForwardBB]
+._0017: 	lea   rcx, [ForwardBB]
 	     movsxd   r10, r14d
 		xor   r8d, r8d
 		lea   r15, [PawnAttackSpan]
@@ -74,7 +67,7 @@ Init_ForwardBB_PawnAttackSpan_PassedPawnMask:
 		lea   r12, [rcx+r13]
 		lea   rdi, [r15+r13]
 		lea   rsi, [rax+r13]
-?_0018: 	mov   rdx, r8
+._0018: 	mov   rdx, r8
 		shr   rdx, 3
 		mov   ecx, edx
 		add   rcx, r10
@@ -94,13 +87,13 @@ Init_ForwardBB_PawnAttackSpan_PassedPawnMask:
 		mov   qword[rsi+r8*8], rax
 		add   r8, 1
 		cmp   r8, 64
-		jnz   ?_0018
+		jnz   ._0018
 		add   r13, 512
 		sub   r14d, 1
-		jne   ?_0029
+		jne   ._0029
 		ret
-?_0029: 	mov   r14d, 1
-		jmp   ?_0017
+._0029: 	mov   r14d, 1
+		jmp   ._0017
 
 
 
@@ -108,23 +101,23 @@ Init_AdjacentFilesBB:
 		lea   r9, [FileBB]
 		lea   r11, [AdjacentFilesBB]
 		xor   eax, eax
-?_0013:        test   rax, rax
-		 je   ?_0038
+._0013:        test   rax, rax
+		 je   ._0038
 		lea   esi, [rax-1]
 		cmp   eax, 7
 		mov   rdx, qword[r9+rsi*8]
-		 je   ?_0037
-?_0014: 	lea   rdi, [FileBB+8]
+		 je   ._0037
+._0014: 	lea   rdi, [FileBB+8]
 		 or   rdx, qword[rdi+rax*8]
 		mov   qword[r11+rax*8], rdx
 		add   rax, 1
 		cmp   rax, 8
-		jnz   ?_0013
-?_0015: 	ret
-?_0037: 	mov   qword[AdjacentFilesBB+56], rdx
-		jmp   ?_0015
-?_0038: 	xor   edx, edx
-		jmp   ?_0014
+		jnz   ._0013
+._0015: 	ret
+._0037: 	mov   qword[AdjacentFilesBB+56], rdx
+		jmp   ._0015
+._0038: 	xor   edx, edx
+		jmp   ._0014
 
 
 Init_BetweenBB_LineBB:
@@ -244,160 +237,4 @@ Init_SquareDistance_DistanceRingBB:
 
 
 
-
-
-
-
-
-if 0
-
-Init_IsolatedPawns:
-	; files on either side pawns
-		xor  r15d,r15d
-.NextPawn:	xor  r13,r13
-		xor  r14,r14
-.NextSquare:	mov  eax,r15d
-		and  eax,7
-		mov  ecx,r14d
-		and  ecx,7
-		sub  eax,ecx
-		cmp  eax,1
-		 jg  @f
-		cmp  eax,-1
-		 jl  @f
-		cmp  eax,0
-		 je  @f
-		bts  r13,r14
-	@@:	add  r14d,1
-		cmp  r14d,64
-		 jb  .NextSquare
-		mov  qword[IsolatedPawns+8*r15],r13
-		add  r15d,1
-		cmp  r15d,64
-		 jb  .NextPawn
-		ret
-
-
-
-
-
-Init_WhiteDoubledPawns:
-	; same file in back
-		xor   r15d,r15d
-.NextPawn:	xor   r13,r13
-		xor   r14,r14
-.NextSquare:	mov   eax,r15d
-		and   eax,7
-		mov   ecx,r14d
-		and   ecx,7
-		cmp   eax,ecx
-		jne   @f
-		mov   eax,r15d
-		shr   eax,3
-		mov   ecx,r14d
-		shr   ecx,3
-		cmp   ecx,eax
-		jbe   @f
-		bts   r13,r14
-	@@:	add   r14d,1
-		cmp   r14d,64
-		 jb   .NextSquare
-		mov   qword[WhiteDoubledPawns+8*r15],r13
-		add   r15d,1
-		cmp   r15d,64
-		 jb   .NextPawn
-		ret
-
-Init_BlackDoubledPawns:
-	; same file in front
-		xor   r15d,r15d
-.NextPawn:	xor   r13,r13
-		xor   r14,r14
-.NextSquare:	mov   eax,r15d
-		and   eax,7
-		mov   ecx,r14d
-		and   ecx,7
-		cmp   eax,ecx
-		jne   @f
-		mov   eax,r15d
-		shr   eax,3
-		mov   ecx,r14d
-		shr   ecx,3
-		cmp   ecx,eax
-		jae   @f
-		bts   r13,r14
-	@@:	add   r14d,1
-		cmp   r14d,64
-		 jb   .NextSquare
-		mov   qword[BlackDoubledPawns+8*r15],r13
-		add   r15d,1
-		cmp   r15d,64
-		 jb   .NextPawn
-		ret
-
-
-
-
-Init_WhitePassedPawns:
-	; three closest files in front
-			xor  r15d,r15d
-    .NextPawn:		xor  r13,r13
-			xor  r14,r14
-	.NextSquare:	mov  eax,r15d
-			and  eax,7
-			mov  ecx,r14d
-			and  ecx,7
-			sub  eax,ecx
-			cmp  eax,1
-			 jg  @f
-			cmp  eax,-1
-			 jl  @f
-			mov  eax,r15d
-			shr  eax,3
-			mov  ecx,r14d
-			shr  ecx,3
-			cmp  ecx,eax
-			jbe  @f
-			bts  r13,r14
-		@@:	add  r14d,1
-			cmp  r14d,64
-			 jb  .NextSquare
-			mov  qword[WhitePassedPawns+8*r15],r13
-			add  r15d,1
-			cmp  r15d,64
-			 jb  .NextPawn
-		ret
-
-
-Init_BlackPassedPawns:
-	; three closest files in back
-			xor  r15d,r15d
-    .NextPawn:		xor  r13,r13
-			xor  r14,r14
-	.NextSquare:	mov  eax,r15d
-			and  eax,7
-			mov  ecx,r14d
-			and  ecx,7
-			sub  eax,ecx
-			cmp  eax,1
-			 jg  @f
-			cmp  eax,-1
-			 jl  @f
-			mov  eax,r15d
-			shr  eax,3
-			mov  ecx,r14d
-			shr  ecx,3
-			cmp  ecx,eax
-			jae  @f
-			bts  r13,r14
-		@@:	add  r14d,1
-			cmp  r14d,64
-			 jb  .NextSquare
-			mov  qword[BlackPassedPawns+8*r15],r13
-		add  r15d,1
-		cmp  r15d,64
-		 jb  .NextPawn
-		ret
-
-end if
 
