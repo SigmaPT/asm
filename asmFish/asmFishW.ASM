@@ -342,6 +342,10 @@ KRPPKRPScaleFactors rb 8
 
 
 
+section '.tb' data readable writeable
+
+include 'TablebaseData.asm'
+
 
 
 section '.code' code readable executable
@@ -410,6 +414,10 @@ include 'Math.asm'
 
 include 'OsWindows.asm'
 
+include 'TablebaseProbe.asm'
+include 'TablebaseCore.asm'
+
+
 Start:
 	       push   rbp
 
@@ -440,10 +448,12 @@ match =1, VERBOSE {
 	       call   Pawn_Init
 	       call   Endgame_Init
 
-	; set up threads and hash
+	; set up threads, hash, and table bases
 		mov   ecx, dword[options.hash]
 	       call   MainHash_Allocate
 	       call   ThreadPool_Create
+		lea   rcx, [options.syzygyPath]
+	       call   _ZN13TablebaseCore4initEPKc
 
 	; command line could contain settings for threads and hash
 	       call   ParseCommandLine
@@ -494,7 +504,11 @@ match =1, VERBOSE {
 	       call   rcx
 	@@:
 
-	; clean up threads and hash
+	; clean up threads, hash, and tablebases
+		lea   rcx, [options.syzygyPath]
+		mov   rax, '<empty>'
+		mov   qword[rcx], rax
+	       call   _ZN13TablebaseCore4initEPKc  ; don't know of another way to clean up tabebases
 	       call   ThreadPool_Destroy
 	       call   MainHash_Free
 
@@ -526,11 +540,15 @@ include 'Endgame_Init.asm'
 
 section '.idata' import data readable writeable
 
- library kernel,'KERNEL32.DLL'
+ library kernel,'KERNEL32.DLL',\
+	 msvcrt,'MSVCRT.DLL'
 
 import kernel,\
+	__imp_CreateFileA,'CreateFileA',\
+	__imp_CreateMutexA,'CreateMutexA',\
 	__imp_CloseHandle,'CloseHandle',\
 	__imp_CreateEvent,'CreateEventA',\
+	__imp_CreateFileMappingA,'CreateFileMappingA',\
 	__imp_CreateThread,'CreateThread',\
 	__imp_DeleteCriticalSection,'DeleteCriticalSection',\
 	__imp_EnterCriticalSection,'EnterCriticalSection',\
@@ -538,20 +556,38 @@ import kernel,\
 	__imp_ExitThread,'ExitThread',\
 	__imp_GetCommandLine,'GetCommandLineA',\
 	__imp_GetCurrentProcess,'GetCurrentProcess',\
+	__imp_GetFileSize,'GetFileSize',\
+	__imp_GetLastError,'GetLastError',\
 	__imp_GetProcAddress,'GetProcAddress',\
 	__imp_GetProcessAffinityMask,'GetProcessAffinityMask',\
 	__imp_GetStdHandle,'GetStdHandle',\
 	__imp_InitializeCriticalSection,'InitializeCriticalSection',\
 	__imp_LeaveCriticalSection,'LeaveCriticalSection',\
 	__imp_LoadLibrary,'LoadLibraryA',\
+	__imp_MapViewOfFile,'MapViewOfFile',\
 	__imp_QueryPerformanceCounter,'QueryPerformanceCounter',\
 	__imp_QueryPerformanceFrequency,'QueryPerformanceFrequency',\
 	__imp_ReadFile,'ReadFile',\
+	__imp_ReleaseMutex,'ReleaseMutex',\
 	__imp_SetEvent,'SetEvent',\
 	__imp_SetThreadAffinityMask,'SetThreadAffinityMask',\
 	__imp_Sleep,'Sleep',\
+	__imp_UnmapViewOfFile, 'UnmapViewOfFile',\
 	__imp_VirtualAlloc,'VirtualAlloc',\
 	__imp_VirtualFree,'VirtualFree',\
 	__imp_WaitForSingleObject,'WaitForSingleObject',\
 	__imp_WriteFile,'WriteFile'
+
+; we need this for free and malloc in tablebase code
+; in future, should create custom free and malloc for tablebase code
+import msvcrt,\
+__imp_free,'free',\
+__imp_malloc,'malloc',\
+__imp_printf,'printf',\
+__imp_puts,'puts',\
+__imp_strcat,'strcat',\
+__imp_strcpy,'strcpy',\
+__imp_strcmp,'strcmp',\
+__imp_memset,'memset',\
+__imp_memmove,'memmove'
 
