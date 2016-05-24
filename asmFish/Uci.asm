@@ -1,14 +1,16 @@
 Options_Init:
-		lea   rax, [options]
+		lea   rdx, [options]
 		lea   rcx, [Position_WriteOutInfo_Uci]
-		mov   qword[rax+Options.printFxn], rcx
-		mov   dword[rax+Options.hash], 16
-		mov   dword[rax+Options.multiPV], 1
-		mov   dword[rax+Options.slowMover], 80
-		mov   dword[rax+Options.minThinkTime], 20
-		mov   dword[rax+Options.threads], 1
-		mov   dword[rax+Options.weakness], 0
-		mov   dword[rax+Options.chess960], 0
+		mov   qword[rdx+Options.printFxn], rcx
+		mov   dword[rdx+Options.hash], 16
+		mov   dword[rdx+Options.multiPV], 1
+		mov   dword[rdx+Options.slowMover], 80
+		mov   dword[rdx+Options.minThinkTime], 20
+		mov   dword[rdx+Options.threads], 1
+		mov   dword[rdx+Options.weakness], 0
+		mov   dword[rdx+Options.chess960], 0
+		mov   rax, '<empty>'
+		mov   qword[rdx+Options.syzygyPath], rax
 		ret
 
 

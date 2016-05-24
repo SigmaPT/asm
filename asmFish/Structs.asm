@@ -169,6 +169,7 @@ match =1, DEBUG {
 ends
 
 
+
 ; Since the original State struct is used in a stack like fasion
 ;  with the Stack struct, these are combined into one struct
 ; Also, the CheckInfo struct can be harmlessly moved here too
@@ -246,6 +247,7 @@ struct Options
  ponder 	rb 1
 		rb 3
 		rb 4
+ syzygyPath	rb 64
 ends
 
 

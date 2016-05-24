@@ -1,3 +1,7 @@
+g++ "C:\Users\pc\Dropbox\asm\SF\syzygy\tbcore.cpp" -c -std=c++11 -Os -o "C:\Users\pc\Dropbox\asm\SF\syzygy\tbcore.o"
+C:\Users\pc>"C:\Users\pc\Downloads\objconv\objconv.exe" -fyasm "C:\Users\pc\Dropbox\asm\SF\syzygy\tbcore.o" "C:\Users\pc\Dropbox\asm\SF\syzygy\tbcore.asm"
+
+
 uci
 position fen 8/3k4/8/4K3/6P1/8/8/8 b - - 0 1
 go depth 4
