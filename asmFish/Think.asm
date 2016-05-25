@@ -1,22 +1,23 @@
 MainThread_Think:
 	; in: rcx address of Thread struct   should be mainThread
 
-	       push   rbx rsi rdi
+	       push   rbp rbx rsi rdi r15
 virtual at rsp
   .output rb 32
   .lend rb 0
 end virtual
 .lsize = ((.lend-rsp+15) and (-16))
 		sub   rsp, .lsize
-		mov   rbx, rcx
+		lea   rbp, [rcx+Thread.rootPos]
+		mov   rbx, qword[rbp+Pos.state]
 
      VerboseDisplay   <db 'MainThread_Think',10>
 
-		mov   ecx, dword[rbx+Thread.rootPos+Pos.sideToMove]
-		mov   edx, dword[rbx+Thread.rootPos+Pos.gamePly]
+		mov   ecx, dword[rbp+Pos.sideToMove]
+		mov   edx, dword[rbp+Pos.gamePly]
 	       call   TimeMng_Init
 
-		mov   eax, dword[rbx+Thread.rootPos+Pos.sideToMove]
+		mov   eax, dword[rbp+Pos.sideToMove]
 		mov   ecx, VALUE_DRAW
 		sub   ecx, dword[options.contempt]
 		mov   dword[DrawValue+4*rax], ecx
@@ -26,17 +27,33 @@ end virtual
 		mov   dword[DrawValue+4*rax], ecx
 		add   byte[mainHash.date], 4
 
-;call   Search_Clear
-
+	; Skip TB probing when no TB found
+		mov   eax, dword[Tablebase_Cardinality]
+		mov   ecx, dword[Tablebase_ProbeDepth]
+		xor   edx, edx
+		cmp   eax, dword[Tablebase_MaxCardinality]
+	      cmovg   eax, dword[Tablebase_MaxCardinality]
+	      cmovg   ecx, edx
+		mov   dword[Tablebase_Cardinality], eax
+		mov   dword[Tablebase_ProbeDepth], ecx
 
 	; check for mate
-		lea   rcx, [rbx+Thread.rootPos+Pos.rootMovesVec]
-	       call   RootMovesVec_Empty
-	       test   eax, eax
-		jnz   .mate
+		mov   r8, qword[rbp+Pos.rootMovesVec+RootMovesVec.ender]
+		cmp   r8, qword[rbp+Pos.rootMovesVec+RootMovesVec.table]
+		 je   .mate
+
+	; check tb
+		mov   rcx, qword[rbp+Pos.typeBB+8*White]
+		 or   rcx, qword[rbp+Pos.typeBB+8*Black]
+	     popcnt   rcx, rcx, rdx
+		sub   eax, ecx
+		sar   eax, 31
+		 or   al, byte[rbx+State.castlingRights]
+		 jz   .check_tb
+.check_tb_ret:
 
 	; start workers
-		mov   rsi, rbx
+		lea   rsi, [rbp-Thread.rootPos]
     .next_worker:
 		sub   rsi, sizeof.Thread
 		cmp   rsi, qword[threadPool.stackPointer]
@@ -47,10 +64,9 @@ end virtual
     .workers_done:
 
 	; start searching
-		mov   rcx, rbx
+		lea   rcx, [rbp-Thread.rootPos]
 		lea   rdx, [.output]
 	       call   Thread_Think
-;invoke MessageBoxA,0,'Thread_Think returned','caption',MB_OK
 
 .search_done:
 
@@ -64,7 +80,7 @@ end virtual
 		 jz   .dont_wait
 		mov   byte[signals.stopOnPonderhit], al
 
-		mov   rcx, rbx
+		lea   rcx, [rbp-Thread.rootPos]
 		lea   rdx, [signals.stop]
 	       call   Thread_Wait
 
@@ -74,7 +90,7 @@ end virtual
 		mov   byte[signals.stop], al
 
 	; wait for workers
-		mov   rsi, rbx
+		lea   rsi, [rbp-Thread.rootPos]
 	.next_worker2:
 		sub   rsi, sizeof.Thread
 		cmp   rsi, qword[threadPool.stackPointer]
@@ -86,46 +102,40 @@ end virtual
 
 
 	; find best thread  rsi
-		mov   rsi, rbx
-		mov   al, byte[rbx+Thread.easyMovePlayed]
-	       test   al, al
-		jnz   .best_done
+		lea   rsi, [rbp-Thread.rootPos]
 		mov   eax, dword[options.multiPV]
-		cmp   eax, 1
+		sub   eax, 1
+		 or   eax, dword[limits.depth]
+		 or   al, byte[rbp-Thread.rootPos+Thread.easyMovePlayed]
 		jne   .best_done
-	      ;  mov   eax, dword[uciOptions.multiPV]
-	      ; test   eax, eax
-	      ;  jnz   .best_done
-		mov   rcx, qword[rsi+Thread.rootPos+Pos.rootMovesVec+RootMovesVec.table]
-		mov   ecx, dword[rsi+0*sizeof.RootMove+RootMove.pv+4*0]
+		mov   rcx, qword[rbp+Pos.rootMovesVec+RootMovesVec.table]
+		mov   ecx, dword[rcx+0*sizeof.RootMove+RootMove.pv+4*0]
 	       test   ecx, ecx
 		 jz   .best_done
-		mov   rdi, rbx
-		mov   r8d, dword[rbx+Thread.completedDepth]
-		mov   r9, qword[rbx+Thread.rootPos+Pos.rootMovesVec+RootMovesVec.table]
+		mov   rdi, rsi
+		mov   r8d, dword[rsi+Thread.completedDepth]
+		mov   r9, qword[rsi+Thread.rootPos+Pos.rootMovesVec+RootMovesVec.table]
 		mov   r9d, dword[r9+0*sizeof.RootMove+RootMove.score]
 	.next_worker3:
 		sub   rdi, sizeof.Thread
 		cmp   rdi, qword[threadPool.stackPointer]
 		 jb   .workers_done3
 		mov   eax, dword[rdi+Thread.completedDepth]
-		mov   rcx, qword[rbx+Thread.rootPos+Pos.rootMovesVec+RootMovesVec.table]
+		mov   rcx, qword[rdi+Thread.rootPos+Pos.rootMovesVec+RootMovesVec.table]
 		mov   ecx, dword[rcx+0*sizeof.RootMove+RootMove.score]
 		cmp   eax, r8d
-		jbe   .next_worker3
+		jle   .next_worker3
 		cmp   ecx, r9d
 		jle   .next_worker3
-		mov   eax, r8d
-		mov   ecx, r9d
+		mov   r8d, eax
+		mov   r9d, ecx
 		mov   rsi, rdi
 		jmp   .next_worker3
 	.workers_done3:
-	.best_done:
-		mov   r9, qword[rsi+Thread.rootPos+Pos.rootMovesVec+RootMovesVec.table]
-		mov   r9d, dword[r9+0*sizeof.RootMove+RootMove.score]
-		mov   dword[rbx+Thread.previousScore], r9d
+.best_done:
 
-		cmp   rsi, rbx
+		mov   dword[rbp-Thread.rootPos+Thread.previousScore], r9d
+		cmp   rsi, mainThread
 		 je   .dont_send_pv
 
 
@@ -171,7 +181,7 @@ end virtual
 
 
 		add   rsp, .lsize
-		pop   rdi rsi rbx
+		pop   r15 rdi rsi rbx rbp
 		ret
 
 
@@ -206,6 +216,34 @@ end virtual
 		jnz   .have_ponder_from_tt
 		jmp   .skip_ponder
 
+.check_tb:
+	       call   Tablebase_RootProbe
+		mov   byte[Tablebase_RootInTB], al
+		xor   edx, edx
+	       test   eax, eax
+		jnz   .root_in
+	       call   Tablebase_RootProbeWDL
+		mov   byte[Tablebase_RootInTB], al
+		xor   edx, edx
+		cmp   edx, dword[Tablebase_Score]
+	      cmovg   edx, dword[Tablebase_Cardinality]
+ .root_in:
+		lea   rcx, [rbp+Pos.rootMovesVec]
+		mov   dword[Tablebase_Cardinality], edx
+	       call   RootMovesVec_Size
+		mov   dword[Tablebase_Hits], eax
+		mov   dl, byte[Tablebase_UseRule50]
+		mov   eax, dword[Tablebase_Score]
+	       test   dl, dl
+		jnz   .check_tb_ret
+		mov   ecx, VALUE_MATE - MAX_PLY - 1
+		cmp   eax, 0
+	      cmovg   eax, ecx
+		neg   ecx
+		cmp   eax, 0
+	      cmovl   eax, ecx
+		mov   dword[Tablebase_Score], eax
+		jmp   .check_tb_ret
 
 
 

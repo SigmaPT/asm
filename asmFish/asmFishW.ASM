@@ -337,6 +337,15 @@ PushClose     rb 8
 PushAway      rb 8
 KRPPKRPScaleFactors rb 8
 
+;;;;;;;;;;;;;;;;;;;;; data for tablebase ;;;;;;;;;;;;;;
+align 16
+Tablebase_Hits rq 1
+Tablebase_Cardinality rd 1
+Tablebase_MaxCardinality rd 1
+Tablebase_ProbeDepth  rd 1
+Tablebase_Score  rd 1
+Tablebase_RootInTB  rb 1
+Tablebase_UseRule50 rb 1    ; boole 0 or 1
 
 
 
@@ -414,7 +423,7 @@ include 'Math.asm'
 
 include 'OsWindows.asm'
 
-include 'TablebaseProbe.asm'
+include 'Tablebase.asm'
 include 'TablebaseCore.asm'
 
 
@@ -448,12 +457,12 @@ match =1, VERBOSE {
 	       call   Pawn_Init
 	       call   Endgame_Init
 
-	; set up threads, hash, and table bases
+	; set up threads, hash, and tablebases
 		mov   ecx, dword[options.hash]
 	       call   MainHash_Allocate
 	       call   ThreadPool_Create
 		lea   rcx, [options.syzygyPath]
-	       call   _ZN13TablebaseCore4initEPKc
+	       call   TableBase_Init
 
 	; command line could contain settings for threads and hash
 	       call   ParseCommandLine
@@ -508,7 +517,7 @@ match =1, VERBOSE {
 		lea   rcx, [options.syzygyPath]
 		mov   rax, '<empty>'
 		mov   qword[rcx], rax
-	       call   _ZN13TablebaseCore4initEPKc  ; don't know of another way to clean up tabebases
+	       call   TableBase_Init  ; don't know of another way to clean up tabebases
 	       call   ThreadPool_Destroy
 	       call   MainHash_Free
 

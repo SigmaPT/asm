@@ -220,7 +220,19 @@ match =1, DEBUG \{
 		mov   dword[rbx+2*sizeof.State+State.killers+4*0], eax
 		mov   dword[rbx+2*sizeof.State+State.killers+4*1], eax
 
-
+    if .RootNode eq 0
+	; get a count of the piece for tb
+		mov   rax, qword[rbp+Pos.typeBB+8*White]
+		 or   rax, qword[rbp+Pos.typeBB+8*Black]
+	     popcnt   rax, rax, rdx
+		mov   r15d, dword[Tablebase_Cardinality]
+		sub   r15d, eax
+		mov   eax, dword[rbx+State.rule50]
+		and   eax, 0x00FF00FF
+		neg   eax
+		 or   r15d, eax
+	; if r15d <0, don't do tb probe
+    end if
 
 	; Step 4. transposition table look up
 		mov   eax, dword[rbx+State.excludedMove]
@@ -269,6 +281,13 @@ match =1, DEBUG \{
     end if
 
 .DontReturnTTValue:
+
+    if .RootNode eq 0
+	; Step 4a. Tablebase probe
+	       test   r15, r15
+		jns   .CheckTablebase
+.CheckTablebaseReturn:
+    end if
 
 	; step 5. evaluate the position statically
 		mov   eax, VALUE_NONE
@@ -1545,13 +1564,68 @@ end if
 		mov   dword [.ttValue], edi
 		jmp   .ValueFromTTRet
 
-	if .RootNode eq 0
-		      align   8
+    if .RootNode eq 0
+	      align   8
 .CheckDrawBy50:
-	   PosIsDrawCheck50   .AbortSearch_PlySmaller, r8
-			jmp   .NoDrawBy50
+   PosIsDrawCheck50   .AbortSearch_PlySmaller, r8
+		jmp   .NoDrawBy50
 
-	end if
+
+
+
+	      align 8
+.CheckTablebase:
+	; r14 =  TB::Cardinality - piecesCnt
+		mov   ecx, dword[.depth]
+		mov   rax, qword[rbp+Pos.typeBB+8*White]
+		 or   rax, qword[rbp+Pos.typeBB+8*Black]
+	     popcnt   rax, rax, rdx
+		cmp   ecx, dword[Tablebase_ProbeDepth]
+		jge   .DoTbProbe
+		cmp   eax, dword[Tablebase_Cardinality]
+		jge   .CheckTablebaseReturn
+.DoTbProbe:
+
+		mov   rcx, rbp
+		sub   rsp, 16
+		lea   rdx, [rsp]
+	       call   Tablebase_ProbeWDL
+		mov   edx, dword[rsp+8*6]
+		add   rsp, 16
+	       test   edx, edx
+		 jz   .CheckTablebaseReturn
+
+	      movzx   ecx, byte[Tablebase_UseRule50]
+
+		lea   edx, [2*rax]
+	       imul   edx, ecx
+
+		mov   r8d, VALUE_MATE - MAX_PLY
+		cmp   eax, ecx
+	      cmovg   edx, r8d
+		neg   ecx
+		mov   r8d, -VALUE_MATE + MAX_PLY
+		cmp   eax, ecx
+	      cmovl   edx, r8d
+
+		add   qword[Tablebase_Hits], 1
+		mov   r9, qword[.posKey]
+		lea   ecx, [rdi+VALUE_MATE_IN_MAX_PLY]
+		mov   r8, qword[.tte]
+		shr   r9, 48
+		mov   edi, edx
+		mov   eax, MAX_PLY - 1
+		mov   esi, dword[.depth]
+		add   esi, 6
+		cmp   esi, eax
+	      cmovg   esi, eax
+		xor   eax, eax
+     HashTable_Save   r8, r9w, edx, BOUND_EXACT, sil, eax, 0
+		mov   eax, edi
+		jmp   .Return
+    end if
+
+
 
 }
 

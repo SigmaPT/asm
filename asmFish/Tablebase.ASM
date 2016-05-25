@@ -1,7 +1,10 @@
 
+TableBase_Init:
+		jmp   _ZN13TablebaseCore4initEPKc
 
 
-Tablebase_probe_ab:
+
+Tablebase_ProbeAB:
 	; in: rbp address of position
 	;     rbx address of state
 	;     ecx  alpha
@@ -12,10 +15,10 @@ Tablebase_probe_ab:
 	       push   rsi rdi r13 r14 r15
 virtual at rsp
   .stack rb 64*sizeof.ExtMove
-  .lend rb 0
+  .localend rb 0
 end virtual
-.lsize = ((.lend-rsp+15) and (-16))
-		sub   rsp, .lsize
+.localsize = ((.localend-rsp+15) and (-16))
+		sub   rsp, .localsize
 		mov   rax, qword[rbx+State.checkersBB]
 		mov   r14d, ecx
 		mov   r15d, edx
@@ -23,9 +26,8 @@ end virtual
 		lea   rdi, [.stack]
 	       test   rax, rax
 		jnz   .InCheck
-.NotInCheck:
-	       call   Gen_Captures
-		lea   rsi, [rdi-8]
+.NotInCheck:   call   Gen_Captures
+		lea   rsi, [.stack-8]
 		mov   rdx, rdi
 .NextMove:	add   rsi, 8
 		mov   ecx, dword[rsi+ExtMove.move]
@@ -47,10 +49,9 @@ end virtual
 		sub   eax, 1 shl 12
 	      stosq
 		jmp   .NextMove
-.InCheck:
-	       call   Gen_Captures
-.GenDone:
-	       call   SetCheckInfo
+.InCheck:      call   Gen_Captures
+.GenDone:      call   SetCheckInfo
+
 		lea   rsi, [.stack-8]
 .MoveLoop:
 		add   rsi, 8
@@ -77,7 +78,7 @@ end virtual
 		neg   ecx
 		neg   edx
 		mov   r8, r13
-	       call   Tablebase_probe_ab
+	       call   Tablebase_ProbeAB
 		neg   eax
 	       push   rax
 		mov   ecx, dword[rsi+ExtMove.move]
@@ -105,29 +106,100 @@ end virtual
 		lea   edx, [rdx+1]
 		cmp   r14d, eax
 		 jl   .Return
-		sub   r14d, 1
+		neg   r14d
 		sar   r14d, 31
 		sub   edx, r14d
 .Return:
 		mov   dword[r13], edx
+		add   rsp, .localsize
 		pop   r15 r14 r13 rsi rdi
 		ret
 
 
 
 
-Tablebase_probe_wdl:
+Tablebase_ProbeWDL:
 	; in: rbp address of position
 	;     rbx address of state
 	;     rcx  address of success
 	; out: eax v
+	       push   r15
+		mov   r15, rcx
+		mov   r8, rcx
+		mov   ecx, -2
+		mov   edx, 2
+	       call   Tablebase_ProbeAB
+		mov   edx, dword[r15]
+		cmp   byte[rbx+State.epSquare], 64
+		 jb   .HaveEP
+.Return1:
+		pop   r15
+		ret
 
-	       int3
+.HaveEP:
+	       test   edx, edx
+	      cmovz   eax, edx
+		 jz   .Return1
+	       push   r14 r13 rsi rdi
+virtual at rsp
+  .stack rb 64*sizeof.ExtMove
+  .localend rb 0
+end virtual
+.localsize = ((.localend-rsp+15) and (-16))
+		sub   rsp, .localsize
+		mov   rcx, qword[rbx+State.checkersBB]
+		mov   r14d, -3
+		lea   rdi, [.stack]
+		mov   rsi, rdi
+	       test   rcx, rcx
+		jnz   .InCheck
+.NotInCheck:   call   Gen_Captures
+		jmp   .GenDone
+.InCheck:      call   Gen_Captures
+.GenDone:      call   SetCheckInfo
+
+		lea   rsi, [.stack-8]
+.MoveLoop:
+		add   rsi, 8
+		mov   ecx, dword[rsi+ExtMove.move]
+		cmp   rsi, rdi
+		jae   .MovesDone
+		cmp   ecx, MOVE_TYPE_EPCAP shl 12
+		 jb   .MoveLoop
+	       call   Move_IsLegal
+	       test   eax, eax
+		 jz   .MoveLoop
+		mov   ecx, dword[rsi+ExtMove.move]
+	       call   Move_GivesCheck
+		mov   ecx, dword[rsi+ExtMove.move]
+		mov   edx, eax
+	       call   Move_Do
+		mov   ecx, -2
+		mov   edx, 2
+		mov   r8, r15
+	       call   Tablebase_ProbeAB
+		neg   eax
+	       push   rax
+		mov   ecx, dword[rsi+ExtMove.move]
+	       call   Move_Undo
+		pop   rax
+		mov   edx, dword[r15]
+		cmp   r14d, r13d
+	       test   edx, edx
+	      cmovz   eax, edx
+		 jz   .Return2
+
+
+
+.Return2:
+		add   rsp, .localsize
+		pop   rdi rsi r13 r14
+		pop   r15
 		ret
 
 
 
-probe_dtz_no_ep:
+Tablebase_ProbeDTZNoEP:
 	; in: rbp address of position
 	;     rbx address of state
 	;     rcx  address of success
@@ -138,7 +210,7 @@ probe_dtz_no_ep:
 
 
 
-Tablebase_probe_dtz:
+Tablebase_ProbeDTZ:
 	; in: rbp address of position
 	;     rbx address of state
 	;     rcx  address of success
@@ -148,20 +220,20 @@ Tablebase_probe_dtz:
 		ret
 
 
-Tablebase_root_probe:
+Tablebase_RootProbe:
 	; in: rbp address of position
 	;     rbx address of state
-	;     rcx  address of score
 	; out: eax bool
+	;          score is in Tablebase_Score
 	       int3
 		ret
 
 
-Tablebase_root_probe_wdl:
+Tablebase_RootProbeWDL:
 	; in: rbp address of position
 	;     rbx address of state
-	;     rcx  address of score
 	; out: eax bool
+	;          score is in Tablebase_Score
 
 	       int3
 		ret
