@@ -135,6 +135,16 @@ align 8
  XBoardMode db 0
 
 
+align 4
+wdl_to_Value5:
+  dd  -VALUE_MATE + MAX_PLY + 1
+  dd VALUE_DRAW - 2
+  dd VALUE_DRAW
+  dd VALUE_DRAW + 2
+  dd VALUE_MATE - MAX_PLY - 1
+
+
+
  szGreeting	db 'asmFish '
  szDate:	create_build_time DAY, MONTH, YEAR
  szCPUTarget:
@@ -149,7 +159,7 @@ match =1, CPU_HAS_BMI2 {    db ' BMI2'	    }
  szUCIresponse	db 'id name asmFish '
 		create_build_time DAY, MONTH, YEAR
 		db 10
-		db 'id author fasm',10
+		db 'id author TypingALot',10
 		db 'option name Hash type spin min 1 max 65536 default 16',10
 		db 'option name MultiPV type spin min 1 max 64 default 1',10
 		db 'option name Ponder type check default false',10
@@ -167,9 +177,7 @@ match =1, CPU_HAS_BMI2 {    db ' BMI2'	    }
  szError	db 'error',10,0
  szStartFEN	db 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',0
  PieceToChar	db '.?PNBRQK??pnbrqk'
- ToLowerCase:	  ; use assembler to make table for case conversion
-
-
+ ToLowerCase:	  ; use assembler to make table for case conversion   not the best way to do this
 		db   0
 repeat 127
 	if (% >= 'A') & ( % <='Z')
@@ -188,11 +196,11 @@ match =1, OS_IS_WINDOWS {
  hStdOut     dq ?
  hStdIn      dq ?
  hStdError   dq ?
- __imp_MessageBoxA rq 1
+ __imp_MessageBoxA dq ?
 }
  InputBuffer	  dq ?	   ; input buffer has dynamic allocation
  InputBufferSizeB dq ?
- Output 	  rq 1024  ; output buffer has static allocation
+ Output 	  rb 1024  ; output buffer has static allocation
 
 
 
@@ -351,6 +359,7 @@ Tablebase_UseRule50 rb 1    ; boole 0 or 1
 
 
 
+;;;; make a section for tb   todo: this should be merged with previous two sections
 section '.tb' data readable writeable
 
 include 'TablebaseData.asm'

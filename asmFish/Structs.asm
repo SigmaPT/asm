@@ -16,10 +16,6 @@
 ; _VirtualAlloc is always called only from the GUI thread
 
 
-
-
-
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;
 ; evaluation structures
 ;;;;;;;;;;;;;;;;;;;;;;;;;

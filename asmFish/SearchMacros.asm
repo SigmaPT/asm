@@ -1585,18 +1585,15 @@ end if
 		cmp   eax, dword[Tablebase_Cardinality]
 		jge   .CheckTablebaseReturn
 .DoTbProbe:
-
 		mov   rcx, rbp
-		sub   rsp, 16
-		lea   rdx, [rsp]
+	       push   rax rdx		    ; we could be sneaky and stick
+		mov   rdx, rsp		    ;  this address in the current stack
 	       call   Tablebase_ProbeWDL
-		mov   edx, dword[rsp+8*6]
-		add   rsp, 16
-	       test   edx, edx
+		pop   rdx rcx		    ; however, lets just do something straightforward
+	       test   edx, edx		    ;
 		 jz   .CheckTablebaseReturn
 
 	      movzx   ecx, byte[Tablebase_UseRule50]
-
 		lea   edx, [2*rax]
 	       imul   edx, ecx
 

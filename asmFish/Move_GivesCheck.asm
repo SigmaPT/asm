@@ -1,7 +1,3 @@
-;;;;;;;;;;;;;;;;;;
-; Gives Check    ;
-;;;;;;;;;;;;;;;;;;
-
 	      align   64
 Move_GivesCheck:
 	; in:  rbp  address of Pos
@@ -9,7 +5,6 @@ Move_GivesCheck:
 	;      ecx  move
 	; out: eax =  0 if does not give check
 	;      eax = -1 if does give check
-	;
 
 	       push   rsi rdi
 		mov   esi, dword[rbp+Pos.sideToMove]
@@ -22,7 +17,7 @@ Move_GivesCheck:
 
 	      movzx   r10d, byte[rbp+Pos.board+r8]     ; r10 = FROM PIECE
 	     ; movzx   r11d, byte [rbp+Pos.board+r9]     ; r11 = TO PIECE
-	      movzx   rdi, byte[rbx+State.ksq]
+	      movzx   edi, byte[rbx+State.ksq]
 
 		 or   eax, -1
 
@@ -57,7 +52,7 @@ Move_GivesCheck:
 		jmp   rax
 
 
-align 8
+	      align   8
 .JmpTable:   dd .Error-Move_GivesCheck
 	     dd .Error-Move_GivesCheck
 	     dd .PromKnight-Move_GivesCheck

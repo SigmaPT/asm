@@ -1,6 +1,4 @@
-
 	      align   16
-
 Move_IsPseudoLegal:
 	; in: rbp address of Pos
 	;     rbx address of State
@@ -78,7 +76,7 @@ Move_IsPseudoLegal:
 	      align   8
     .NoPiece:
     .ReturnFalse:
-		xor   eax,eax
+		xor   eax, eax
 		pop   r15 r14 r13 r12 rdi rsi
 		ret
 

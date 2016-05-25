@@ -30,21 +30,21 @@ See:
 
 	; r12d = type
 	; r13d = (side to move) *8
-	      movzx   r12d, byte [rbp+Pos.board+r8]
+	      movzx   r12d, byte[rbp+Pos.board+r8]
 		mov   r13d, r12d
 		and   r12d, 7
 		and   r13d, 8
 
 	; set initial gain
-	      movzx   eax, byte [rbp+Pos.board+r9]
-		mov   eax, dword [PieceValue_MG+4*rax]
+	      movzx   eax, byte[rbp+Pos.board+r9]
+		mov   eax, dword[PieceValue_MG+4*rax]
 	       push   rax
 
 	; r14 = occupied
 	; r15 = attackers
 
-		mov   r14, qword [rbp+Pos.typeBB+8*White]
-		 or   r14, qword [rbp+Pos.typeBB+8*Black]
+		mov   r14, qword[rbp+Pos.typeBB+8*White]
+		 or   r14, qword[rbp+Pos.typeBB+8*Black]
 		btr   r14, r8
 
 		cmp   ecx, MOVE_TYPE_EPCAP
