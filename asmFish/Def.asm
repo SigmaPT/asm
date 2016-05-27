@@ -163,8 +163,24 @@ EndgameScale_KPKP_index    equ 13 ; KP vs KP
 ENDGAME_SCALE_MAX_INDEX equ 16
 
 
+RANK_8 equ 8
+RANK_7 equ 6
+RANK_6 equ 5
+RANK_5 equ 4
+RANK_4 equ 3
+RANK_3 equ 2
+RANK_2 equ 1
+RANK_1 equ 0
 
-; the squares
+FILE_H equ 7
+FILE_G equ 6
+FILE_F equ 5
+FILE_E equ 4
+FILE_D equ 3
+FILE_C equ 2
+FILE_B equ 1
+FILE_A equ 0
+
 SQ_A1 equ (0+8*0)
 SQ_B1 equ (1+8*0)
 SQ_C1 equ (2+8*0)

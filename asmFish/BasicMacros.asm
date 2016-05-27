@@ -28,7 +28,19 @@ local ..Lower, ..Done
 }
 
 
-
+; should work for registers or immediates
+macro ClampSigned x, min, max {
+local ..Lower, ..Done
+		cmp   x, min
+		 jl   ..Lower
+		cmp   x, max
+		 jl   ..Done
+		mov   x, max
+		jmp   ..Done
+	..Lower:
+		mov   x, min
+	..Done:
+}
 
 
 ; use this macro if you are too lazy to touch beforehand the required amount of stack

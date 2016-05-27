@@ -41,6 +41,11 @@ MainHash_Clear:
 
 
 MainHash_Free:
+	       push   rbp
 		mov   rcx, qword[mainHash.table]
-		jmp   _VirtualFree
-
+	       call   _VirtualFree
+		xor   eax, eax
+		mov   qword[mainHash.table], rax
+		mov   qword[mainHash.sizeMB], rax
+		pop   rbp
+		ret

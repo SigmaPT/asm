@@ -234,15 +234,19 @@ struct Options
  printFxn	rq 1	  ; function for printing pv
  hash		rd 1
  multiPV	rd 1
- threads	rd 1
- weakness	rd 1
- chess960	rd 1
- contempt	rd 1
+ threads       rd 1
+ weakness      rd 1
+ chess960      rd 1
+ contempt      rd 1
  minThinkTime	rd 1
  slowMover	rd 1
+ moveOverhead	rd 1
  ponder 	rb 1
 		rb 3
-		rb 4
+ syzygy50MoveRule rb 1
+		  rb 7
+ syzygyProbeDepth rd 1
+ syzygyProbeLimit rd 1
  syzygyPath	rb 64
 ends
 

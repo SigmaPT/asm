@@ -47,10 +47,6 @@ Evaluate_Init:
 		lea  rdi, [Lever]
 		mov  ecx, 8
 	  rep movsd
-		lea  rsi, [.Doubled]
-		lea  rdi, [Doubled]
-		mov  ecx, 8
-	  rep movsd
 
 		lea  rsi, [.ShelterWeakness]
 		lea  rdi, [ShelterWeakness]

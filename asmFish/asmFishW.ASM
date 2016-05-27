@@ -160,11 +160,21 @@ match =1, CPU_HAS_BMI2 {    db ' BMI2'	    }
 		create_build_time DAY, MONTH, YEAR
 		db 10
 		db 'id author TypingALot',10
-		db 'option name Hash type spin min 1 max 65536 default 16',10
-		db 'option name MultiPV type spin min 1 max 64 default 1',10
+		db 'option name Contempt type spin default 0 min -100 max 100',10
+		db 'option name Threads type spin default 1 min 1 max 128',10
+		db 'option name Hash type spin default 16 min 1 max 1048576',10
+		db 'option name ClearHash type button',10
 		db 'option name Ponder type check default false',10
-		db 'option name Threads type spin min 1 max 8 default 1',10
-		db 'option name Weakness type spin min 0 max 1000 default 0',10
+		db 'option name MultiPV type spin default 1 min 1 max 500',10
+		db 'option name Weakness type spin default 0 min 0 max 1000',10
+		db 'option name MoveOverhead type spin default 30 min 0 max 5000',10
+		db 'option name MinThinkTime type spin default 20 min 0 max 5000',10
+		db 'option name SlowMover type spin default 89 min 10 max 1000',10
+		db 'option name UCI_Chess960 type check default false',10
+		db 'option name SyzygyPath type string default <empty>',10
+		db 'option name SyzygyProbeDepth type spin default 1 min 1 max 100',10
+		db 'option name Syzygy50MoveRule type check default true',10
+		db 'option name SyzygyProbeLimit type spin default 6 min 0 max 6',10
 		db 'uciok',10,0
  szCPUError	db 'Error: processor does not support',0
    .POPCNT	db ' POPCNT',0
@@ -316,7 +326,6 @@ MobilityBonus_Queen  rd 32
 
 KingDanger rd 512
 Connected rd 2*2*2*8
-Doubled rd 8
 Lever rd 8
 ShelterWeakness rd 4*8
 StormDanger:
@@ -343,7 +352,7 @@ PushToEdges   rb 64
 PushToCorners rb 64
 PushClose     rb 8
 PushAway      rb 8
-KRPPKRPScaleFactors rb 8
+;KRPPKRPScaleFactors rb 8
 
 ;;;;;;;;;;;;;;;;;;;;; data for tablebase ;;;;;;;;;;;;;;
 align 16

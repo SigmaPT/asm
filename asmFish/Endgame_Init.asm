@@ -236,10 +236,10 @@ Endgame_Init:
 		lea   rdi, [PushAway]
 		mov   ecx, 8
 	  rep movsb
-		lea   rsi, [.KRPPKRPScaleFactors]
-		lea   rdi, [KRPPKRPScaleFactors]
-		mov   ecx, 8
-	  rep movsb
+;                lea   rsi, [.KRPPKRPScaleFactors]
+;                lea   rdi, [KRPPKRPScaleFactors]
+;                mov   ecx, 8
+;          rep movsb
 
 		pop   rdi rsi rbx
 		ret
@@ -268,7 +268,7 @@ db    130, 140, 150, 160, 170, 180, 190, 200
 
 .PushClose: db	0, 0, 100, 80, 60, 40, 20, 10
 .PushAway: db  0, 5, 20, 40, 60, 80, 90, 100
-.KRPPKRPScaleFactors: db 0, 9, 10, 14, 21, 44, 0, 0
+;.KRPPKRPScaleFactors: db 0, 9, 10, 14, 21, 44, 0, 0
 
 .Map_Insert:
 	; in: rcx hash with strongside=0

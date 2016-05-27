@@ -158,45 +158,6 @@ go infinite
 
 
 
-asm clone of stockfish 2016.05.05 debug POPCNT AVX1 AVX2 BMI1 BMI2
-setoption name multipv value 3
-position startpos moves b1c3 g8f6 d2d4 e7e6 e2e3 f8e7
-go infinite
-info depth 1 multipv 1 time 9 nps 12000 score cp 56 nodes 108 pv g1f3
-info depth 1 multipv 2 time 9 nps 12000 score cp 47 nodes 108 pv g1e2
-info depth 1 multipv 3 time 9 nps 12000 score cp 36 nodes 108 pv f1c4
-info depth 2 multipv 1 time 10 nps 44500 score cp 10 nodes 445 pv g1f3 e8g8
-info depth 2 multipv 2 time 10 nps 44500 score cp 1 nodes 445 pv g1e2 e8g8
-info depth 2 multipv 3 time 10 nps 44500 score cp -6 nodes 445 pv f1c4 b8c6
-info depth 3 multipv 1 time 14 nps 349928 score cp 33 nodes 4899 pv g1f3 e8g8 f1c4
-info depth 3 multipv 2 time 14 nps 349928 score cp 31 nodes 4899 pv f1d3 e8g8 g1f3
-info depth 3 multipv 3 time 14 nps 349928 score cp 27 nodes 4899 pv f1b5 c7c6 b5c4
-info depth 4 multipv 1 time 28 nps 664428 score cp 4 nodes 18604 pv g1h3 b8c6 h3f4 d7d5
-info depth 4 multipv 2 time 28 nps 664428 score cp 1 nodes 18604 pv g1e2 e8g8 e2f4 d7d5
-info depth 4 multipv 3 time 28 nps 664428 score cp -8 nodes 18604 pv g1f3 e8g8 d4d5 b8a6
-info depth 5 multipv 1 time 201 nps 1018243 score cp 33 nodes 204667 pv f1d3 e8g8 g1f3 b8c6 e1g1
-info depth 5 multipv 2 time 201 nps 1018243 score cp 33 nodes 204667 pv g1f3 e8g8 f1d3 b8c6 e1g1
-info depth 5 multipv 3 time 201 nps 1018243 score cp 22 nodes 204667 pv f1b5 c7c6 b5d3 e8g8 g1f3
-info depth 6 multipv 1 time 1318 nps 974196 score cp 8 nodes 1283991 pv f1d3 e8g8 g1f3 b8c6 e1g1 d7d5
-info depth 6 multipv 2 time 1318 nps 974196 score cp 8 nodes 1283991 pv g1f3 b8c6 f1d3 e8g8 e1g1 d7d5
-info depth 6 multipv 3 time 1318 nps 974196 score cp 3 nodes 1283991 pv g1h3 c7c5 d4d5 d8b6 h3f4 e8g8
-info depth 7 multipv 1 time 3619 nps 993375 score cp 24 nodes 3595027 pv f1b5 a7a6 b5d3 b8c6 g1e2 e8g8 e1g1
-info depth 6 multipv 2 time 3619 nps 993375 score cp 8 nodes 3595027 pv f1d3 b8c6 g1e2 e8g8 e1g1 f6d5 f2f4
-info depth 6 multipv 3 time 3619 nps 993375 score cp 8 nodes 3595027 pv g1f3
-info depth 7 multipv 1 time 5389 nps 1013548 score cp 24 nodes 5462014 pv f1b5 a7a6 b5d3 b8c6 g1e2 e8g8 e1g1
-info depth 7 multipv 2 time 5389 nps 1013548 score cp 22 nodes 5462014 pv f1d3 b8c6 g1e2 e8g8 e1g1 f6d5 f2f4
-info depth 6 multipv 3 time 5389 nps 1013548 score cp 8 nodes 5462014 pv g1f3
-info depth 7 multipv 1 time 6804 nps 1009186 score cp 24 nodes 6866504 pv f1b5 a7a6 b5d3 b8c6 g1e2 e8g8 e1g1
-info depth 7 multipv 2 time 6804 nps 1009186 score cp 24 nodes 6866504 pv f2f4 b8c6 g1f3 d7d5 f1d3 e8g8 e1g1
-info depth 7 multipv 3 time 6804 nps 1009186 score cp 22 nodes 6866504 pv f1d3 b8c6 g1e2 e8g8 e1g1 f6d5 f2f4
-stop
-info depth 8 multipv 1 time 14891 nps 975283 score cp 15 nodes 14522944 pv f2f4 b8c6 f1d3 e7b4 g1f3 e8g8 e1g1 d7d5
-info depth 7 multipv 2 time 14891 nps 975283 score cp 24 nodes 14522944 pv f1b5 a7a6
-info depth 7 multipv 3 time 14891 nps 975283 score cp 22 nodes 14522944 pv f1d3
-bestmove f2f4 ponder b8c6
-
-
-
 
 
 

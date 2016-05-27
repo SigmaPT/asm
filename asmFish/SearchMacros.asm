@@ -97,7 +97,7 @@ virtual at rsp
   .prevSq	  rd 1
   .extension	  rd 1
   .moved_piece	  rd 1
-		  rd 1
+  .success	  rd 1	 ; for tb
 		  rd 1
   .givesCheck		   rb 1
   .singularExtensionNode   rb 1
@@ -284,7 +284,7 @@ match =1, DEBUG \{
 
     if .RootNode eq 0
 	; Step 4a. Tablebase probe
-	       test   r15, r15
+	       test   r15d, r15d
 		jns   .CheckTablebase
 .CheckTablebaseReturn:
     end if
@@ -381,6 +381,8 @@ match =1, DEBUG \{
 	; Step 7. Futility pruning: child node (skipped when in check)
     if .RootNode eq 0
 		mov   edx, dword[.depth]
+		mov   ecx, dword[rbp+Pos.sideToMove]
+	      movzx   ecx, word[rbx+State.npMaterial+2*rcx]
 		cmp   edx, 7*ONE_PLY
 		jge   .7skip
 	       imul   edx, 200
@@ -390,8 +392,6 @@ match =1, DEBUG \{
 		sub   eax, edx
 		cmp   eax, dword[.beta]
 		 jl   .7skip
-		mov   ecx, dword[rbp+Pos.sideToMove]
-	      movzx   ecx, word[rbx+State.npMaterial+2*rcx]
 	       test   ecx, ecx
 		jnz   .Return
 .7skip:
@@ -1585,12 +1585,10 @@ end if
 		cmp   eax, dword[Tablebase_Cardinality]
 		jge   .CheckTablebaseReturn
 .DoTbProbe:
-		mov   rcx, rbp
-	       push   rax rdx		    ; we could be sneaky and stick
-		mov   rdx, rsp		    ;  this address in the current stack
+		lea   rcx, [.success]
 	       call   Tablebase_ProbeWDL
-		pop   rdx rcx		    ; however, lets just do something straightforward
-	       test   edx, edx		    ;
+		mov   edx, dword[.success]
+	       test   edx, edx
 		 jz   .CheckTablebaseReturn
 
 	      movzx   ecx, byte[Tablebase_UseRule50]
@@ -1605,7 +1603,8 @@ end if
 		cmp   eax, ecx
 	      cmovl   edx, r8d
 
-		add   qword[Tablebase_Hits], 1
+		inc   qword[Tablebase_Hits]
+
 		mov   r9, qword[.posKey]
 		lea   ecx, [rdi+VALUE_MATE_IN_MAX_PLY]
 		mov   r8, qword[.tte]
@@ -1622,106 +1621,4 @@ end if
 		jmp   .Return
     end if
 
-
-
 }
-
-
-
-
-
-
-
-
-
-if 0
-
-if SEARCH_DEGUB eq 1
-			mov   rsi, qword [.ss]
-	cmp   byte[rsi-0*sizeof.Stack+Stack.ply],11
-	jne   .NoPrint1
-	cmp   word [rsi-10*sizeof.Stack+Stack.currentMove],(SQ_B4 shl 6) + SQ_F4
-	jne   .NoPrint1
-	cmp   word [rsi-9*sizeof.Stack+Stack.currentMove],(SQ_H4 shl 6) + SQ_G3
-	jne   .NoPrint1
-	cmp   word [rsi-8*sizeof.Stack+Stack.currentMove],(SQ_F4 shl 6) + SQ_F7
-	jne   .NoPrint1
-	cmp   word [rsi-7*sizeof.Stack+Stack.currentMove],(SQ_H5 shl 6) + SQ_C5
-	jne   .NoPrint1
-	cmp   word [rsi-6*sizeof.Stack+Stack.currentMove],(SQ_F7 shl 6) + SQ_G7
-	jne   .NoPrint1
-	cmp   word [rsi-5*sizeof.Stack+Stack.currentMove],(SQ_G3 shl 6) + SQ_F2
-	jne   .NoPrint1
-	cmp   word [rsi-4*sizeof.Stack+Stack.currentMove],(SQ_G2 shl 6) + SQ_G3
-	jne   .NoPrint1
-	cmp   word [rsi-3*sizeof.Stack+Stack.currentMove],(SQ_C5 shl 6) + SQ_C2
-	jne   .NoPrint1
-	cmp   word [rsi-2*sizeof.Stack+Stack.currentMove],(SQ_A5 shl 6) + SQ_B4
-	jne   .NoPrint1
-	cmp   word [rsi-1*sizeof.Stack+Stack.currentMove],(SQ_C7 shl 6) + SQ_C5 +(MOVE_TYPE_DPAWN shl 12)
-	jne   .NoPrint1
- int3
-.NoPrint1:
-end if
-
-
-if SEARCH_DEBUG eq 1
-
-	cmp   byte[rsi-0*sizeof.Stack+Stack.ply],11
-	jne   .NoPrint
-	cmp   word [rsi-10*sizeof.Stack+Stack.currentMove],(SQ_B4 shl 6) + SQ_F4
-	jne   .NoPrint
-	cmp   word [rsi-9*sizeof.Stack+Stack.currentMove],(SQ_H4 shl 6) + SQ_G3
-	jne   .NoPrint
-	cmp   word [rsi-8*sizeof.Stack+Stack.currentMove],(SQ_F4 shl 6) + SQ_F7
-	jne   .NoPrint
-	cmp   word [rsi-7*sizeof.Stack+Stack.currentMove],(SQ_H5 shl 6) + SQ_C5
-	jne   .NoPrint
-	cmp   word [rsi-6*sizeof.Stack+Stack.currentMove],(SQ_F7 shl 6) + SQ_G7
-	jne   .NoPrint
-	cmp   word [rsi-5*sizeof.Stack+Stack.currentMove],(SQ_G3 shl 6) + SQ_F2
-	jne   .NoPrint
-	cmp   word [rsi-4*sizeof.Stack+Stack.currentMove],(SQ_G2 shl 6) + SQ_G3
-	jne   .NoPrint
-	cmp   word [rsi-3*sizeof.Stack+Stack.currentMove],(SQ_C5 shl 6) + SQ_C2
-	jne   .NoPrint
-	cmp   word [rsi-2*sizeof.Stack+Stack.currentMove],(SQ_A5 shl 6) + SQ_B4
-	jne   .NoPrint
-	cmp   word [rsi-1*sizeof.Stack+Stack.currentMove],(SQ_C7 shl 6) + SQ_C5 +(MOVE_TYPE_DPAWN shl 12)
-	jne   .NoPrint
-;cmp dword[.move], (SQ_A5 shl 6)+SQ_B4
-;jne .NoPrint
-
-mov byte[QSearchTesting], -1
-			lea   rdi, [Output]
-			mov   rax, ' searchi'
-		      stosq
-			mov   rax, 'ing '
-		      stosd
-			mov   ecx, [.move]
-		       call   PrintUciMove
-			mov   rax, ' nodes '
-		      stosq
-			sub   rdi, 1
-			mov   rax, qword [rbp+Pos.nodes]
-		       call   PrintUnsignedInteger
-			mov   rax, ' alpha '
-		      stosq
-			sub   rdi, 1
-		     movsxd   rax, dword [.alpha]
-		       call   PrintSignedInteger
-			mov   rax, ' beta '
-		      stosq
-			sub   rdi, 2
-		     movsxd   rax, dword [.beta]
-		       call   PrintSignedInteger
-			mov   al, 10
-		      stosb
-		       call   _WriteOut_Output
-
-
-      .NoPrint:
-end if
-
-
-end if

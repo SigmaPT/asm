@@ -273,37 +273,37 @@ EndgameEval_KRKP:
 		xor   r10d, ecx
 		xor   r11d, ecx
 
-.wksq equ r8
-.bksq equ r9
-.rsq equ r10
-.psq equ r11
-.wksq_d equ r8d
-.bksq_d equ r9d
-.rsq_d equ r10d
-.psq_d equ r11d
+wksq equ r8
+bksq equ r9
+rsq equ r10
+psq equ r11
+wksq_d equ r8d
+bksq_d equ r9d
+rsq_d equ r10d
+psq_d equ r11d
 
 	; If the stronger side's king is in front of the pawn, it's a win
-		lea   rax, [8*.wksq]
-	      movzx   eax, byte[SquareDistance+8*rax+.psq]
+		lea   rax, [8*wksq]
+	      movzx   eax, byte[SquareDistance+8*rax+psq]
 		sub   eax, RookValueEg
-		mov   ecx, .wksq_d
-		mov   edx, .psq_d
+		mov   ecx, wksq_d
+		mov   edx, psq_d
 		and   ecx, 7
 		and   edx, 7
 		sub   ecx, edx
-		mov   edx, .psq_d
-		sub   edx, .wksq_d
+		mov   edx, psq_d
+		sub   edx, wksq_d
 		sar   edx, 31
 		 or   ecx, edx
 		 jz   .Return
 
 	; If the weaker side's king is too far from the pawn and the rook,
 	; it's a win.
-		shl   .bksq_d, 6
-	      movzx   ecx, byte[SquareDistance+.bksq+.psq]
+		shl   bksq_d, 6
+	      movzx   ecx, byte[SquareDistance+bksq+psq]
 		sub   ecx, 3
 		sub   ecx, esi
-	      movzx   edx, byte[SquareDistance+.bksq+.rsq]
+	      movzx   edx, byte[SquareDistance+bksq+rsq]
 		sub   edx, 3
 		 or   ecx, edx
 		jns   .Return
@@ -315,15 +315,15 @@ EndgameEval_KRKP:
 		add   ecx, 2
 		sub   ecx, eax
 		lea   rax, [8*rax-80]
-	      movzx   edx, byte[SquareDistance+.bksq+.psq]
+	      movzx   edx, byte[SquareDistance+bksq+psq]
 		sub   edx, 2
 		and   ecx, edx
-		mov   edx, .wksq_d
+		mov   edx, wksq_d
 		shr   edx, 3
 		sub   edx, 3
 		neg   edx
 		and   ecx, edx
-		mov   edx, .bksq_d
+		mov   edx, bksq_d
 		shr   edx, 6+3
 		sub   edx, 4
 		and   ecx, edx
@@ -331,13 +331,13 @@ EndgameEval_KRKP:
 
 	; If the pawn is far advanced and supported by the defending king,
 	; the position is drawish
-		shl   .wksq_d, 6
-		mov   ecx, .psq_d
+		shl   wksq_d, 6
+		mov   ecx, psq_d
 		and   ecx, 0111b
 		shl   ecx, 6
-	      movzx   edx, byte[SquareDistance+.bksq+.psq+DELTA_S]
-	      movzx   eax, byte[SquareDistance+.wksq+.psq+DELTA_S]
-	      movzx   ecx, byte[SquareDistance+rcx+.psq]
+	      movzx   edx, byte[SquareDistance+bksq+psq+DELTA_S]
+	      movzx   eax, byte[SquareDistance+wksq+psq+DELTA_S]
+	      movzx   ecx, byte[SquareDistance+rcx+psq]
 		sub   eax, edx
 		sub   eax, ecx
 		lea   eax, [8*rax-200]
@@ -349,7 +349,14 @@ EndgameEval_KRKP:
 		pop   rsi
 		ret
 
-
+restore wksq
+restore bksq
+restore rsq
+restore psq
+restore wksq_d
+restore bksq_d
+restore rsq_d
+restore psq_d
 
 
 
@@ -500,102 +507,1221 @@ EndgameEval_KNNK:
 
 
 
-
-
-
-EndgameScale_KNPK:
-		lea   rdi, [.errorstring]
-	       call   _ErrorBox
-		xor   ecx,ecx
-	       call   _ExitProcess
-.errorstring: db 'EndgameScale_KNPK not implemented'
-
-
-EndgameScale_KNPKB:
-		lea   rdi, [.errorstring]
-	       call   _ErrorBox
-		xor   ecx,ecx
-	       call   _ExitProcess
-.errorstring: db 'EndgameScale_KNPKB not implemented'
-
-
-EndgameScale_KRPKR:
-		lea   rdi, [.errorstring]
-	       call   _ErrorBox
-		xor   ecx,ecx
-	       call   _ExitProcess
-.errorstring: db 'EndgameScale_KRPKR not implemented'
-
-
-EndgameScale_KRPKB:
-		lea   rdi, [.errorstring]
-	       call   _ErrorBox
-		xor   ecx,ecx
-	       call   _ExitProcess
-.errorstring: db 'EndgameScale_KRPKB not implemented'
-
-
-EndgameScale_KBPKB:
-		lea   rdi, [.errorstring]
-	       call   _ErrorBox
-		xor   ecx,ecx
-	       call   _ExitProcess
-.errorstring: db 'EndgameScale_KBPKB not implemented'
-
-
-EndgameScale_KBPKN:
-		lea   rdi, [.errorstring]
-	       call   _ErrorBox
-		xor   ecx,ecx
-	       call   _ExitProcess
-.errorstring: db 'EndgameScale_KBPKN not implemented'
-
-
-EndgameScale_KBPPKB:
-		lea   rdi, [.errorstring]
-	       call   _ErrorBox
-		xor   ecx,ecx
-	       call   _ExitProcess
-.errorstring: db 'EndgameScale_KBPPKB not implemented'
-
-
-EndgameScale_KRPPKRP:
-		lea   rdi, [.errorstring]
-	       call   _ErrorBox
-		xor   ecx,ecx
-	       call   _ExitProcess
-.errorstring: db 'EndgameScale_KRPPKRP not implemented'
-
-
+	      align   16
 EndgameScale_KBPsKs:
-		lea   rdi, [.errorstring]
-	       call   _ErrorBox
-		xor   ecx,ecx
-	       call   _ExitProcess
-.errorstring: db 'EndgameScale_KBPsKs not implemented'
+		mov   r8, qword[rbp+Pos.typeBB+8*rcx]
+		mov   r9, r8
+		and   r8, qword[rbp+Pos.typeBB+8*Pawn]
+
+		xor   edx, edx
+		mov   r11, LightSquares
+		mov   rax, not FileABB
+	       test   r8, rax
+		 jz   .AllOnAFile
+		not   r11
+		mov   rax, not FileHBB
+	       test   r8, rax
+		 jz   .AllOnHFile
+
+		mov   r10, not FileBBB
+	       test   r8, r10
+		 jz   .AllOnBFile
+		mov   r10, not FileGBB
+	       test   r8, r10
+		 jz   .AllOnGFile
+
+.ReturnNone:
+		mov   eax, SCALE_FACTOR_NONE
+		pop   rbx
+		ret
+
+	      align   8
+.AllOnHFile:
+		add   edx, 7
+.AllOnAFile:
+	       imul   eax, ecx, 56
+		xor   edx, eax
+		shl   edx, 6
+
+		xor   ecx, 1
+		lea   rax, [rcx-1]
+		xor   r11, rax
+
+		mov   r10, qword[rbp+Pos.typeBB+8*Bishop]
+		and   r10, r9
+
+		mov   rax, qword[rbp+Pos.typeBB+8*King]
+		and   rax, qword[rbp+Pos.typeBB+8*rcx]
+		bsf   rax, rax
+		;xor   ecx, 1
+
+	       test   r10, r11
+		jnz   .ReturnNone
+		cmp   byte[SquareDistance+rdx+rax], 2
+		jae   .ReturnNone
+		xor   eax, eax
+		ret
+
+	      align   8
+.AllOnBFile:
+.AllOnGFile:
+		xor   ecx, 1
+	; ecx = weak side
+	      movzx   eax, word[rbx+State.npMaterial+2*rcx]
+		mov   r8, qword[rbp+Pos.typeBB+8*Pawn]
+		and   r8, qword[rbp+Pos.typeBB+8*rcx]
+		 jz   .ReturnNone
+	       test   eax, eax
+		jnz   .ReturnNone
+
+		mov   r11, qword[rbp+Pos.typeBB+8*rcx]
+		and   r11, qword[rbp+Pos.typeBB+8*King]
+		bsf   r11, r11
+	; r11 = weakKingSq
+
+		lea   eax, [2*rcx-1]
+		xor   ecx, 1
+		 jz   @f
+		bsf   r8, r8
+		jmp   .HaveBackmostSq
+	@@:	bsr   r8, r8
+.HaveBackmostSq:
+	; r8 = weakPawnSq
+
+		mov   r10, qword[rbp+Pos.typeBB+8*Bishop]
+		and   r10, r9
+		bsf   r10, r10
+	; r10 = bishopSq
+
+	       imul   edx, ecx, 7
+		mov   eax, r8d
+		shr   eax, 3
+		xor   eax, edx
+		cmp   eax, 6
+		jne   .ReturnNone
+
+		lea   eax, [r8+8*rax]
+		mov   rdx, qword[rbp+Pos.typeBB+8*Pawn]
+		and   rdx, r9
+		 bt   rdx, rax
+		jnc   .ReturnNone
+
+		and   r9, qword[rbp+Pos.typeBB+8*King]
+		bsf   r9, r9
+	; r9 = strongKingSq
+
+	     popcnt   rax, rdx
+		cmp   eax, 1
+		 je   @f
+
+		xor   r10d, r8d
+		and   r10d, 01001b
+		 jz   .ReturnNone
+		cmp   r10d, 01001b
+		 je   .ReturnNone
+	@@:
+		shl   r8, 6
+	      movzx   eax, byte[SquareDistance+r8+r11]
+	      movzx   edx, byte[SquareDistance+r8+r9]
+
+		cmp   eax, 3
+		jae   .ReturnNone
+		cmp   eax, edx
+		 ja   .ReturnNone
+
+	       imul   edx, ecx, 56
+		xor   edx, r11d
+		cmp   edx, SQ_A7
+		 jb   .ReturnNone
+
+		xor   eax, eax
+		ret
 
 
+
+	      align   16
 EndgameScale_KQKRPs:
-		lea   rdi, [.errorstring]
-	       call   _ErrorBox
-		xor   ecx,ecx
-	       call   _ExitProcess
-.errorstring: db 'EndgameScale_KQKRPs not implemented'
+		mov   r9, qword[rbp+Pos.typeBB+8*King]
+		mov   r8, qword[rbp+Pos.typeBB+8*rcx]
+		and   r8, r9
+		bsf   r8, r8
+	; r8 = strong ksq
+
+		mov   eax, ecx
+		shl   eax, 6+3
+		xor   ecx, 1
+	       imul   edx, ecx, 56
+		mov   r11, qword[rbp+Pos.typeBB+8*rcx]
+		mov   r10, qword[rbp+Pos.typeBB+8*Rook]
+		and   r9, r11
+		and   r10, r11
+		bsf   r9, r9
+		bsf   r10, r11
+	; r9 = kingSq
+	; r10 = rsq
+		xor   r8d, edx
+		cmp   r8d, SQ_A4
+		 jb   .ReturnNone
+
+		and   r11, qword[rbp+Pos.typeBB+8*Pawn]
+		and   r11, qword[KingAttacks+8*r9]
+		and   r11, qword[PawnAttacks+rax+8*r10]
+		 jz   .ReturnNone
+
+		xor   r9d, edx
+		xor   r10d, edx
+		shr   r10d, 3
+
+		cmp   r9d, SQ_A3
+		jae   .ReturnNone
+		cmp   r10d, 2
+		jne   .ReturnNone
+
+		xor   eax, eax
+		ret
+.ReturnNone:
+		mov   eax, SCALE_FACTOR_NONE
+		ret
 
 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+	      align   16
+EndgameScale_KRPKR:
+	       push   r15 r14 r13 r12 rbx
+
+		mov   r10, qword[rbp+Pos.typeBB+8*rcx]
+		xor   ecx, 1
+		mov   r12, qword[rbp+Pos.typeBB+8*rcx]
+
+		mov   r8, qword[rbp+Pos.typeBB+8*Pawn]
+		and   r8, r10
+		bsf   r8, r8
+		mov   r9, qword[rbp+Pos.typeBB+8*Rook]
+		and   r9, r10
+		bsf   r9, r9
+		and   r10, qword[rbp+Pos.typeBB+8*King]
+		bsf   r10, r10
+		mov   r11, qword[rbp+Pos.typeBB+8*Rook]
+		and   r11, r12
+		bsf   r8, r11
+		and   r12, qword[rbp+Pos.typeBB+8*King]
+		bsf   r12, r12
+		lea   edx, [rcx-1]
+		and   edx, 0111000b
+		 bt   r8d, 2
+		sbb   eax, eax
+		and   eax, 0000111b
+		xor   eax, edx
+		xor   r8d, eax
+		xor   r9d, eax
+		xor   r10d, eax
+		xor   r11d, eax
+		xor   r12d, eax
+
+wpsq_ equ r8
+wrsq_ equ r9
+wksq_ equ r10
+brsq_ equ r11
+bksq_ equ r12
+wpsq equ r8d
+wrsq equ r9d
+wksq equ r10d
+brsq equ r11d
+bksq equ r12d
+
+f_ equ r13
+r_ equ r14
+qs_ equ r15
+f equ r13d
+r equ r14d
+qs equ r15d
+
+		mov   f, wpsq
+		and   f, 7
+		mov   r, wpsq
+		shr   r, 3
+		lea   qs, [8*7+f_]
+
+		xor   ecx, dword[rbp+Pos.sideToMove]
+	; ecx = tempo
+
+.1:
+		cmp   r, RANK_5
+		 ja   .2
+	       imul   eax, bksq, 64
+		cmp   byte[SquareDistance+rax+qs_], 1
+		 ja   .2
+		cmp   wksq, SQ_H5
+		 ja   .2
+		mov   eax, brsq
+		shr   eax, 3
+		cmp   eax, RANK_6
+		 je   .ReturnDraw
+		cmp   r, RANK_3
+		 ja   .2
+		mov   eax, wrsq
+		shr   eax, 3
+		cmp   eax, RANK_6
+		jne   .ReturnDraw
+.2:
+		cmp   r, RANK_6
+		jne   .3
+	       imul   eax, bksq, 64
+		cmp   byte[SquareDistance+rax+qs_], 1
+		 ja   .3
+		mov   eax, wksq
+		shr   eax, 3
+		add   eax, ecx
+		cmp   eax, RANK_6
+		 ja   .3
+		mov   eax, bksq
+		shr   eax, 3
+		cmp   eax, RANK_1
+		 je   .ReturnDraw
+	       test   ecx, ecx
+		jnz   .3
+		mov   eax, brsq
+		mov   edx, wpsq
+		and   eax, 7
+		and   edx, 7
+		sub   eax, edx
+		cmp   eax, 3
+		jge   .ReturnDraw
+		cmp   eax, -3
+		jle   .ReturnDraw
+.3:
+		cmp   r, RANK_6
+		 jb   .4
+		cmp   bksq, qs
+		jne   .4
+		mov   eax, brsq
+		shr   eax, 3
+		cmp   eax, RANK_1
+		jne   .4
+	       test   ecx, ecx
+		 jz   .ReturnDraw
+	       imul   eax, wksq, 64
+		cmp   byte[SquareDistance+rax+wpsq_], 2
+		jae   .ReturnDraw
+.4:
+		cmp   wpsq, SQ_A7
+		jne   .5
+		cmp   wrsq, SQ_A8
+		jne   .5
+		cmp   bksq, SQ_H7
+		 je   @f
+		cmp   bksq, SQ_G7
+		jne   .5
+	@@:	mov   eax, brsq
+		and   eax, 7
+		cmp   eax, FILE_A
+		jne   .5
+		mov   eax, brsq
+		shr   eax, 3
+		cmp   eax, RANK_3
+		jbe   .ReturnDraw
+		mov   eax, wksq
+		and   eax, 7
+		cmp   eax, FILE_D
+		jae   .ReturnDraw
+		mov   eax, wksq
+		shr   eax, 3
+		cmp   eax, RANK_5
+		jbe   .ReturnDraw
+.5:
+		cmp   r, RANK_5
+		jae   .6
+		lea   eax, [wpsq_+DELTA_N]
+		cmp   eax, bksq
+		jne   .6
+	       imul   eax, wksq, 64
+	      movzx   eax, byte[SquareDistance+rax+wpsq_]
+		sub   eax, ecx
+		cmp   eax, 2
+		 jl   .6
+	       imul   eax, wksq, 64
+	      movzx   eax, byte[SquareDistance+rax+brsq_]
+		sub   eax, ecx
+		cmp   eax, 2
+		jge   .ReturnDraw
+.6:
+		cmp   r, RANK_7
+		jne   .7
+		cmp   f, FILE_A
+		 je   .7
+		mov   eax, wrsq
+		and   eax, 7
+		cmp   eax, f
+		jne   .7
+		cmp   wrsq, qs
+		 je   .7
+	       imul   eax, wksq, 64
+	      movzx   eax, byte[SquareDistance+rax+qs_]
+	       imul   edx, bksq, 64
+	      movzx   edx, byte[SquareDistance+rdx+qs_]
+		sub   edx, 2
+		add   edx, ecx
+		cmp   eax, edx
+		jge   .7
+	       imul   edx, bksq, 64
+	      movzx   edx, byte[SquareDistance+rdx+wrsq_]
+		add   edx, ecx
+		cmp   eax, edx
+		jge   .7
+		add   eax, eax
+		sub   eax, SCALE_FACTOR_MAX
+		neg   eax
+		pop   rbx r12 r13 r14 r15
+		ret
+
+.7:
+		cmp   f, FILE_A
+		 je   .8
+		mov   eax, wrsq
+		and   eax, 7
+		cmp   eax, f
+		jne   .8
+		cmp   wrsq, wpsq
+		jae   .8
+	       imul   eax, wksq, 64
+	      movzx   eax, byte[SquareDistance+rax+qs_]
+	       imul   edx, bksq, 64
+	      movzx   edx, byte[SquareDistance+rdx+qs_]
+		sub   edx, 2
+		add   edx, ecx
+		cmp   eax, edx
+		jge   .8
+	       imul   eax, wksq, 64
+	      movzx   eax, byte[SquareDistance+rax+wpsq_+DELTA_N]
+	       imul   edx, bksq, 64
+	      movzx   edx, byte[SquareDistance+rdx+wpsq_+DELTA_N]
+		sub   edx, 2
+		add   edx, ecx
+		cmp   eax, edx
+		jge   .8
+	       imul   eax, bksq, 64
+	      movzx   eax, byte[SquareDistance+rax+wksq_]
+		add   eax, ecx
+		cmp   eax, 3
+		jge   @f
+	       imul   eax, wksq, 64
+	      movzx   eax, byte[SquareDistance+rax+qs_]
+	       imul   edx, bksq, 64
+	      movzx   edx, byte[SquareDistance+rdx+wrsq_]
+		add   edx, ecx
+		cmp   eax, edx
+		jge   .8
+	       imul   eax, wksq, 64
+	      movzx   eax, byte[SquareDistance+rax+wpsq_+DELTA_N]
+	       imul   edx, bksq, 64
+	      movzx   edx, byte[SquareDistance+rdx+wrsq_]
+		add   edx, ecx
+		cmp   eax, edx
+		jge   .8
+	@@:
+	       imul   eax, wpsq, 64
+	      movzx   eax, byte[SquareDistance+rax+qs_]
+	       imul   edx, wksq, 64
+	      movzx   edx, byte[SquareDistance+rdx+qs_]
+	       imul   eax, -8
+	       imul   edx, -2
+		add   eax, SCALE_FACTOR_MAX
+		add   eax, edx
+		pop   rbx r12 r13 r14 r15
+		ret
+
+
+.8:
+		cmp   r, RANK_4
+		 ja   .9
+		cmp   bksq, wpsq
+		 jb   .9
+		mov   eax, bksq
+		and   eax, 7
+		mov   eax, wpsq
+		and   eax, 7
+		cmp   eax, edx
+		jne   @f
+		mov   eax, 10
+		pop   rbx r12 r13 r14 r15
+		ret
+	@@:
+		mov   eax, bksq
+		and   eax, 7
+		mov   edx, wpsq
+		and   edx, 7
+		sub   eax, edx
+		add   eax, 1
+	       test   eax, -2
+		jnz   .9
+	       imul   eax, wksq, 64
+	      movzx   eax, byte[SquareDistance+rax+bksq_]
+		cmp   eax, 2
+		jbe   .9
+		add   eax, eax
+		sub   eax, 24
+		neg   eax
+		pop   rbx r12 r13 r14 r15
+		ret
+.9:
+		mov   eax, SCALE_FACTOR_NONE
+		pop   rbx r12 r13 r14 r15
+		ret
+
+
+.ReturnDraw:
+		xor   eax, eax
+		pop   rbx r12 r13 r14 r15
+		ret
+
+
+
+restore wpsq_
+restore wrsq_
+restore wksq_
+restore brsq_
+restore bksq_
+restore wpsq
+restore wrsq
+restore wksq
+restore brsq
+restore bksq
+
+restore f_
+restore r_
+restore qs_
+restore f
+restore r
+restore qs
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+	      align   16
+EndgameScale_KRPKB:
+ksq_ equ r8
+bsq_ equ r9
+psq_ equ r10
+ppush_	equ r11
+ksq equ r8d
+bsq equ r9d
+psq equ r10d
+ppush  equ r11d
+
+		mov   rdx, qword[rbp+Pos.typeBB+8*Pawn]
+		mov   rax, FileABB or FileHBB
+
+		mov   r10, qword[rbp+Pos.typeBB+8*rcx]
+		and   r10, qword[rbp+Pos.typeBB+8*Pawn]
+		bsf   r10, r10
+
+	       test   rax, rdx
+		 jz   .ReturnNone
+
+		xor   ecx, 1
+		mov   r8, qword[rbp+Pos.typeBB+8*rcx]
+		and   r8, qword[rbp+Pos.typeBB+8*King]
+		bsf   r8, r8
+		mov   r9, qword[rbp+Pos.typeBB+8*rcx]
+		and   r9, qword[rbp+Pos.typeBB+8*Bishop]
+		bsf   r9, r9
+
+		lea   ppush, [2*rcx-1]
+		shl   ppush, 3
+
+		xor   ecx, 1
+	       imul   edx, ecx, 7
+		mov   eax, psq
+		shr   eax, 3
+		xor   eax, edx
+		cmp   eax, RANK_5
+		 je   .Rank5
+		cmp   eax, RANK_5
+		 je   .Rank6
+.ReturnNone:
+		mov   eax, SCALE_FACTOR_NONE
+.Return:
+		ret
+
+
+.Rank6:
+	       imul   eax, ksq, 64
+		add   eax, psq
+	      movzx   eax, byte[SquareDistance+rax+2*ppush_]
+		cmp   eax, 1
+		 ja   .ReturnNone
+		lea   eax, [psq+ppush]
+		mov   rdx, qword[BishopAttacksPDEP+8*bsq_]
+		 bt   rdx, rax
+		jnc   .ReturnNone
+		mov   eax, bsq
+		mov   edx, psq
+		and   eax, 7
+		and   edx, 7
+		sub   eax, edx
+		sub   eax, 1
+		cmp   eax, 3
+		 jb   .ReturnNone
+		mov   eax, 8
+		ret
+
+.Rank5:
+		mov   eax, bsq
+		xor   eax, psq
+		and   eax, 01001b
+		 jz   .ReturnNone
+		cmp   eax, 01001b
+		 je   .ReturnNone
+
+		lea   edx, [psq_+ppush_]
+		lea   edx, [rdx+2*ppush_]
+	      movzx   edx, [SquareDistance+rdx+ksq_]
+
+		mov   eax, 48
+		cmp   edx, 2
+		 ja   .Return
+
+		mov   eax, 48
+	       test   edx, edx
+		jnz   .Return
+
+		sub   ksq, ppush
+		sub   ksq, ppush
+
+		xor   ecx, 1
+		mov   rdx, qword[rbp+Pos.typeBB+8*King]
+		and   rdx, qword[rbp+8*rcx]
+		bsf   rdx, rdx
+		cmp   ksq, edx
+		jne   .Return
+		mov   eax, 24
+		ret
+restore ksq_
+restore bsq_
+restore psq_
+restore ppush_
+restore ksq
+restore bsq
+restore psq
+restore ppush
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+	      align   16
+EndgameScale_KRPPKRP:
+
+wpsq1_ equ r8
+wpsq2_ equ r9
+bksq_  equ r10
+wpsq1 equ r8d
+wpsq2 equ r9d
+bksq  equ r10d
+KRPPKRPScaleFactors equ (0+8*(9+8*(10+8*(14+8*(21+8*(44))))))
+
+	       imul   eax, ecx, 64*8
+		mov   r8, qword[rbp+Pos.typeBB+8*Pawn]
+		mov   rdx, r8
+		and   r8, qword[rbp+Pos.typeBB+8*rcx]
+		xor   ecx, 1
+		mov   r10, qword[rbp+Pos.typeBB+8*rcx]
+		and   rdx, r10
+		and   r10, qword[rbp+Pos.typeBB+8*King]
+		bsf   r9, r8
+		bsr   r8, r8
+		bsf   r10, r10
+
+	       test   rdx, qword[PassedPawnMask+rax+8*r8]
+		 jz   .ReturnNone
+	       test   rdx, qword[PassedPawnMask+rax+8*r9]
+		 jz   .ReturnNone
+
+		lea   eax, [rcx-1]
+		and   eax, 7
+		mov   r11d, wpsq1
+		mov   edx, wpsq2
+		shr   r11d, 3
+		shr   edx, 3
+		xor   r11d, eax
+		xor   edx, eax
+		cmp   r11d, edx
+	      cmovb   r11d, edx
+
+		mov   edx, bksq
+		shr   edx, 3
+		xor   edx, eax
+		cmp   edx, r11d
+		jbe   .ReturnNone
+		shl   bksq, 6
+		cmp   byte[SquareDistance+bksq_+wpsq1_], 1
+		 ja   .ReturnNone
+		cmp   byte[SquareDistance+bksq_+wpsq2_], 1
+		 ja   .ReturnNone
+
+		mov   rax, KRPPKRPScaleFactors
+		lea   ecx, [8*r11]
+		shr   rax, cl
+	      movzx   eax, al
+		ret
+
+.ReturnNone:
+		mov   eax, SCALE_FACTOR_NONE
+		ret
+
+
+restore wpsq1_
+restore wpsq2_
+restore bksq_
+restore wpsq1
+restore wpsq2
+restore bksq
+restore KRPPKRPScaleFactors
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+	      align   16
 EndgameScale_KPsK:
-		lea   rdi, [.errorstring]
-	       call   _ErrorBox
-		xor   ecx,ecx
-	       call   _ExitProcess
-.errorstring: db 'EndgameScale_KPsK not implemented'
+
+pawns equ r8
+ksq  equ r9d
+ksq_  equ r9
+
+		mov   r8, qword[rbp+Pos.typeBB+8*rcx]
+		xor   ecx, 1
+		mov   r9, qword[rbp+Pos.typeBB+8*rcx]
+		and   r8, qword[rbp+Pos.typeBB+8*Pawn]
+		and   r9, qword[rbp+Pos.typeBB+8*King]
+		bsf   r9, r9
+
+		mov   eax, ksq
+		shr   eax, 3
+		bsf   rdx, r8
+		shr   edx, 3
+		sub   eax, edx
+		add   eax, 1
+		cmp   eax, 3
+		jae   .ReturnNone
+
+		and   ksq, 7
+	       imul   eax, ecx, 64*8
+		mov   rax, qword[InFrontBB+rax+8*ksq_]
+		not   rax
+	       test   rax, pawns
+		jnz   .ReturnNone
+		mov   rax, not FileABB
+	       test   rax, pawns
+		 jz   .Return
+		mov   rax, not FileABB
+	       test   rax, pawns
+		 jz   .Return
+.ReturnNone:
+		mov   eax, SCALE_FACTOR_NONE
+.Return:
+		ret
+restore pawns
+restore ksq
+restore ksq_
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+	      align   16
+EndgameScale_KBPKB:
+
+pawnSq	       equ r8d
+strongBishopSq equ r9d
+weakBishopSq   equ r10d
+weakKingSq     equ r11d
+pawnSq_ 	equ r8
+strongBishopSq_ equ r9
+weakBishopSq_	equ r10
+weakKingSq_	equ r11
+
+
+	       push   rbx
+		mov   r8, qword[rbp+Pos.typeBB+8*rcx]
+		xor   ecx, 1
+		mov   r10, qword[rbp+Pos.typeBB+8*rcx]
+		mov   r9, qword[rbp+Pos.typeBB+8*Bishop]
+		mov   r11, qword[rbp+Pos.typeBB+8*King]
+		and   r11, r10
+		and   r10, r9
+		and   r9, r8
+		and   r8, qword[rbp+Pos.typeBB+8*Pawn]
+
+		lea   ebx, [rcx-1]
+		and   ebx, 7
+
+		mov   eax, weakKingSq
+		and   eax, 7
+		mov   edx, pawnSq
+		and   edx, 7
+		cmp   eax, edx
+		jne   .c2
+		mov   eax, pawnSq
+		shr   eax, 3
+		mov   edx, weakKingSq
+		shr   edx, 3
+		xor   eax, ebx
+		xor   edx, ebx
+		cmp   eax, edx
+		jae   .c2
+		mov   edx, weakKingSq
+		shr   edx, 3
+		xor   edx, ebx
+		cmp   edx, RANK_6
+		jbe   .ReturnDraw
+		mov   eax, weakKingSq
+		xor   eax, strongBishopSq
+		and   eax, 01001b
+		 jz   .c2
+		cmp   eax, 01001b
+		 je   .c2
+.ReturnDraw:
+		xor   eax, eax
+		pop   rbx
+		ret
+.c2:
+		mov   eax, weakBishopSq
+		xor   eax, strongBishopSq
+		and   eax, 01001b
+		 jz   .ReturnNone
+		cmp   eax, 01001b
+		 je   .ReturnNone
+		mov   eax, pawnSq
+		shr   eax, 3
+		xor   eax, ebx
+		cmp   eax, RANK_5
+		jbe   .ReturnDraw
+
+		and   ebx, 1
+		shl   ebx, 6+3
+		mov   rbx, qword[ForwardBB+rbx+8*pawnSq_]
+
+		 bt   rbx, weakKingSq_
+		 jc   .ReturnDraw
+
+	       imul   eax, weakBishopSq, 64
+	      movzx   eax, byte[SquareDistance+rax+pawnSq_]
+		cmp   eax, 3
+		 jb   .ReturnNone
+
+		mov   r8, qword[rbp+Pos.typeBB+8*White]
+		 or   r8, qword[rbp+Pos.typeBB+8*Black]
+      BishopAttacks   rax, weakBishopSq, r8, rdx
+	       test   rax, rbx
+		jnz   .ReturnDraw
+.ReturnNone:
+		mov   eax, SCALE_FACTOR_NONE
+		pop   rbx
+		ret
+
+restore pawnSq
+restore strongBishopSq
+restore weakBishopSq
+restore weakKingSq
+restore pawnSq_
+restore strongBishopSq_
+restore weakBishopSq_
+restore weakKingSq_
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+	      align   16
+EndgameScale_KBPPKB:
+
+wbsq equ r8d
+bbsq equ r9d
+ksq  equ r10d
+psq1 equ r11d
+psq2 equ r12d
+blockSq1 equ r13d
+blockSq2 equ r14d
+wbsq_ equ r8
+bbsq_ equ r9
+ksq_  equ r10
+psq1_ equ r11
+psq2_ equ r12
+blockSq1_ equ r13
+blockSq2_ equ r14
+
+	       push   r15 r14 r13 r12 rbx
+
+		mov   r8, qword[rbp+Pos.typeBB+8*rcx]
+		mov   r11, qword[rbp+Pos.typeBB+8*rcx]
+		xor   ecx, 1
+		mov   r9, qword[rbp+Pos.typeBB+8*rcx]
+		mov   r10, qword[rbp+Pos.typeBB+8*rcx]
+		and   r8, qword[rbp+Pos.typeBB+8*Bishop]
+		and   r9, qword[rbp+Pos.typeBB+8*Bishop]
+		and   r10, qword[rbp+Pos.typeBB+8*King]
+		and   r11, qword[rbp+Pos.typeBB+8*Pawn]
+		bsf   r8, r8
+		bsf   r9, r9
+		bsf   r10, r10
+		bsf   r12, r11
+		bsr   r11, r11
+
+		lea   ebx, [rcx-1]
+		and   ebx, 7
+	       test   ecx, ecx
+		 jz   @f
+	       xchg   r11d, r12d ; ensure relative_rank(strongSide, psq1) > relative_rank(strongSide, psq2)
+	@@:
+
+		mov   eax, wbsq
+		xor   eax, bbsq
+		and   eax, 01001b
+		 jz   .ReturnNone
+		cmp   eax, 01001b
+		jne   @f
+.ReturnNone:
+		mov   eax, SCALE_FACTOR_NONE
+		pop   rbx r12 r13 r14 r15
+		ret
+	@@:
+
+		lea   eax, [2*rcx-1]
+		lea   blockSq1, [psq2_+8*rax]
+		mov   blockSq2, psq2
+		and   blockSq2, 7
+		mov   edx, psq1
+		and   edx, 0111000b
+		add   blockSq2, edx
+
+		mov   eax, ksq
+		xor   eax, wbsq
+		and   eax, 01001b
+		 jz   .ReturnNone
+		cmp   eax, 01001b
+		 je   .ReturnNone
+
+	       imul   eax, psq1, 64
+	      movzx   eax, byte[SquareDistance+rax+psq2_]
+		cmp   eax, 1
+		 jb   .c0
+		 je   .c1
+		jmp   .ReturnNone
+
+.c0:
+		mov   eax, ksq
+		and   eax, 7
+		mov   edx, blockSq1
+		and   edx, 7
+		cmp   eax, edx
+		jne   .ReturnNone
+		mov   eax, ksq
+		shr   eax, 3
+		mov   edx, blockSq1
+		shr   edx, 3
+		xor   eax, ebx
+		xor   edx, ebx
+		cmp   eax, edx
+		 jb   .ReturnNone
+
+.ReturnDraw:
+		xor   eax, eax
+		pop   rbx r12 r13 r14 r15
+		ret
+
+.c1:
+		mov   rbx, qword[rbp+Pos.typeBB+8*White]
+		 or   rbx, qword[rbp+Pos.typeBB+8*Black]
+
+		cmp   ksq, blockSq1
+		jne   .c12
+		cmp   bbsq, blockSq2
+		 je   .ReturnDraw
+		mov   eax, psq1
+		shr   eax, 3
+		mov   edx, psq2
+		shr   edx, 3
+		sub   eax, edx
+		add   eax, 1
+		cmp   eax, 3
+		jae   .ReturnDraw
+      BishopAttacks   rax, blockSq2_, rbx, rdx
+		mov   rdx, qword[rbp+Pos.typeBB+8*rcx]
+		and   rdx, qword[rbp+Pos.typeBB+8*Bishop]
+	       test   rax, rdx
+		jnz   .ReturnDraw
+.ReturnNone2:
+		mov   eax, SCALE_FACTOR_NONE
+		pop   rbx r12 r13 r14 r15
+		ret
+.c12:
+		cmp   ksq, blockSq2
+		jne   .ReturnNone2
+		cmp   bbsq, blockSq1
+		 je   .ReturnDraw
+      BishopAttacks   rax, blockSq2_, rbx, rdx
+		mov   rdx, qword[rbp+Pos.typeBB+8*rcx]
+		and   rdx, qword[rbp+Pos.typeBB+8*Bishop]
+	       test   rax, rdx
+		jnz   .ReturnDraw
+		mov   eax, SCALE_FACTOR_NONE
+		pop   rbx r12 r13 r14 r15
+		ret
+
+restore wbsq
+restore bbsq
+restore ksq
+restore psqr1
+restore psqr2
+restore blockSq1
+restore blockSq2
+restore wbsq_
+restore bbsq_
+restore ksq_
+restore psqr1_
+restore psqr2_
+restore blockSq1_
+restore blockSq2_
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+	      align   16
+EndgameScale_KBPKN:
+pawnSq	       equ r8d
+strongBishopSq equ r9d
+weakKingSq     equ r10d
+pawnSq_ 	equ r8
+strongBishopSq_ equ r9
+weakKingSq_	equ r10
+
+	       push   rbx
+		mov   r8, qword[rbp+Pos.typeBB+8*rcx]
+		mov   r9, qword[rbp+Pos.typeBB+8*Bishop]
+		and   r9, r8
+		and   r8, qword[rbp+Pos.typeBB+8*Pawn]
+		xor   ecx, 1
+		mov   r10, qword[rbp+Pos.typeBB+8*rcx]
+		and   r10, qword[rbp+Pos.typeBB+8*King]
+		bsf   r8, r8
+		bsf   r9, r9
+		bsf   r10, r10
+
+		lea   ebx, [rcx-1]
+		and   ebx, 7
+
+		mov   eax, weakKingSq
+		and   eax, 7
+		mov   edx, pawnSq
+		and   edx, 7
+		cmp   eax, edx
+		jne   .ReturnNone
+		mov   eax, pawnSq
+		shr   eax, 3
+		mov   edx, weakKingSq
+		shr   edx, 3
+		xor   eax, ebx
+		xor   edx, ebx
+		cmp   eax, edx
+		jae   .ReturnNone
+		mov   edx, weakKingSq
+		shr   edx, 3
+		xor   edx, ebx
+		cmp   edx, RANK_6
+		jbe   @f
+		mov   eax, weakKingSq
+		xor   eax, strongBishopSq
+		and   eax, 01001b
+		 jz   .ReturnNone
+		cmp   eax, 01001b
+		 je   .ReturnNone
+	@@:
+		xor   eax, eax
+		pop   rbx
+		ret
+.ReturnNone:
+		mov   eax, SCALE_FACTOR_NONE
+		pop   rbx
+		ret
+
+
+
+restore pawnSq
+restore strongBishopSq
+restore weakKingSq
+restore pawnSq_
+restore strongBishopSq_
+restore weakKingSq_
+
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+	      align   16
+EndgameScale_KNPK:
+		mov   r8, qword[rbp+Pos.typeBB+8*Pawn]
+		and   r8, qword[rbp+Pos.typeBB+8*rcx]
+		bsf   r8, r8
+		xor   ecx, 1
+		and   r9, qword[rbp+Pos.typeBB+8*King]
+		and   r9, qword[rbp+Pos.typeBB+8*rcx]
+		bsf   r9, r9
+		lea   edx, [rcx-1]
+		and   edx, 0111000b
+		 bt   r8d, 2
+		sbb   eax, eax
+		and   eax, 0000111b
+		xor   eax, edx
+		xor   r8d, eax
+		xor   r9d, eax
+		mov   eax, SCALE_FACTOR_NONE
+		cmp   r8d, SQ_A7
+		jne   .Return
+	      movzx   edx, byte[SquareDistance+64*SQ_A8+r9]
+		cmp   edx, 1
+		 ja   .Return
+		xor   eax, eax
+.Return:	ret
+
+
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+	      align   16
+EndgameScale_KNPKB:
+pawnSq	   equ r8d
+bishopSq   equ r9d
+weakKingSq equ r10d
+pawnSq_     equ r8
+bishopSq_   equ r9
+weakKingSq_ equ r10
+
+		mov   r8, qword[rbp+Pos.typeBB+8*rcx]
+		xor   ecx, 1
+		and   r8, qword[rbp+Pos.typeBB+8*Pawn]
+		mov   r9, qword[rbp+Pos.typeBB+8*rcx]
+		mov   r11, r8
+		 or   r11, r9
+		mov   r10, qword[rbp+Pos.typeBB+8*King]
+		and   r10, r9
+		and   r9, qword[rbp+Pos.typeBB+8*Bishop]
+		bsf   r8, r8
+		bsf   r9, r9
+		bsf   r10, r10
+
+		xor   ecx, 1
+		shl   ecx, 6+3
+
+      BishopAttacks   rax, bishopSq_, r11, rdx
+	       test   rax, qword[ForwardBB+rcx+8*pawnSq_]
+		jnz   @f
+		mov   eax, SCALE_FACTOR_NONE
+		ret
+@@:
+	       imul   eax, weakKingSq, 64
+	      movzx   eax, byte[SquareDistance+rax+pawnSq_]
+		ret
+
+restore pawnSq
+restore bishopSq
+restore weakKingSq
+restore pawnSq_
+restore bishopSq_
+restore weakKingSq_
+
+
+
+
+
 
 
 EndgameScale_KPKP:
-		lea   rdi, [.errorstring]
-	       call   _ErrorBox
-		xor   ecx,ecx
-	       call   _ExitProcess
-.errorstring: db 'EndgameScale_KPKP not implemented'
+
+		mov   rdx, qword[rbp+Pos.typeBB+8*rcx]
+		mov   r9, qword[rbp+Pos.typeBB+8*King]
+		mov   r8, qword[rbp+Pos.typeBB+8*Pawn]
+	; rdx = strong pieces
+
+		xor   ecx, 1
+	; ecx = weak side
+		mov   r10, qword[rbp+Pos.typeBB+8*rcx]
+		and   r10, qword[rbp+Pos.typeBB+8*King]
+	; r10 = weak pieces  should be the long king
+
+		and   r8, rdx
+		bsf   r8, r8
+	; r8d = strong pawn
+
+		and   r9, rdx
+		bsf   r9, r9
+	; r9d = strong king
+
+		bsf   r10, r10
+	; r10d = weak king
+
+	; if black is the strong side, flip pieces along horizontal axis
+		lea   eax, [rcx-1]
+		and   eax, 0111000b
+	; if weak king is on right side of board, flip pieces along vertical axis
+		 bt   r10d, 2
+		sbb   edx, edx
+		and   edx, 0000111b
+	; do the flip
+		xor   eax, edx
+		xor   r8d, eax
+		xor   r9d, eax
+		xor   r10d, eax
+
+		lea   eax, [r8d+1]
+		and   eax, 7
+		cmp   r8d, SQ_A5
+		 jb   .try_KPK
+		cmp   eax, 2
+		 jb   .try_KPK
+
+		mov   eax, SCALE_FACTOR_NONE
+		ret
+.try_KPK:
+	; look up entry
+		mov   eax, r8d
+		shl   r8, 6
+		lea   r11, [r8+r9]
+		mov   r11, qword[KPKEndgameTable+8*(r11-8*64)]
+
+	; figure out which bit to test
+	; bit 2 of weak king should now be 0, so fill it with the correct side
+		xor   ecx, dword[rbp+Pos.sideToMove]
+		lea   edx, [r10+4*rcx]
+
+		sub   ecx, 1
+		shr   eax, 3
+		add   eax, VALUE_KNOWN_WIN + PawnValueEg
+		xor   eax, ecx
+		sub   eax, ecx
+	; eax = score if win
+
+		 bt   r11, rdx
+		sbb   edx, edx
+		and   eax, edx
+
+		ret
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 

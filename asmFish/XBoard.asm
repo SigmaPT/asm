@@ -91,7 +91,8 @@ end virtual
 .Unknown:
 		lea   rdi, [Output]
 	    stdcall   PrintString, 'error: unknown command '
-	       call   ParseToken
+		mov   ecx, 64
+	       call   _ParseToken
 		mov   al, 10
 	      stosb
 	       call   _WriteOut_Output

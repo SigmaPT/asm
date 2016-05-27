@@ -2,15 +2,22 @@ Options_Init:
 		lea   rdx, [options]
 		lea   rcx, [Position_WriteOutInfo_Uci]
 		mov   qword[rdx+Options.printFxn], rcx
-		mov   dword[rdx+Options.hash], 16
-		mov   dword[rdx+Options.multiPV], 1
-		mov   dword[rdx+Options.slowMover], 80
-		mov   dword[rdx+Options.minThinkTime], 20
+		mov   dword[rdx+Options.contempt], 0
 		mov   dword[rdx+Options.threads], 1
+		mov   dword[rdx+Options.hash], 16
+		mov   byte[rdx+Options.ponder], 0
+		mov   dword[rdx+Options.multiPV], 1
 		mov   dword[rdx+Options.weakness], 0
-		mov   dword[rdx+Options.chess960], 0
+		mov   dword[rdx+Options.moveOverhead], 30
+		mov   dword[rdx+Options.minThinkTime], 20
+		mov   dword[rdx+Options.slowMover], 80
+		mov   byte[rdx+Options.chess960], 0
+		mov   dword[rdx+Options.weakness], 0
 		mov   rax, '<empty>'
 		mov   qword[rdx+Options.syzygyPath], rax
+		mov   dword[rdx+Options.syzygyProbeDepth], 1
+		mov   byte[rdx+Options.syzygy50MoveRule], -1
+		mov   dword[rdx+Options.syzygyProbeLimit], 6
 		ret
 
 
@@ -139,7 +146,8 @@ UciChoose:
 UciUnknown:
 		lea   rdi, [Output]
 	    stdcall   PrintString, 'error: unknown command '
-	       call   ParseToken
+		mov   ecx, 64
+	       call   _ParseToken
 		mov   al, 10
 	      stosb
 		jmp   UciWriteOut
@@ -269,7 +277,8 @@ end virtual
 	       test   eax, eax
 		jnz   .parse_true
 
-	       call   SkipToken
+		mov   ecx, 64
+	       call   _SkipToken
 		jmp   .ReadLoop
 .ReadLoopDone:
 		lea   rcx, [.limits]
@@ -344,7 +353,8 @@ UciPosition:
 		mov   rsi, rax
 		lea   rdi, [Output]
 	     szcall   PrintString, 'error: illegal move '
-	       call   ParseToken
+		mov   ecx, 6
+	       call   _ParseToken
 		mov   al, 10
 	      stosb
 		lea   rbp, [pos1]
@@ -422,12 +432,24 @@ ParseSetOption:
 		 jz   .Error
 	       call   SkipSpaces
 
-	     szcall   CmpStringCaseless, 'Hash'
-		lea   rbx, [.Hash]
+	     szcall   CmpStringCaseless, 'Contempt'
+		lea   rbx, [.Contempt]
 	       test   eax, eax
 		jnz   .CheckValue
 	     szcall   CmpStringCaseless, 'Threads'
 		lea   rbx, [.Threads]
+	       test   eax, eax
+		jnz   .CheckValue
+	     szcall   CmpStringCaseless, 'Hash'
+		lea   rbx, [.Hash]
+	       test   eax, eax
+		jnz   .CheckValue
+	     szcall   CmpStringCaseless, 'ClearHash'
+		lea   rbx, [.ClearHash]
+	       test   eax, eax
+		jnz   .CheckValue
+	     szcall   CmpStringCaseless, 'Ponder'
+		lea   rbx, [.Ponder]
 	       test   eax, eax
 		jnz   .CheckValue
 	     szcall   CmpStringCaseless, 'MultiPv'
@@ -438,10 +460,39 @@ ParseSetOption:
 		lea   rbx, [.Weakness]
 	       test   eax, eax
 		jnz   .CheckValue
-	     szcall   CmpStringCaseless, 'UCI_Chess960'
-		lea   rbx, [.Weakness]
+	     szcall   CmpStringCaseless, 'MoveOverhead'
+		lea   rbx, [.MoveOverhead]
 	       test   eax, eax
 		jnz   .CheckValue
+	     szcall   CmpStringCaseless, 'MinThinkTime'
+		lea   rbx, [.MinThinkTime]
+	       test   eax, eax
+		jnz   .CheckValue
+	     szcall   CmpStringCaseless, 'SlowMover'
+		lea   rbx, [.SlowMover]
+	       test   eax, eax
+		jnz   .CheckValue
+	     szcall   CmpStringCaseless, 'UCI_Chess960'
+		lea   rbx, [.Chess960]
+	       test   eax, eax
+		jnz   .CheckValue
+	     szcall   CmpStringCaseless, 'SyzygyPath'
+		lea   rbx, [.SyzygyPath]
+	       test   eax, eax
+		jnz   .CheckValue
+	     szcall   CmpStringCaseless, 'SyzygyProbeDepth'
+		lea   rbx, [.SyzygyProbeDepth]
+	       test   eax, eax
+		jnz   .CheckValue
+	     szcall   CmpStringCaseless, 'Syzygy50MoveRule'
+		lea   rbx, [.Syzygy50MoveRule]
+	       test   eax, eax
+		jnz   .CheckValue
+	     szcall   CmpStringCaseless, 'SyzygyProbeLimit'
+		lea   rbx, [.SyzygyProbeLimit]
+	       test   eax, eax
+		jnz   .CheckValue
+
 .Error:
 		lea   rdi, [Output]
 	     szcall   PrintString, 'error: setoption has no value'
@@ -487,15 +538,69 @@ ParseSetOption:
 		ret
 .Chess960:
 	       call   ParseBoole
-		mov   dword[options.chess960], eax
+		mov   byte[options.chess960], al
 		pop   rbx
 		ret
-
-
-
-
-
-
+.Ponder:
+	       call   ParseBoole
+		mov   byte[options.ponder], al
+		pop   rbx
+		ret
+.Contempt:
+	       call   ParseInteger
+	ClampSigned   eax, -100, 100
+		mov   dword[options.contempt], eax
+		pop   rbx
+		ret
+.MoveOverhead:
+	       call   ParseInteger
+      ClampUnsigned   eax, 0, 5000
+		mov   dword[options.moveOverhead], eax
+		pop   rbx
+		ret
+.MinThinkTime:
+	       call   ParseInteger
+      ClampUnsigned   eax, 0, 5000
+		mov   dword[options.minThinkTime], eax
+		pop   rbx
+		ret
+.SlowMover:
+	       call   ParseInteger
+      ClampUnsigned   eax, 0, 1000
+		mov   dword[options.slowMover], eax
+		pop   rbx
+		ret
+.ClearHash:
+	       call   Search_Clear
+		pop   rbx
+		ret
+.SyzygyPath:
+	       push   rdi
+		lea   rdi, [options.syzygyPath]
+		mov   ecx, 60
+	       call   _ParseToken
+		xor   eax, eax
+	      stosb
+		pop   rdi
+		pop   rbx
+		ret
+.SyzygyProbeDepth:
+	       call   ParseInteger
+      ClampUnsigned   eax, 1, 100
+		mov   dword[options.syzygyProbeDepth], eax
+		pop   rbx
+		ret
+.Syzygy50MoveRule:
+	       call   ParseBoole
+		mov   byte[options.syzygy50MoveRule], al
+		pop   rbx
+		ret
+.SyzygyProbeLimit:
+	       call   ParseInteger
+      ClampUnsigned   eax, 0, 6
+		mov   dword[options.syzygyProbeLimit], eax
+		pop   rbx
+		ret
 
 
 
@@ -572,7 +677,8 @@ UciPerft:
 .bad_depth:
 		lea   rdi, [Output]
 	     szcall   PrintString, 'error: bad depth '
-	       call   ParseToken
+		mov   ecx, 8
+	       call   _ParseToken
 		mov   al, 10
 	      stosb
 		jmp   UciWriteOut

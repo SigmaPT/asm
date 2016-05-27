@@ -31,6 +31,8 @@ match =Black, Us
 	Backward1 equ ((41 shl 16) + (19))
 	Unsupported0 equ ((17 shl 16) + (8))
 	Unsupported1 equ ((21 shl 16) + (12))
+	Doubled equ ((18 shl 16) + (38))
+
 
 		xor   eax, eax
 		mov   qword[rdi+PawnEntry.passedPawns+8*Us], rax
@@ -189,33 +191,22 @@ VerboseDisplayInt rcx
 		add   esi, r8d
 	; connected is taken care of
 
-		mov   r12, qword[ForwardBB+8*(64*Us+rcx)]
-		and   r12, r13
-	; r12 = doubled
+		lea   eax, [rcx+Up]
+		 bt   r13, rax
+		sbb   edx, edx
+
 		xor   eax, eax
-		 or   r10, r12
+		 or   r10, rdx
 	       setz   al
 		shl   rax, cl
 		 or   qword[rdi+PawnEntry.passedPawns+8*Us], rax
 	; passed pawns is taken care of
 
-	if Us eq White
-		bsr   rax, r12
-	      cmovz   eax, ecx
-		shr   eax, 3
-		shr   ecx, 3
-		sub   eax, ecx
-	     Assert   ge, eax, 0, 'assertion eax>=0 failed in EvalPawns'
-		sub   esi, dword[Doubled+4*rax]
-	else if Us eq Black
-		bsf   rax, r12
-	      cmovz   eax, ecx
-		shr   eax, 3
-		shr   ecx, 3
-		sub   ecx, eax
-	     Assert   ge, ecx, 0, 'assertion ecx>=0 failed in EvalPawns'
-		sub   esi, dword[Doubled+4*rcx]
-	end if
+		and   edx, Doubled
+		sub   esi, edx
+	; doubled is taken care of
+
+
 
 VerboseDisplayScore rsi
 
@@ -231,5 +222,18 @@ VerboseDisplayScore rsi
 ..WritePawnSpan:
 		mov   byte[rdi+PawnEntry.pawnSpan+1*Us], al
 
+
+
+restore Them
+restore Up
+restore Right
+restore Left
+restore Isolated0
+restore Isolated1
+restore Backward0
+restore Backward1
+restore Unsupported0
+restore Unsupported1
+restore Doubled
 
 }

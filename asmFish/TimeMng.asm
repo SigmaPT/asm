@@ -45,7 +45,7 @@ end virtual
 		cmp   eax, edi
 	      cmova   eax, edi
 		add   eax, 2
-		mov   edx, dword[options.minThinkTime]
+		mov   edx, dword[options.moveOverhead]
 		mul   rdx
 		mov   ecx, dword[limits.time+4*rsi]
 		sub   rcx, rax

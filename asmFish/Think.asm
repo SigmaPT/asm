@@ -28,8 +28,13 @@ end virtual
 		add   byte[mainHash.date], 4
 
 	; Skip TB probing when no TB found
-		mov   eax, dword[Tablebase_Cardinality]
-		mov   ecx, dword[Tablebase_ProbeDepth]
+		xor   eax, eax
+		mov   dl, byte[options.syzygy50MoveRule]
+		mov   qword[Tablebase_Hits], rax
+		mov   byte[Tablebase_RootInTB], al
+		mov   byte[Tablebase_UseRule50], dl
+		mov   eax, dword[options.syzygyProbeLimit]
+		mov   ecx, dword[options.syzygyProbeDepth]
 		xor   edx, edx
 		cmp   eax, dword[Tablebase_MaxCardinality]
 	      cmovg   eax, dword[Tablebase_MaxCardinality]
