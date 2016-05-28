@@ -493,7 +493,7 @@ Tablebase_ProbeDTZ:
 		 jz   .Return
 
 
-wdl_to_dtz equ (-1+8*(-101+8*(0+8*(101+8*1))))
+wdl_to_dtz equ	(((-1 and 255) shl 0)+((-101 and 255) shl 8)+((0 and 255) shl 16)+((101 and 255) shl 24)++((1 and 255) shl 8))
 
 Tablebase_ProbeDTZ_HaveEP:
 

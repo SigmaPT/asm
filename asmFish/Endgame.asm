@@ -2,8 +2,6 @@
 ; summary: these functions get strong side in ecx
 
 
-
-
 	      align   16
 EndgameEval_KXK:
 	; Mate with KX vs K. This function is used to evaluate positions with
@@ -52,7 +50,7 @@ match =1, VERBOSE {
 		mov   r9, qword[rbp+Pos.typeBB+8*Bishop]
 		mov   r10, qword[rbp+Pos.typeBB+8*Knight]
 		shl   r14d, 6
-	      movzx   eax, word[rbx+State.npMaterial]
+	      movzx   eax, word[rbx+State.npMaterial+2*rsi]
 	      movzx   edx, byte[PushToEdges+1*rdi]
 	      movzx   edi, byte[SquareDistance+r14+1*rdi]
 	      movzx   edi, byte[PushClose+1*rdi]
@@ -85,7 +83,7 @@ match =1, VERBOSE {
 .Drawish:
 		xor   eax, esi
 		sub   eax, esi
-VerboseDisplay db 'eval: '
+VerboseDisplay db 'KXK eval: '
 VerboseDisplayInt rax
 		pop   rsi rdi r14 r15
 		ret
@@ -95,6 +93,7 @@ VerboseDisplayInt rax
 		mov   r15, qword[KingAttacks+8*rdi]
  .NextSquare:
 		mov   ecx, esi
+		xor   ecx, 1
 		bsf   rdx, r15
 	       call   AttackersTo_Side
 	       test   rax, rax
@@ -102,14 +101,13 @@ VerboseDisplayInt rax
 	       blsr   r15, r15, rcx
 		jnz   .NextSquare
 		xor   eax, eax
-VerboseDisplay db 'eval: '
+VerboseDisplay db 'KXK eval: '
 VerboseDisplayInt rax
 		pop   rsi rdi r14 r15
 		ret
 
 
-
-
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	      align   16
 EndgameEval_KBNK:
 	; Mate with KBN vs K. This is similar to KX vs K, but we have to drive the
@@ -143,11 +141,11 @@ EndgameEval_KBNK:
 		sub   ecx, 1
 		xor   eax, ecx
 		sub   eax, ecx
+VerboseDisplay db 'KBNK eval: '
+VerboseDisplayInt rax
 		ret
 
-
-
-
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	      align   16
 EndgameEval_KPK:
 	; KP vs K. This endgame is evaluated with the help of a bitbase.
@@ -161,48 +159,31 @@ match =1, DEBUG {
 		xor   ecx, 1
 		mov   rax, qword[rbp+Pos.typeBB+8*Pawn]
 		and   rax, qword[rbp+Pos.typeBB+8*rcx]
-	     Assert   e, rax, 0,  'weak pawn(s) in EndgameEval_KPK'
+	     Assert   e, rax, 0, 'weak pawn(s) in EndgameEval_KPK'
 		xor   ecx, 1
 		mov   rax, qword[rbp+Pos.typeBB+8*Pawn]
 		and   rax, qword[rbp+Pos.typeBB+8*rcx]
 	     popcnt   rax, rax, rdx
-	     Assert   e, eax, 1,  'the number of strong pawns != 1 in EndgameEval_KPK'
+	     Assert   e, eax, 1, 'the number of strong pawns != 1 in EndgameEval_KPK'
 		pop   rcx rdx
-}
-
-match =1, VERBOSE {
-	       push   rcx rcx
-	       push   rdi
-		lea   rdi, [VerboseOutput]
-	       call   Position_PrintSmall
-		lea   rcx, [VerboseOutput]
-	       call   _WriteOut
-		pop   rdi
-		pop   rcx rcx
 }
 
 		mov   rdx, qword[rbp+Pos.typeBB+8*rcx]
 		mov   r9, qword[rbp+Pos.typeBB+8*King]
 		mov   r8, qword[rbp+Pos.typeBB+8*Pawn]
 	; rdx = strong pieces
-
 		xor   ecx, 1
 	; ecx = weak side
 		mov   r10, qword[rbp+Pos.typeBB+8*rcx]
 	; r10 = weak pieces  should be the long king
-
 		and   r8, rdx
 		bsf   r8, r8
 	; r8d = strong pawn
-
 		and   r9, rdx
 		bsf   r9, r9
 	; r9d = strong king
-
 		bsf   r10, r10
 	; r10d = weak king
-
-
 	; if black is the strong side, flip pieces along horizontal axis
 		lea   eax, [rcx-1]
 		and   eax, 0111000b
@@ -215,34 +196,27 @@ match =1, VERBOSE {
 		xor   r8d, eax
 		xor   r9d, eax
 		xor   r10d, eax
-
 	; look up entry
 		mov   eax, r8d
 		shl   r8, 6
 		lea   r11, [r8+r9]
 		mov   r11, qword[KPKEndgameTable+8*(r11-8*64)]
-
 	; figure out which bit to test
 	; bit 2 of weak king should now be 0, so fill it with the correct side
 		xor   ecx, dword[rbp+Pos.sideToMove]
 		lea   edx, [r10+4*rcx]
-
 		sub   ecx, 1
 		shr   eax, 3
 		add   eax, VALUE_KNOWN_WIN + PawnValueEg
 		xor   eax, ecx
 		sub   eax, ecx
 	; eax = score if win
-
 		 bt   r11, rdx
 		sbb   edx, edx
 		and   eax, edx
-
-VerboseDisplay db 'eval: '
+VerboseDisplay db 'KPK eval: '
 VerboseDisplayInt rax
 		ret
-
-
 
 
 
@@ -256,6 +230,7 @@ EndgameEval_KRKP:
 	       push   rsi
 		mov   r8, qword[rbp+Pos.typeBB+8*rcx]
 		mov   esi, ecx
+	       imul   eax, ecx, 56
 		xor   ecx, 1
 		xor   esi, dword[rbp+Pos.sideToMove]	; esi = pos.side_to_move() == weakSide
 		mov   r9, qword[rbp+Pos.typeBB+8*rcx]
@@ -267,77 +242,78 @@ EndgameEval_KRKP:
 		bsf   r9, r9
 		bsf   r10, r10
 		bsf   r11, r11
-	       imul   ecx, 56
-		xor   r8d, ecx
-		xor   r9d, ecx
-		xor   r10d, ecx
-		xor   r11d, ecx
+		xor   r8d, eax
+		xor   r9d, eax
+		xor   r10d, eax
+		xor   r11d, eax
 
-wksq equ r8
-bksq equ r9
-rsq equ r10
-psq equ r11
-wksq_d equ r8d
-bksq_d equ r9d
-rsq_d equ r10d
-psq_d equ r11d
+wksq_ equ r8
+bksq_ equ r9
+rsq_ equ r10
+psq_ equ r11
+wksq equ r8d
+bksq equ r9d
+rsq equ r10d
+psq equ r11d
 
 	; If the stronger side's king is in front of the pawn, it's a win
-		lea   rax, [8*wksq]
-	      movzx   eax, byte[SquareDistance+8*rax+psq]
+		lea   rax, [8*wksq_]
+	      movzx   eax, byte[SquareDistance+8*rax+psq_]
 		sub   eax, RookValueEg
-		mov   ecx, wksq_d
-		mov   edx, psq_d
+		mov   ecx, wksq
+		mov   edx, psq
 		and   ecx, 7
 		and   edx, 7
 		sub   ecx, edx
-		mov   edx, psq_d
-		sub   edx, wksq_d
+		mov   edx, psq
+		sub   edx, wksq
 		sar   edx, 31
 		 or   ecx, edx
 		 jz   .Return
 
 	; If the weaker side's king is too far from the pawn and the rook,
 	; it's a win.
-		shl   bksq_d, 6
-	      movzx   ecx, byte[SquareDistance+bksq+psq]
+		shl   bksq, 6
+	      movzx   ecx, byte[SquareDistance+bksq_+psq_]
 		sub   ecx, 3
 		sub   ecx, esi
-	      movzx   edx, byte[SquareDistance+bksq+rsq]
+	      movzx   edx, byte[SquareDistance+bksq_+rsq_]
 		sub   edx, 3
 		 or   ecx, edx
 		jns   .Return
 
 	; If the pawn is far advanced and supported by the defending king,
 	; the position is drawish
+
+		mov   edx, bksq
+		shr   edx, 6+3
+		cmp   edx, RANK_3
+		 ja   @f
+	      movzx   edx, byte[SquareDistance+bksq_+psq_]
+		cmp   edx, 1
+		jne   @f
+		mov   edx, wksq
+		shr   edx, 3
+		cmp   edx, RANK_4
+		 jb   @f
+		lea   rdx, [8*wksq_]
+	      movzx   edx, byte[SquareDistance+8*rdx+psq_]
+		lea   eax, [8*rdx-80]
 		mov   ecx, esi
 		xor   ecx, 1
 		add   ecx, 2
-		sub   ecx, eax
-		lea   rax, [8*rax-80]
-	      movzx   edx, byte[SquareDistance+bksq+psq]
-		sub   edx, 2
-		and   ecx, edx
-		mov   edx, wksq_d
-		shr   edx, 3
-		sub   edx, 3
-		neg   edx
-		and   ecx, edx
-		mov   edx, bksq_d
-		shr   edx, 6+3
-		sub   edx, 4
-		and   ecx, edx
-		 js   .Return
-
+		cmp   edx, ecx
+		 ja  .Return
+@@:
 	; If the pawn is far advanced and supported by the defending king,
 	; the position is drawish
-		shl   wksq_d, 6
-		mov   ecx, psq_d
+		shl   wksq, 6
+		mov   ecx, psq
 		and   ecx, 0111b
 		shl   ecx, 6
-	      movzx   edx, byte[SquareDistance+bksq+psq+DELTA_S]
-	      movzx   eax, byte[SquareDistance+wksq+psq+DELTA_S]
-	      movzx   ecx, byte[SquareDistance+rcx+psq]
+	      movzx   edx, byte[SquareDistance+bksq_+psq_+DELTA_S]
+	      movzx   eax, byte[SquareDistance+wksq_+psq_+DELTA_S]
+	      movzx   ecx, byte[SquareDistance+rcx+psq_]
 		sub   eax, edx
 		sub   eax, ecx
 		lea   eax, [8*rax-200]
@@ -347,41 +323,40 @@ psq_d equ r11d
 		xor   eax, esi
 		sub   eax, esi
 		pop   rsi
+VerboseDisplay db 'KRKP eval: '
+VerboseDisplayInt rax
 		ret
 
+restore wksq_
+restore bksq_
+restore rsq_
+restore psq_
 restore wksq
 restore bksq
 restore rsq
 restore psq
-restore wksq_d
-restore bksq_d
-restore rsq_d
-restore psq_d
 
 
-
-
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	      align   16
 EndgameEval_KRKB:
 	; KR vs KB. This is very simple, and always returns drawish scores.  The
 	; score is slightly bigger when the defending king is close to the edge.
-
 		mov   rax, qword[rbp+Pos.typeBB+8*King]
 		xor   ecx, 1
 		and   rax, qword[rbp+Pos.typeBB+8*rcx]
 		bsf   rax, rax
-
 	      movzx   eax, byte[PushToEdges+rax]
-
 		xor   ecx, dword[rbp+Pos.sideToMove]
 		sub   ecx, 1
 		xor   eax, ecx
 		sub   eax, ecx
+VerboseDisplay db 'KRKB eval: '
+VerboseDisplayInt rax
 		ret
 
 
-
-
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	      align   16
 EndgameEval_KRKN:
 	; KR vs KN. The attacking side has slightly better winning chances than
@@ -396,47 +371,48 @@ EndgameEval_KRKN:
 		shl   r8, 6
 
 	      movzx   eax, byte[SquareDistance+r8+r9]
+VerboseDisplay db 'eax: '
+VerboseDisplayInt rax
+
 	      movzx   eax, byte[PushAway+rax]
 	      movzx   edx, byte[PushToEdges+r9]
+VerboseDisplay db 'edx: '
+VerboseDisplayInt rdx
+
 		add   eax, edx
 
 		xor   ecx, dword[rbp+Pos.sideToMove]
 		sub   ecx, 1
 		xor   eax, ecx
 		sub   eax, ecx
+VerboseDisplay db 'KRKN eval: '
+VerboseDisplayInt rax
 		ret
 
 
-
-
-
-
-
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	      align   16
 EndgameEval_KQKP:
 	; KQ vs KP. In general, this is a win for the stronger side, but there are a
 	; few important exceptions. A pawn on 7th rank and on the A,C,F or H files
 	; with a king positioned next to it can be a draw, so in that case, we only
 	; use the distance between the kings.
-
 		mov   r8, qword[rbp+Pos.typeBB+8*Pawn]
 		mov   rdx, qword[rbp+Pos.typeBB+8*King]
 		mov   r10, qword[rbp+Pos.typeBB+8*rcx]
+		lea   r9d, [1+5*rcx]  ; weak 7th rank
 		xor   ecx, 1
 		mov   r11, qword[rbp+Pos.typeBB+8*rcx]
-
 		and   r10, rdx
 		and   r11, rdx
 		bsf   r10, r10	 ; strong ksq
 		bsf   r11, r11	 ; weak ksq
 		bsf   rdx, r8	 ; weak pawn sq
 		shl   r11, 6
-		lea   r9d, [1+5*rcx]  ; strong 7th rank
-
 		mov   rax, FileABB or FileCBB or FileFBB or FileHBB
 		and   r8, rax
 		cmp   r8, 1
-		sub   r8d, r8d
+		sbb   r8d, r8d
 	      movzx   eax, byte[SquareDistance+r11+rdx]
 		sub   eax, 1
 		 or   eax, r8d
@@ -449,26 +425,22 @@ EndgameEval_KQKP:
 	      movzx   edx, byte[SquareDistance+r11+r10]
 	      movzx   edx, byte[PushClose+rdx]
 		add   eax, edx
-
 		xor   ecx, dword[rbp+Pos.sideToMove]
 		sub   ecx, 1
 		xor   eax, ecx
 		sub   eax, ecx
+VerboseDisplay db 'KQKP eval: '
+VerboseDisplayInt rax
 		ret
 
 
-
-
-
-
-
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	      align   16
 EndgameEval_KQKR:
 	; KQ vs KR.  This is almost identical to KX vs K:  We give the attacking
 	; king a bonus for having the kings close together, and for forcing the
 	; defending king towards the edge. If we also take care to avoid null move for
 	; the defending side in the search, this is usually sufficient to win KQ vs KR.
-
 		mov   rdx, qword[rbp+Pos.typeBB+8*King]
 		mov   r10, qword[rbp+Pos.typeBB+8*rcx]
 		xor   ecx, 1
@@ -477,42 +449,39 @@ EndgameEval_KQKR:
 		and   r11, rdx
 		bsf   r10, r10	 ; strong ksq
 		bsf   r11, r11	 ; weak ksq
-
 		shl   r10, 6
 	      movzx   edx, byte[SquareDistance+r10+r11]
 	      movzx   edx, byte[PushClose+rdx]
 	      movzx   eax, byte[PushToEdges+r11]
 		add   eax, QueenValueEg - RookValueEg
 		add   eax, edx
-
 		xor   ecx, dword[rbp+Pos.sideToMove]
 		sub   ecx, 1
 		xor   eax, ecx
 		sub   eax, ecx
+VerboseDisplay db 'KQKR eval: '
+VerboseDisplayInt rax
 		ret
 
 
-
-
-
-
-
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	      align   16
 EndgameEval_KNNK:
 	; Some cases of trivial draws
 		xor   eax, eax
+VerboseDisplay db 'KNNK eval: '
+VerboseDisplayInt rax
 		ret
 
 
 
-
-
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	      align   16
 EndgameScale_KBPsKs:
+
 		mov   r8, qword[rbp+Pos.typeBB+8*rcx]
 		mov   r9, r8
 		and   r8, qword[rbp+Pos.typeBB+8*Pawn]
-
 		xor   edx, edx
 		mov   r11, LightSquares
 		mov   rax, not FileABB
@@ -522,28 +491,27 @@ EndgameScale_KBPsKs:
 		mov   rax, not FileHBB
 	       test   r8, rax
 		 jz   .AllOnHFile
-
 		mov   r10, not FileBBB
 	       test   r8, r10
 		 jz   .AllOnBFile
 		mov   r10, not FileGBB
 	       test   r8, r10
 		 jz   .AllOnGFile
-
 .ReturnNone:
 		mov   eax, SCALE_FACTOR_NONE
-		pop   rbx
+VerboseDisplay db 'KBPsKs scale: '
+VerboseDisplayInt rax
 		ret
 
 	      align   8
 .AllOnHFile:
 		add   edx, 7
 .AllOnAFile:
+		xor   ecx, 1
 	       imul   eax, ecx, 56
 		xor   edx, eax
 		shl   edx, 6
 
-		xor   ecx, 1
 		lea   rax, [rcx-1]
 		xor   r11, rax
 
@@ -554,12 +522,13 @@ EndgameScale_KBPsKs:
 		and   rax, qword[rbp+Pos.typeBB+8*rcx]
 		bsf   rax, rax
 		;xor   ecx, 1
-
 	       test   r10, r11
 		jnz   .ReturnNone
 		cmp   byte[SquareDistance+rdx+rax], 2
 		jae   .ReturnNone
 		xor   eax, eax
+VerboseDisplay db 'KBPsKs scale: '
+VerboseDisplayInt rax
 		ret
 
 	      align   8
@@ -573,13 +542,10 @@ EndgameScale_KBPsKs:
 		 jz   .ReturnNone
 	       test   eax, eax
 		jnz   .ReturnNone
-
 		mov   r11, qword[rbp+Pos.typeBB+8*rcx]
 		and   r11, qword[rbp+Pos.typeBB+8*King]
 		bsf   r11, r11
 	; r11 = weakKingSq
-
-		lea   eax, [2*rcx-1]
 		xor   ecx, 1
 		 jz   @f
 		bsf   r8, r8
@@ -587,33 +553,28 @@ EndgameScale_KBPsKs:
 	@@:	bsr   r8, r8
 .HaveBackmostSq:
 	; r8 = weakPawnSq
-
 		mov   r10, qword[rbp+Pos.typeBB+8*Bishop]
 		and   r10, r9
 		bsf   r10, r10
 	; r10 = bishopSq
-
 	       imul   edx, ecx, 7
 		mov   eax, r8d
 		shr   eax, 3
 		xor   eax, edx
-		cmp   eax, 6
+		cmp   eax, RANK_7
 		jne   .ReturnNone
 
+		lea   eax, [2*rcx-1]
 		lea   eax, [r8+8*rax]
 		mov   rdx, qword[rbp+Pos.typeBB+8*Pawn]
 		and   rdx, r9
 		 bt   rdx, rax
 		jnc   .ReturnNone
-
 		and   r9, qword[rbp+Pos.typeBB+8*King]
 		bsf   r9, r9
 	; r9 = strongKingSq
-
-	     popcnt   rax, rdx
-		cmp   eax, 1
-		 je   @f
-
+	       blsr   rax, rdx	     ; rax is zero if strong has one pawn
+		 jz   @f
 		xor   r10d, r8d
 		and   r10d, 01001b
 		 jz   .ReturnNone
@@ -623,22 +584,21 @@ EndgameScale_KBPsKs:
 		shl   r8, 6
 	      movzx   eax, byte[SquareDistance+r8+r11]
 	      movzx   edx, byte[SquareDistance+r8+r9]
-
 		cmp   eax, 3
 		jae   .ReturnNone
 		cmp   eax, edx
 		 ja   .ReturnNone
-
 	       imul   edx, ecx, 56
 		xor   edx, r11d
 		cmp   edx, SQ_A7
 		 jb   .ReturnNone
-
 		xor   eax, eax
+VerboseDisplay db 'KBPsKs scale: '
+VerboseDisplayInt rax
 		ret
 
 
-
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	      align   16
 EndgameScale_KQKRPs:
 		mov   r9, qword[rbp+Pos.typeBB+8*King]
@@ -646,7 +606,6 @@ EndgameScale_KQKRPs:
 		and   r8, r9
 		bsf   r8, r8
 	; r8 = strong ksq
-
 		mov   eax, ecx
 		shl   eax, 6+3
 		xor   ecx, 1
@@ -656,31 +615,31 @@ EndgameScale_KQKRPs:
 		and   r9, r11
 		and   r10, r11
 		bsf   r9, r9
-		bsf   r10, r11
+		bsf   r10, r10
 	; r9 = kingSq
 	; r10 = rsq
 		xor   r8d, edx
 		cmp   r8d, SQ_A4
 		 jb   .ReturnNone
-
 		and   r11, qword[rbp+Pos.typeBB+8*Pawn]
 		and   r11, qword[KingAttacks+8*r9]
 		and   r11, qword[PawnAttacks+rax+8*r10]
 		 jz   .ReturnNone
-
 		xor   r9d, edx
 		xor   r10d, edx
 		shr   r10d, 3
-
 		cmp   r9d, SQ_A3
 		jae   .ReturnNone
-		cmp   r10d, 2
+		cmp   r10d, RANK_3
 		jne   .ReturnNone
-
 		xor   eax, eax
+VerboseDisplay db 'KQKRPs scale: '
+VerboseDisplayInt rax
 		ret
 .ReturnNone:
 		mov   eax, SCALE_FACTOR_NONE
+VerboseDisplay db 'KQKRPs scale: '
+VerboseDisplayInt rax
 		ret
 
 
@@ -689,11 +648,9 @@ EndgameScale_KQKRPs:
 	      align   16
 EndgameScale_KRPKR:
 	       push   r15 r14 r13 r12 rbx
-
 		mov   r10, qword[rbp+Pos.typeBB+8*rcx]
 		xor   ecx, 1
 		mov   r12, qword[rbp+Pos.typeBB+8*rcx]
-
 		mov   r8, qword[rbp+Pos.typeBB+8*Pawn]
 		and   r8, r10
 		bsf   r8, r8
@@ -704,7 +661,7 @@ EndgameScale_KRPKR:
 		bsf   r10, r10
 		mov   r11, qword[rbp+Pos.typeBB+8*Rook]
 		and   r11, r12
-		bsf   r8, r11
+		bsf   r11, r11
 		and   r12, qword[rbp+Pos.typeBB+8*King]
 		bsf   r12, r12
 		lea   edx, [rcx-1]
@@ -742,10 +699,8 @@ qs equ r15d
 		mov   r, wpsq
 		shr   r, 3
 		lea   qs, [8*7+f_]
-
 		xor   ecx, dword[rbp+Pos.sideToMove]
 	; ecx = tempo
-
 .1:
 		cmp   r, RANK_5
 		 ja   .2
@@ -831,7 +786,7 @@ qs equ r15d
 		jbe   .ReturnDraw
 .5:
 		cmp   r, RANK_5
-		jae   .6
+		 ja   .6
 		lea   eax, [wpsq_+DELTA_N]
 		cmp   eax, bksq
 		jne   .6
@@ -873,8 +828,9 @@ qs equ r15d
 		sub   eax, SCALE_FACTOR_MAX
 		neg   eax
 		pop   rbx r12 r13 r14 r15
+VerboseDisplay db 'KRPKR scale: '
+VerboseDisplayInt rax
 		ret
-
 .7:
 		cmp   f, FILE_A
 		 je   .8
@@ -929,9 +885,9 @@ qs equ r15d
 		add   eax, SCALE_FACTOR_MAX
 		add   eax, edx
 		pop   rbx r12 r13 r14 r15
+VerboseDisplay db 'KRPKR scale: '
+VerboseDisplayInt rax
 		ret
-
-
 .8:
 		cmp   r, RANK_4
 		 ja   .9
@@ -945,6 +901,8 @@ qs equ r15d
 		jne   @f
 		mov   eax, 10
 		pop   rbx r12 r13 r14 r15
+VerboseDisplay db 'KRPKR scale: '
+VerboseDisplayInt rax
 		ret
 	@@:
 		mov   eax, bksq
@@ -963,16 +921,20 @@ qs equ r15d
 		sub   eax, 24
 		neg   eax
 		pop   rbx r12 r13 r14 r15
+VerboseDisplay db 'KRPKR scale: '
+VerboseDisplayInt rax
 		ret
 .9:
 		mov   eax, SCALE_FACTOR_NONE
 		pop   rbx r12 r13 r14 r15
+VerboseDisplay db 'KRPKR scale: '
+VerboseDisplayInt rax
 		ret
-
-
 .ReturnDraw:
 		xor   eax, eax
 		pop   rbx r12 r13 r14 r15
+VerboseDisplay db 'KRPKR scale: '
+VerboseDisplayInt rax
 		ret
 
 
@@ -1007,17 +969,13 @@ ksq equ r8d
 bsq equ r9d
 psq equ r10d
 ppush  equ r11d
-
 		mov   rdx, qword[rbp+Pos.typeBB+8*Pawn]
 		mov   rax, FileABB or FileHBB
-
 		mov   r10, qword[rbp+Pos.typeBB+8*rcx]
 		and   r10, qword[rbp+Pos.typeBB+8*Pawn]
 		bsf   r10, r10
-
 	       test   rax, rdx
 		 jz   .ReturnNone
-
 		xor   ecx, 1
 		mov   r8, qword[rbp+Pos.typeBB+8*rcx]
 		and   r8, qword[rbp+Pos.typeBB+8*King]
@@ -1025,10 +983,8 @@ ppush  equ r11d
 		mov   r9, qword[rbp+Pos.typeBB+8*rcx]
 		and   r9, qword[rbp+Pos.typeBB+8*Bishop]
 		bsf   r9, r9
-
 		lea   ppush, [2*rcx-1]
 		shl   ppush, 3
-
 		xor   ecx, 1
 	       imul   edx, ecx, 7
 		mov   eax, psq
@@ -1036,14 +992,14 @@ ppush  equ r11d
 		xor   eax, edx
 		cmp   eax, RANK_5
 		 je   .Rank5
-		cmp   eax, RANK_5
+		cmp   eax, RANK_6
 		 je   .Rank6
 .ReturnNone:
 		mov   eax, SCALE_FACTOR_NONE
 .Return:
+VerboseDisplay db 'KRPKB scale: '
+VerboseDisplayInt rax
 		ret
-
-
 .Rank6:
 	       imul   eax, ksq, 64
 		add   eax, psq
@@ -1059,35 +1015,32 @@ ppush  equ r11d
 		and   eax, 7
 		and   edx, 7
 		sub   eax, edx
-		sub   eax, 1
+		add   eax, 1
 		cmp   eax, 3
 		 jb   .ReturnNone
 		mov   eax, 8
+VerboseDisplay db 'KRPKB scale: '
+VerboseDisplayInt rax
 		ret
-
 .Rank5:
 		mov   eax, bsq
 		xor   eax, psq
 		and   eax, 01001b
-		 jz   .ReturnNone
-		cmp   eax, 01001b
+		cmp   eax, 01000b
 		 je   .ReturnNone
-
+		cmp   eax, 00001b
+		 je   .ReturnNone
 		lea   edx, [psq_+ppush_]
 		lea   edx, [rdx+2*ppush_]
 	      movzx   edx, [SquareDistance+rdx+ksq_]
-
 		mov   eax, 48
 		cmp   edx, 2
 		 ja   .Return
-
 		mov   eax, 48
 	       test   edx, edx
 		jnz   .Return
-
 		sub   ksq, ppush
 		sub   ksq, ppush
-
 		xor   ecx, 1
 		mov   rdx, qword[rbp+Pos.typeBB+8*King]
 		and   rdx, qword[rbp+8*rcx]
@@ -1095,6 +1048,8 @@ ppush  equ r11d
 		cmp   ksq, edx
 		jne   .Return
 		mov   eax, 24
+VerboseDisplay db 'KRPKB scale: '
+VerboseDisplayInt rax
 		ret
 restore ksq_
 restore bsq_
@@ -1116,8 +1071,7 @@ bksq_  equ r10
 wpsq1 equ r8d
 wpsq2 equ r9d
 bksq  equ r10d
-KRPPKRPScaleFactors equ (0+8*(9+8*(10+8*(14+8*(21+8*(44))))))
-
+KRPPKRPScaleFactors equ (0+256*(9+256*(10+256*(14+256*(21+256*(44))))))
 	       imul   eax, ecx, 64*8
 		mov   r8, qword[rbp+Pos.typeBB+8*Pawn]
 		mov   rdx, r8
@@ -1129,12 +1083,10 @@ KRPPKRPScaleFactors equ (0+8*(9+8*(10+8*(14+8*(21+8*(44))))))
 		bsf   r9, r8
 		bsr   r8, r8
 		bsf   r10, r10
-
 	       test   rdx, qword[PassedPawnMask+rax+8*r8]
 		 jz   .ReturnNone
 	       test   rdx, qword[PassedPawnMask+rax+8*r9]
 		 jz   .ReturnNone
-
 		lea   eax, [rcx-1]
 		and   eax, 7
 		mov   r11d, wpsq1
@@ -1145,29 +1097,39 @@ KRPPKRPScaleFactors equ (0+8*(9+8*(10+8*(14+8*(21+8*(44))))))
 		xor   edx, eax
 		cmp   r11d, edx
 	      cmovb   r11d, edx
-
 		mov   edx, bksq
 		shr   edx, 3
 		xor   edx, eax
 		cmp   edx, r11d
 		jbe   .ReturnNone
-		shl   bksq, 6
-		cmp   byte[SquareDistance+bksq_+wpsq1_], 1
-		 ja   .ReturnNone
-		cmp   byte[SquareDistance+bksq_+wpsq2_], 1
-		 ja   .ReturnNone
-
+		mov   eax, bksq
+		and   eax, 3
+		mov   edx, wpsq1
+		and   edx, 3
+		sub   eax, edx
+		add   eax, 1
+		cmp   eax, 3
+		jae   .ReturnNone
+		mov   eax, bksq
+		and   eax, 3
+		mov   edx, wpsq2
+		and   edx, 3
+		sub   eax, edx
+		add   eax, 1
+		cmp   eax, 3
+		jae   .ReturnNone
 		mov   rax, KRPPKRPScaleFactors
 		lea   ecx, [8*r11]
 		shr   rax, cl
 	      movzx   eax, al
+VerboseDisplay db 'KRPPKRP scale: '
+VerboseDisplayInt rax
 		ret
-
 .ReturnNone:
 		mov   eax, SCALE_FACTOR_NONE
+VerboseDisplay db 'KRPPKRP scale: '
+VerboseDisplayInt rax
 		ret
-
-
 restore wpsq1_
 restore wpsq2_
 restore bksq_
@@ -1180,53 +1142,49 @@ restore KRPPKRPScaleFactors
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	      align   16
 EndgameScale_KPsK:
-
 pawns equ r8
 ksq  equ r9d
 ksq_  equ r9
-
 		mov   r8, qword[rbp+Pos.typeBB+8*rcx]
 		xor   ecx, 1
 		mov   r9, qword[rbp+Pos.typeBB+8*rcx]
 		and   r8, qword[rbp+Pos.typeBB+8*Pawn]
 		and   r9, qword[rbp+Pos.typeBB+8*King]
 		bsf   r9, r9
-
 		mov   eax, ksq
-		shr   eax, 3
+		and   eax, 3
 		bsf   rdx, r8
-		shr   edx, 3
+		and   edx, 3
 		sub   eax, edx
 		add   eax, 1
 		cmp   eax, 3
 		jae   .ReturnNone
-
-		and   ksq, 7
-	       imul   eax, ecx, 64*8
+		shr   ksq, 3
+	       imul   eax, ecx, 8*8
 		mov   rax, qword[InFrontBB+rax+8*ksq_]
 		not   rax
 	       test   rax, pawns
 		jnz   .ReturnNone
 		mov   rax, not FileABB
-	       test   rax, pawns
+		and   rax, pawns
 		 jz   .Return
-		mov   rax, not FileABB
-	       test   rax, pawns
+		mov   rax, not FileHBB
+		and   rax, pawns
 		 jz   .Return
 .ReturnNone:
 		mov   eax, SCALE_FACTOR_NONE
 .Return:
+VerboseDisplay db 'KPsK scale: '
+VerboseDisplayInt rax
 		ret
 restore pawns
 restore ksq
 restore ksq_
 
 
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	      align   16
 EndgameScale_KBPKB:
-
 pawnSq	       equ r8d
 strongBishopSq equ r9d
 weakBishopSq   equ r10d
@@ -1235,8 +1193,6 @@ pawnSq_ 	equ r8
 strongBishopSq_ equ r9
 weakBishopSq_	equ r10
 weakKingSq_	equ r11
-
-
 	       push   rbx
 		mov   r8, qword[rbp+Pos.typeBB+8*rcx]
 		xor   ecx, 1
@@ -1247,10 +1203,12 @@ weakKingSq_	equ r11
 		and   r10, r9
 		and   r9, r8
 		and   r8, qword[rbp+Pos.typeBB+8*Pawn]
-
+		bsf   r8, r8
+		bsf   r9, r9
+		bsf   r10, r10
+		bsf   r11, r11
 		lea   ebx, [rcx-1]
 		and   ebx, 7
-
 		mov   eax, weakKingSq
 		and   eax, 7
 		mov   edx, pawnSq
@@ -1278,6 +1236,9 @@ weakKingSq_	equ r11
 		 je   .c2
 .ReturnDraw:
 		xor   eax, eax
+
+VerboseDisplay db 'KBPKB scale: '
+VerboseDisplayInt rax
 		pop   rbx
 		ret
 .c2:
@@ -1292,19 +1253,15 @@ weakKingSq_	equ r11
 		xor   eax, ebx
 		cmp   eax, RANK_5
 		jbe   .ReturnDraw
-
 		and   ebx, 1
 		shl   ebx, 6+3
 		mov   rbx, qword[ForwardBB+rbx+8*pawnSq_]
-
 		 bt   rbx, weakKingSq_
 		 jc   .ReturnDraw
-
 	       imul   eax, weakBishopSq, 64
 	      movzx   eax, byte[SquareDistance+rax+pawnSq_]
 		cmp   eax, 3
 		 jb   .ReturnNone
-
 		mov   r8, qword[rbp+Pos.typeBB+8*White]
 		 or   r8, qword[rbp+Pos.typeBB+8*Black]
       BishopAttacks   rax, weakBishopSq, r8, rdx
@@ -1312,6 +1269,9 @@ weakKingSq_	equ r11
 		jnz   .ReturnDraw
 .ReturnNone:
 		mov   eax, SCALE_FACTOR_NONE
+
+VerboseDisplay db 'KBPKB scale: '
+VerboseDisplayInt rax
 		pop   rbx
 		ret
 
@@ -1329,7 +1289,6 @@ restore weakKingSq_
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	      align   16
 EndgameScale_KBPPKB:
-
 wbsq equ r8d
 bbsq equ r9d
 ksq  equ r10d
@@ -1344,9 +1303,7 @@ psq1_ equ r11
 psq2_ equ r12
 blockSq1_ equ r13
 blockSq2_ equ r14
-
 	       push   r15 r14 r13 r12 rbx
-
 		mov   r8, qword[rbp+Pos.typeBB+8*rcx]
 		mov   r11, qword[rbp+Pos.typeBB+8*rcx]
 		xor   ecx, 1
@@ -1361,14 +1318,12 @@ blockSq2_ equ r14
 		bsf   r10, r10
 		bsf   r12, r11
 		bsr   r11, r11
-
 		lea   ebx, [rcx-1]
 		and   ebx, 7
 	       test   ecx, ecx
 		 jz   @f
-	       xchg   r11d, r12d ; ensure relative_rank(strongSide, psq1) > relative_rank(strongSide, psq2)
+	       xchg   r11d, r12d ; ensure relative_rank(strongSide, psq1) <= relative_rank(strongSide, psq2)
 	@@:
-
 		mov   eax, wbsq
 		xor   eax, bbsq
 		and   eax, 01001b
@@ -1377,32 +1332,37 @@ blockSq2_ equ r14
 		jne   @f
 .ReturnNone:
 		mov   eax, SCALE_FACTOR_NONE
+
+VerboseDisplay db 'KBPPKB scale: '
+VerboseDisplayInt rax
+
 		pop   rbx r12 r13 r14 r15
 		ret
 	@@:
-
 		lea   eax, [2*rcx-1]
 		lea   blockSq1, [psq2_+8*rax]
-		mov   blockSq2, psq2
+		mov   blockSq2, psq1
 		and   blockSq2, 7
-		mov   edx, psq1
+		mov   edx, psq2
 		and   edx, 0111000b
 		add   blockSq2, edx
-
 		mov   eax, ksq
 		xor   eax, wbsq
 		and   eax, 01001b
 		 jz   .ReturnNone
 		cmp   eax, 01001b
 		 je   .ReturnNone
-
-	       imul   eax, psq1, 64
-	      movzx   eax, byte[SquareDistance+rax+psq2_]
+		mov   eax, psq1
+		and   eax, 7
+		mov   edx, psq2
+		and   edx, 7
+		sub   eax, edx
+		 je   .c0
 		cmp   eax, 1
-		 jb   .c0
+		 je   .c1
+		cmp   eax, -1
 		 je   .c1
 		jmp   .ReturnNone
-
 .c0:
 		mov   eax, ksq
 		and   eax, 7
@@ -1418,16 +1378,15 @@ blockSq2_ equ r14
 		xor   edx, ebx
 		cmp   eax, edx
 		 jb   .ReturnNone
-
 .ReturnDraw:
 		xor   eax, eax
+VerboseDisplay db 'KBPPKB scale: '
+VerboseDisplayInt rax
 		pop   rbx r12 r13 r14 r15
 		ret
-
 .c1:
 		mov   rbx, qword[rbp+Pos.typeBB+8*White]
 		 or   rbx, qword[rbp+Pos.typeBB+8*Black]
-
 		cmp   ksq, blockSq1
 		jne   .c12
 		cmp   bbsq, blockSq2
@@ -1440,7 +1399,9 @@ blockSq2_ equ r14
 		add   eax, 1
 		cmp   eax, 3
 		jae   .ReturnDraw
+	       push   rcx
       BishopAttacks   rax, blockSq2_, rbx, rdx
+		pop   rcx
 		mov   rdx, qword[rbp+Pos.typeBB+8*rcx]
 		and   rdx, qword[rbp+Pos.typeBB+8*Bishop]
 	       test   rax, rdx
@@ -1448,21 +1409,26 @@ blockSq2_ equ r14
 .ReturnNone2:
 		mov   eax, SCALE_FACTOR_NONE
 		pop   rbx r12 r13 r14 r15
+VerboseDisplay db 'KBPPKB scale: '
+VerboseDisplayInt rax
 		ret
 .c12:
 		cmp   ksq, blockSq2
 		jne   .ReturnNone2
 		cmp   bbsq, blockSq1
 		 je   .ReturnDraw
-      BishopAttacks   rax, blockSq2_, rbx, rdx
+	       push   rcx
+      BishopAttacks   rax, blockSq1_, rbx, rdx
+		pop   rcx
 		mov   rdx, qword[rbp+Pos.typeBB+8*rcx]
 		and   rdx, qword[rbp+Pos.typeBB+8*Bishop]
 	       test   rax, rdx
 		jnz   .ReturnDraw
 		mov   eax, SCALE_FACTOR_NONE
 		pop   rbx r12 r13 r14 r15
+VerboseDisplay db 'KBPPKB scale: '
+VerboseDisplayInt rax
 		ret
-
 restore wbsq
 restore bbsq
 restore ksq
@@ -1489,7 +1455,6 @@ weakKingSq     equ r10d
 pawnSq_ 	equ r8
 strongBishopSq_ equ r9
 weakKingSq_	equ r10
-
 	       push   rbx
 		mov   r8, qword[rbp+Pos.typeBB+8*rcx]
 		mov   r9, qword[rbp+Pos.typeBB+8*Bishop]
@@ -1501,10 +1466,8 @@ weakKingSq_	equ r10
 		bsf   r8, r8
 		bsf   r9, r9
 		bsf   r10, r10
-
 		lea   ebx, [rcx-1]
 		and   ebx, 7
-
 		mov   eax, weakKingSq
 		and   eax, 7
 		mov   edx, pawnSq
@@ -1533,22 +1496,21 @@ weakKingSq_	equ r10
 	@@:
 		xor   eax, eax
 		pop   rbx
+VerboseDisplay db 'KBPKN scale: '
+VerboseDisplayInt rax
 		ret
 .ReturnNone:
 		mov   eax, SCALE_FACTOR_NONE
 		pop   rbx
+VerboseDisplay db 'KBPKN scale: '
+VerboseDisplayInt rax
 		ret
-
-
-
 restore pawnSq
 restore strongBishopSq
 restore weakKingSq
 restore pawnSq_
 restore strongBishopSq_
 restore weakKingSq_
-
-
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1558,7 +1520,7 @@ EndgameScale_KNPK:
 		and   r8, qword[rbp+Pos.typeBB+8*rcx]
 		bsf   r8, r8
 		xor   ecx, 1
-		and   r9, qword[rbp+Pos.typeBB+8*King]
+		mov   r9, qword[rbp+Pos.typeBB+8*King]
 		and   r9, qword[rbp+Pos.typeBB+8*rcx]
 		bsf   r9, r9
 		lea   edx, [rcx-1]
@@ -1576,10 +1538,10 @@ EndgameScale_KNPK:
 		cmp   edx, 1
 		 ja   .Return
 		xor   eax, eax
-.Return:	ret
-
-
-
+.Return:
+VerboseDisplay db 'KNPK scale: '
+VerboseDisplayInt rax
+		ret
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1591,7 +1553,6 @@ weakKingSq equ r10d
 pawnSq_     equ r8
 bishopSq_   equ r9
 weakKingSq_ equ r10
-
 		mov   r8, qword[rbp+Pos.typeBB+8*rcx]
 		xor   ecx, 1
 		and   r8, qword[rbp+Pos.typeBB+8*Pawn]
@@ -1604,10 +1565,8 @@ weakKingSq_ equ r10
 		bsf   r8, r8
 		bsf   r9, r9
 		bsf   r10, r10
-
 		xor   ecx, 1
 		shl   ecx, 6+3
-
       BishopAttacks   rax, bishopSq_, r11, rdx
 	       test   rax, qword[ForwardBB+rcx+8*pawnSq_]
 		jnz   @f
@@ -1616,8 +1575,9 @@ weakKingSq_ equ r10
 @@:
 	       imul   eax, weakKingSq, 64
 	      movzx   eax, byte[SquareDistance+rax+pawnSq_]
+VerboseDisplay db 'KNPKB scale: '
+VerboseDisplayInt rax
 		ret
-
 restore pawnSq
 restore bishopSq
 restore weakKingSq
@@ -1626,35 +1586,28 @@ restore bishopSq_
 restore weakKingSq_
 
 
-
-
-
-
-
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+	      align   16
 EndgameScale_KPKP:
-
+VerboseDisplay db 'strongSide: '
+VerboseDisplayInt rcx
 		mov   rdx, qword[rbp+Pos.typeBB+8*rcx]
 		mov   r9, qword[rbp+Pos.typeBB+8*King]
 		mov   r8, qword[rbp+Pos.typeBB+8*Pawn]
 	; rdx = strong pieces
-
 		xor   ecx, 1
 	; ecx = weak side
 		mov   r10, qword[rbp+Pos.typeBB+8*rcx]
 		and   r10, qword[rbp+Pos.typeBB+8*King]
 	; r10 = weak pieces  should be the long king
-
 		and   r8, rdx
 		bsf   r8, r8
 	; r8d = strong pawn
-
 		and   r9, rdx
 		bsf   r9, r9
 	; r9d = strong king
-
 		bsf   r10, r10
 	; r10d = weak king
-
 	; if black is the strong side, flip pieces along horizontal axis
 		lea   eax, [rcx-1]
 		and   eax, 0111000b
@@ -1667,15 +1620,15 @@ EndgameScale_KPKP:
 		xor   r8d, eax
 		xor   r9d, eax
 		xor   r10d, eax
-
 		lea   eax, [r8d+1]
 		and   eax, 7
 		cmp   r8d, SQ_A5
 		 jb   .try_KPK
 		cmp   eax, 2
 		 jb   .try_KPK
-
 		mov   eax, SCALE_FACTOR_NONE
+VerboseDisplay db 'KPKP scale: '
+VerboseDisplayInt rax
 		ret
 .try_KPK:
 	; look up entry
@@ -1683,45 +1636,19 @@ EndgameScale_KPKP:
 		shl   r8, 6
 		lea   r11, [r8+r9]
 		mov   r11, qword[KPKEndgameTable+8*(r11-8*64)]
-
 	; figure out which bit to test
 	; bit 2 of weak king should now be 0, so fill it with the correct side
 		xor   ecx, dword[rbp+Pos.sideToMove]
 		lea   edx, [r10+4*rcx]
-
 		sub   ecx, 1
 		shr   eax, 3
 		add   eax, VALUE_KNOWN_WIN + PawnValueEg
 		xor   eax, ecx
 		sub   eax, ecx
 	; eax = score if win
-
 		 bt   r11, rdx
-		sbb   edx, edx
-		and   eax, edx
-
+		sbb   eax, eax
+		and   eax, SCALE_FACTOR_NONE
+VerboseDisplay db 'KPKP scale: '
+VerboseDisplayInt rax
 		ret
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

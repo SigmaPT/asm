@@ -129,8 +129,8 @@ Endgame_Init:
 	       call   .Map_Insert
 
 	    GetKeys   rcx, rdx, <King Queen>, <King Rook>
-		lea   eax, [EndgameEval_KQKP]
-		mov   esi, EndgameEval_KQKP_index
+		lea   eax, [EndgameEval_KQKR]
+		mov   esi, EndgameEval_KQKR_index
 		mov   dword[rbx+4*rsi], eax
 	       call   .Map_Insert
 
@@ -232,7 +232,7 @@ Endgame_Init:
 		lea   rdi, [PushClose]
 		mov   ecx, 8
 	  rep movsb
-		lea   rsi, [.PushClose]
+		lea   rsi, [.PushAway]
 		lea   rdi, [PushAway]
 		mov   ecx, 8
 	  rep movsb

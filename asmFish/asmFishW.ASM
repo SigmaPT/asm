@@ -3,11 +3,11 @@ OS_IS_WINDOWS	 fix 1
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; compile options 0 or 1
 CPU_HAS_POPCNT	 equ 1	;  popcnt                       very nice function
-CPU_HAS_AVX1	 equ 1	;  256 bit floating point       probably only used for memory copy if used at all
+CPU_HAS_AVX1	 equ 0	;  256 bit floating point       probably only used for memory copy if used at all
 CPU_HAS_AVX2	 equ 0	;  256 bit integer + fmadd      probably not used
 CPU_HAS_BMI1	 equ 0	;  andn                         why not use it if we can
 CPU_HAS_BMI2	 equ 0	;  pext + pdep                  nice for move generation, but not much faster than magics
-DEBUG		 equ 0	;  turns on the asserts         use this for detecting bugs, should be no functional change
+DEBUG		 equ 1	;  turns on the asserts         use this for detecting bugs, should be no functional change
 VERBOSE 	 equ 0	;  LOTS of print + eval trace   use this for hunting down bugs
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -76,14 +76,6 @@ constd:
 
 ?_2727: dq 8181818181818181H				; 1AA0 _ 8181818181818181 
 ?_2728: dq 0FF000000000000FFH				; 1AA8 _ FF000000000000FF
-?_2729: dq 3FE0000000000000H				; 1AB0 _ 0.5
-?_2730: dq 3FE999999999999AH				; 1AB8 _ 0.8
-?_2731: dq 3FFCCCCCCCCCCCCDH				; 1AC0 _ 1.8
-?_2732: dq 3FE8BC6A7EF9DB23H				; 1AC8 _ 0.773
-?_2733: dq 4003333333333333H				; 1AD0 _ 2.4
-?_2734: dq 3FDF5C28F5C28F5CH				; 1AD8 _ 0.49
-?_2735: dq 3FF0B851EB851EB8H				; 1AE0 _ 1.045
-?_2736: dq 4007333333333333H				; 1AE8 _ 2.9
 ?_2737: dq 4059000000000000H				; 1AF0 _ 100.0
 ?_2738: dq 401C5C28F5C28F5CH				; 1AF8 _ 7.09
 ?_2739: dq 3FD6666666666666H				; 1B00 _ 0.35
@@ -145,20 +137,18 @@ wdl_to_Value5:
 
 
 
- szGreeting	db 'asmFish '
- szDate:	create_build_time DAY, MONTH, YEAR
- szCPUTarget:
+ szUCIresponse	db 'id name '
+szGreeting:
+		db 'asmFish '
+		create_build_time DAY, MONTH, YEAR
 match =1, DEBUG {	    db ' DEBUG'     }
 match =1, CPU_HAS_POPCNT {  db ' POPCNT'    }
 match =1, CPU_HAS_AVX1 {    db ' AVX1'	    }
 match =1, CPU_HAS_AVX2 {    db ' AVX2'	    }
 match =1, CPU_HAS_BMI1 {    db ' BMI1'	    }
 match =1, CPU_HAS_BMI2 {    db ' BMI2'	    }
-		db 10,0
-
- szUCIresponse	db 'id name asmFish '
-		create_build_time DAY, MONTH, YEAR
 		db 10
+szGreetingEnd:
 		db 'id author TypingALot',10
 		db 'option name Contempt type spin default 0 min -100 max 100',10
 		db 'option name Threads type spin default 1 min 1 max 128',10
@@ -314,6 +304,10 @@ IsPawnMasks:	  rb 16
 align 64
 Reductions	   rd 2*2*64*64
 FutilityMoveCounts rd 16*2
+
+;ReductionsORG         rd 2*2*64*64
+;FutilityMoveCountsORG rd 16*2
+
 DrawValue	   rd 2
 
 
@@ -435,6 +429,7 @@ include 'Limits.asm'
 include 'Thread.asm'
 include 'ThreadPool.asm'
 include 'Uci.asm'
+include 'Search_Clear.asm'
 
 include 'PrintParse.asm'
 include 'Math.asm'
@@ -471,6 +466,9 @@ match =1, VERBOSE {
 	       call   Position_Init
 	       call   BitTable_Init
 	       call   Search_Init
+
+
+
 	       call   Evaluate_Init
 	       call   Pawn_Init
 	       call   Endgame_Init
@@ -507,10 +505,9 @@ match =1, VERBOSE {
 		lea   rcx, [VerboseOutput]
 	       call   _WriteOut 		; display how much time was taken for init
 }
-		lea   rdi, [Output]
+		lea   rdi, [szGreetingEnd]
 		lea   rcx, [szGreeting]
-	       call   PrintString
-	       call   _WriteOut_Output
+	       call   _WriteOut
 
 	; enter uci loop by default
 
@@ -551,7 +548,7 @@ match =1, VERBOSE {
 
 include 'XBoard.asm'
 include 'ParseCommandLine.asm'
-include 'Search_InitClear.asm'
+include 'Search_Init.asm'
 include 'Position_Init.asm'
 include 'MoveGen_Init.asm'
 include 'BitBoard_Init.asm'

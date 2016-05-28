@@ -1549,6 +1549,30 @@ match =1,VERBOSE {
     EvalPassedPawns   White
     EvalPassedPawns   Black
 
+
+    Unstoppable  equ ((0 shl 16) + (20))
+		mov   r14, qword[.ei.pi]
+	      movzx   eax, word[rbx+State.npMaterial+2*0]
+	       test   eax, eax
+		jnz   .SkipUnstoppable
+		mov   rcx, qword[r14+PawnEntry.passedPawns+8*White]
+		mov   rdx, qword[r14+PawnEntry.passedPawns+8*Black]
+		mov   eax, 0
+		bsr   rcx, rcx
+	      cmovz   ecx, eax
+		shr   ecx, 3
+		mov   eax, 7*8
+		bsf   rdx, rdx
+	      cmovz   edx, eax
+		shr   edx, 3
+		xor   edx, 7
+		sub   ecx, edx
+	       imul   ecx, Unstoppable
+		add   dword[.ei.score], ecx
+.SkipUnstoppable:
+
+
+
 	      movzx   eax, word[rbx+State.npMaterial+2*0]
 	      movzx   ecx, word[rbx+State.npMaterial+2*1]
 		add   eax, ecx
@@ -1645,9 +1669,10 @@ match =1,VERBOSE {
 	; esi = score
 	; r14 = ei.pi
 	; Evaluate scale factor for the winning side
+
 		mov   r15, qword[.ei.me]
 		xor   r13d, r13d
-		 bt   esi, 16
+		 bt   esi, 15
 		adc   r13d, r13d
 	      movzx   ecx, byte[r15+MaterialEntry.scalingFunction+r13]
 	      movzx   eax, byte[r15+MaterialEntry.factor+r13]
@@ -1693,7 +1718,8 @@ match =1,VERBOSE {
 .HaveScaleFunction:
 		mov   eax, ecx
 		shr   eax, 1
-		mov   eax, dword[EndgameEval_FxnTable+4*rcx]
+		mov   eax, dword[EndgameScale_FxnTable+4*rax]
+		and   ecx, 1
 	       call   rax
 		cmp   eax, SCALE_FACTOR_NONE
 	      movzx   edx, byte[r15+MaterialEntry.gamePhase]
@@ -1799,8 +1825,6 @@ DoMaterialEval:
 	; out:       return is .DoMaterialEvalReturn
 	;     eax  sign_ext(word[rsi+MaterialEntry.value])
 	;     ecx  zero_ext(byte[rsi+MaterialEntry.evaluationFunction])
-	;
-
 	       push   r12 r13 r14 r15
 
 		mov   rcx, qword[rbx+State.materialKey]
@@ -1837,7 +1861,7 @@ DoMaterialEval:
 	; material configuration. Firstly we look for a fixed configuration one, then
 	; for a generic one if the previous search failed.
 		lea   r10, [EndgameEval_Map]
-		lea   r11, [EndgameEval_Map+ENDGAME_EVAL_MAP_SIZE*sizeof.EndgameMapEntry]
+		lea   r11, [EndgameEval_Map+2*ENDGAME_EVAL_MAP_SIZE*sizeof.EndgameMapEntry]
 		lea   r13, [rsi+MaterialEntry.evaluationFunction]
 .NextEvalKey:
 		mov   rdx, qword[r10+EndgameMapEntry.key]
@@ -1859,7 +1883,7 @@ DoMaterialEval:
 		add   ecx, 1
 	       blsr   rdx, r9
 		jnz   .Try_KXK_Done
-		cmp   r9d, RookValueMg
+		cmp   r15d, RookValueMg
 		jge   .FoundEvalFxn
 .Try_KXK_Done:
 
@@ -1867,7 +1891,7 @@ DoMaterialEval:
 	; OK, we didn't find any special evaluation function for the current material
 	; configuration. Is there a suitable specialized scaling function?
 		lea   r10, [EndgameScale_Map]
-		lea   r11, [EndgameScale_Map+ENDGAME_SCALE_MAP_SIZE*sizeof.EndgameMapEntry]
+		lea   r11, [EndgameScale_Map+2*ENDGAME_SCALE_MAP_SIZE*sizeof.EndgameMapEntry]
 .NextScaleKey:
 		mov   rdx, qword[r10+EndgameMapEntry.key]
 		mov   ecx, dword[r10+EndgameMapEntry.entry]
@@ -1884,6 +1908,11 @@ DoMaterialEval:
 		mov   r13d, ecx
 		and   r13d, 1
 		lea   r13, [rsi+MaterialEntry.scalingFunction+r13]
+		xor   eax, eax	; obey out condtions
+		mov   byte[r13], cl
+		xor   ecx, ecx
+		pop   r15 r14 r13 r12
+		jmp   Evaluate.DoMaterialEvalReturn
 .FoundEvalFxn:
 		xor   eax, eax	; obey out condtions
 		mov   byte[r13], cl
@@ -1896,7 +1925,6 @@ DoMaterialEval:
 	; We didn't find any specialized scaling function, so fall back on generic
 	; ones that refer to more than one material distribution. Note that in this
 	; case we don't return after setting the function.
-
 
 		xor   r8d, r8d
 .CountLoop:
@@ -1933,12 +1961,13 @@ DoMaterialEval:
 
 irps Us, White Black {
 match =White, Us \{
-	Them	 equ Black  \}
+	Them	 equ Black
+	npMat	 equ r14d \}
 match =Black, Us \{
-	Them	 equ White  \}
-
+	Them	 equ White
+	npMat	 equ r15d\}
 .Check_KBPsKs_#Us:
-		cmp   r14d, BishopValueMg
+		cmp   npMat, BishopValueMg
 		jne   .Check_KQKRPs_#Us
 		mov   eax, dword[rsp+4*(8*Us+Bishop)]
 		cmp   eax, 1
@@ -1949,7 +1978,7 @@ match =Black, Us \{
 		mov   byte[rsi+MaterialEntry.scalingFunction+1*Us], 2*EndgameScale_KBPsKs_index+Us
 		jmp   .Check_sDone_#Us
 .Check_KQKRPs_#Us:
-		cmp   r14d, QueenValueMg
+		cmp   npMat, QueenValueMg
 		jne   .Check_sDone_#Us
 		mov   eax, dword[rsp+4*(8*Us+Pawn)]
 	       test   eax, eax
@@ -1991,7 +2020,7 @@ match =Black, Us \{
 		jne   .OnlyPawnsWrite
 		cmp   edx, 1
 		jne   .OnlyPawnsWrite
-		mov   eax, (((2*EndgameScale_KPsK_index+Black)) shl 16) + ((2*EndgameScale_KPsK_index+White) shl 0)
+		mov   eax, (((2*EndgameScale_KPKP_index+Black)) shl 16) + ((2*EndgameScale_KPKP_index+White) shl 0)
 .OnlyPawnsWrite:
 		mov   word[rsi+MaterialEntry.scalingFunction], ax  ; write both entries
 .NotOnlyPawns:

@@ -16,6 +16,12 @@
 - VERBOSE turns on lots of printing. should only be used when searching for bugs
 
 3. about the code so far:
+- unix is no even close to being done
+- parsing of chess960 positions is not done yet
+- weakness or skill levels is not done yet
+- syzygy code is complete but completely untested so it will surely crash if you set the syzygypath :)
+- similarly, code as not be tested on a cpu without avx, so it might crash on older cpus due to a bug in the macros
+- not tested on more than one core
 - if you see popcnt with three operands, don't panic, its just a macro that needs a temp for non-popcnt cpu's BasicMacros.asm
 - there are three kinds of threads
   - the gui thread reads from stdin and uses the pos1 and pos2 structures
@@ -31,13 +37,13 @@
   - the size of this container should expand and shrink automatically in the gui thread
   - the size of vector of states used in search threads is fixed on thread creation
     - we only need 100+MAX_PLY entries for a search thread
-- DoMove does no prefetching
+- Move_Do does no prefetching
 - the movepick function is fully written and not optimized
 - the qsearch function is fully written and slghtly optimied
 - the search function is fully written and not optimized
 - the evaluation function is fully written and not optimized
-- the endgame functions are not written
-- sysygy is not incorporated
+- the endgame functions are written are slightly tested
+- sysygy is incorporated but not tested
 
 4. non-uci commands:
 - moves x..	makes the moves x.. from the current pos. if illegal move appears in list, parsing stops there

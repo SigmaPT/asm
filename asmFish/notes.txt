@@ -1,3 +1,119 @@
+position fen 8/8/2k5/8/6K1/8/3R4/8 w - - 0 1
+eval
+position fen k7/8/8/8/6K1/2NNN3/8/8 w - - 0 1
+eval
+position fen rb2k3/8/8/8/8/8/8/4K3 b - - 0 1
+eval
+position fen rb2k3/8/8/8/8/8/8/4K3 w - - 0 1
+eval
+position fen nb2k3/8/8/8/8/8/8/4K3 w - - 0 1
+eval
+position fen n3k3/1b6/8/8/8/8/8/4K3 w - - 0 1
+eval
+position fen 8/3r4/2k5/6Q1/5K2/8/8/8 w - - 0 1
+eval
+position fen 8/3r4/2k5/6Q1/5K2/8/8/8 b - - 0 1
+eval
+position fen 8/1q6/2k5/8/8/6R1/7K/8 w - - 0 1
+eval
+position fen 8/1q6/2k5/8/8/6R1/7K/8 b - - 0 1
+eval
+position fen 8/8/2k5/3r4/8/6P1/7K/8 w - - 0 1
+eval
+position fen 8/8/2k5/3r4/8/6P1/7K/8 b - - 0 1
+eval
+position fen 8/8/2k5/3p4/8/6R1/3K4/8 w - - 0 1
+eval
+position fen 8/8/2k5/3p4/8/6R1/3K4/8 b - - 0 1
+eval
+position fen 8/8/8/6K1/2k5/3p2R1/8/8 w - - 0 1
+eval
+position fen 8/8/8/6K1/2k5/3p2R1/8/8 b - - 0 1
+eval
+position fen 8/8/8/6K1/2k5/3b2R1/8/8 w - - 0 1
+eval
+position fen 8/8/8/6K1/2k5/3b2R1/8/8 b - - 0 1
+eval
+position fen 8/2k5/8/6K1/7R/3n4/8/8 w - - 0 1
+eval
+position fen 8/2k5/8/6K1/7n/3R4/8/8 w - - 0 1
+eval
+position fen 8/2k5/8/6K1/7n/3R4/8/8 b - - 0 1
+eval
+position fen 8/5k2/8/3K4/7p/3Q4/8/8 w - - 0 1
+eval
+position fen 8/5k2/8/3K4/7p/3Q4/8/8 b - - 0 1
+eval
+position fen 8/5k2/2P5/3K4/7q/8/8/8 w - - 0 1
+eval
+position fen 8/5k2/2P5/3K4/7q/8/8/8 b - - 0 1
+eval
+position fen 8/1KP2k2/8/8/7q/8/8/8 w - - 0 1
+eval
+position fen 8/1KP2k2/8/8/7q/8/8/8 b - - 0 1
+eval
+position fen 5k2/4p3/8/8/8/8/2PK4/3B4 w - - 0 1
+eval
+position fen 8/1k2p3/8/8/8/PK6/1B6/8 w - - 0 1
+eval
+position fen 8/1p1k4/1P6/3K4/8/8/1B6/8 w - - 0 1
+eval
+position fen 8/1p1k4/1P6/1P1K4/8/8/1B6/8 w - - 0 1
+eval
+position fen 8/1p1k4/1P6/1P1K4/8/8/1B6/8 b - - 0 1
+eval
+position fen 8/3pk3/4r3/2K5/8/5Q2/8/8 w - - 0 1
+eval
+position fen 8/3pk3/6r1/2K5/8/5Q2/8/8 w - - 0 1
+eval
+position fen 8/4k3/8/P7/4b3/2R5/4K3/8 w - - 0 1
+eval
+position fen 8/4k3/8/P7/5b2/2R5/4K3/8 w - - 0 1
+eval
+position fen 1k6/8/P7/2b5/8/2R5/4K3/8 w - - 0 1
+eval
+position fen 4k3/6r1/2p5/8/1PP5/1R6/8/4K3 w - - 0 1
+eval
+position fen 2k5/6r1/2p5/8/1PP5/1R6/8/4K3 w - - 0 1
+eval
+position fen 8/k7/8/8/P7/P7/8/4K3 w - - 0 1
+eval
+position fen 8/2k1b3/8/8/2P5/5B2/8/4K3 w - - 0 1
+eval
+position fen 8/4b3/4k3/8/2P5/5B2/8/4K3 w - - 0 1
+eval
+position fen 8/4b3/4k3/8/2PP4/5B2/8/4K3 w - - 0 1
+eval
+position fen 8/4b3/4k3/8/2P5/2P2B2/8/4K3 w - - 0 1
+eval
+position fen 4b3/8/2k5/8/2P5/2P1B3/8/4K3 b - - 0 1
+eval
+position fen 4b3/1k6/1P6/8/8/2P1B3/8/4K3 w - - 0 1
+eval
+position fen 8/8/2kP4/5b2/8/2P1B3/8/4K3 w - - 0 1
+eval
+position fen 8/8/2k3n1/8/8/2P1B3/8/4K3 w - - 0 1
+eval
+position fen 8/Pk6/1N6/8/8/8/8/4K3 w - - 0 1
+eval
+position fen 8/5b2/8/1N4k1/3P4/8/8/4K3 w - - 0 1
+eval
+position fen 8/6p1/5k2/8/P1K5/8/8/8 w - - 0 1
+eval
+position fen 8/6p1/5k2/3P4/2K5/8/8/8 w - - 0 1
+eval
+position fen 8/6p1/5k2/8/1PK5/8/8/8 w - - 0 1
+eval
+
+
+position fen 8/k5p1/8/8/P1K5/8/8/8 w - - 0 1
+eval
+
+
+
+
+
+
 g++ "C:\Users\pc\Dropbox\asm\SF\syzygy\tbcore.cpp" -c -std=c++11 -Os -o "C:\Users\pc\Dropbox\asm\SF\syzygy\tbcore.o"
 C:\Users\pc>"C:\Users\pc\Downloads\objconv\objconv.exe" -fyasm "C:\Users\pc\Dropbox\asm\SF\syzygy\tbcore.o" "C:\Users\pc\Dropbox\asm\SF\syzygy\tbcore.asm"
 
