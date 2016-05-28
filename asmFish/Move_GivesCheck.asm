@@ -147,7 +147,4 @@ Move_GivesCheck:
 		ret
 
 .Error:
-match =1, DEBUG {
-		
-}
 	       int3

@@ -37,11 +37,15 @@ local ..Outer, ..Inner, ..InnerDone, ..OuterDone
 ..Outer:
 		mov   rax, qword[p]
 		mov   edx, dword[p+ExtMove.score]
+	   ;     cmp   dword[p+ExtMove.score], 0x80000000
+	   ;      je   Interrupt
 		mov   q, p
 
 		cmp   q, begin
 		jbe   ..InnerDone
 		mov   rcx, qword[q-sizeof.ExtMove+ExtMove.move]
+	   ;     cmp   dword[q-sizeof.ExtMove+ExtMove.score], 0x80000000
+	   ;      je   Interrupt
 		cmp   edx, dword[q-sizeof.ExtMove+ExtMove.score]
 		jle   ..InnerDone
 ..Inner:
@@ -51,6 +55,8 @@ local ..Outer, ..Inner, ..InnerDone, ..OuterDone
 		cmp   q, begin
 		jbe   ..InnerDone
 		mov   rcx, qword[q-sizeof.ExtMove+ExtMove.move]
+	   ;     cmp   dword[q-sizeof.ExtMove+ExtMove.score], 0x80000000
+	   ;      je   Interrupt
 		cmp   edx, dword[q-sizeof.ExtMove+ExtMove.score]
 		 jg   ..Inner
 ..InnerDone:
@@ -194,11 +200,15 @@ local ..Positive
 	; ecx move (preserved)
 	; jmp to JmpTo if see value is >=0
 
+
 		mov   r8d, ecx
 		shr   r8d, 6
 		and   r8d, 63	; r8d = from
 		mov   r9d, ecx
 		and   r9d, 63	; r9d = to
+match =1, PROFILE \{
+lock inc qword[profile.moveUnpack]
+\}
 	      movzx   r10d, byte [rbp+Pos.board+r8]	; r10 = FROM PIECE
 	      movzx   r11d, byte [rbp+Pos.board+r9]	; r11 = TO PIECE
 		mov   r8, SeeSignBitMask

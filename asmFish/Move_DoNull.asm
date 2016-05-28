@@ -1,7 +1,7 @@
 Move_DoNull:
 
 match =1, DEBUG {
-	       push   rcx
+	       push   rcx rdi
 		lea   rdi, [DebugOutput]
 		mov   qword[rbp+Pos.state], rbx
 	       call   Position_PrintSmall
@@ -11,7 +11,7 @@ match =1, DEBUG {
 	       call   Position_IsLegal
 	       test   eax, eax
 		jnz   Move_DoNull_posill
-		pop   rcx
+		pop   rdi rcx
 }
 
 
@@ -44,14 +44,13 @@ match =1, DEBUG {
 		mov   dword[rbx+State.move], edx
 		mov   qword[rbx+State.checkersBB], rcx
 
-
 match =1, DEBUG {
-	       push   rcx
+               push   rcx 
 		mov   qword[rbp+Pos.state], rbx
 	       call   Position_IsLegal
 	       test   eax, eax
 		jnz   Move_DoNull_post_posill
-		pop   rcx
+                pop   rcx
 }
 
 		ret
@@ -71,7 +70,7 @@ Move_DoNull_posill:
 		lea   rdi, [Output]
 	     szcall   PrintString, 'position did not pass Position_IsLegal in DoNullMove'
 		jmp   Move_DoNull_GoError
-Move_DoNull_post_posill:
+Move_DoNull_post_posill: int3
 		lea   rdi, [Output]
 	      szcall  PrintString, 'position not legal after making null move in DoNullMove'
 		jmp   Move_DoNull_GoError

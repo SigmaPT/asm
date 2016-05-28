@@ -91,11 +91,16 @@ local ..write_move, ..dont_write_move, ..replace, ..dont_replace
 		lea   rcx, [8*3+3*rcx]
 		add   rcx, entry
 
+
+
 	       test   eax, eax
 		jnz   ..write_move
 		cmp   key16, word[rcx]
 		 je   ..dont_write_move
 ..write_move:
+match =1, PROFILE \{
+lock inc qword[profile.moveStore]
+\}
 		mov   word[entry+MainHashEntry.move], ax
 ..dont_write_move:
 

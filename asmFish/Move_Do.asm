@@ -77,50 +77,51 @@ Move_Do:
 	       push   rcx rdx
 
 match =1, DEBUG {
-	       push   rcx rdx
-		sub   rsp, MAX_MOVES*sizeof.ExtMove
-		mov   dword[rbp+Pos.debugMove], ecx
-		lea   rdi, [DebugOutput]
-		mov   qword[rbp+Pos.state], rbx
-	       call   Position_PrintSmall
-		mov   eax, 10
-	      stosd
-		mov   qword[rbp+Pos.state], rbx
-	       call   Position_IsLegal
-	       test   eax, eax
-		jnz   Move_Do_posill
-		mov   ecx, dword[rbp+Pos.debugMove]
-	       call   Move_IsPseudoLegal
-	       test   rax, rax
-		jz    Move_Do_pillegal
-		mov   ecx, dword[rbp+Pos.debugMove]
-	       call   Move_IsLegal
-	       test   eax, eax
-		 jz   Move_Do_illegal
-		mov   rdi, rsp
-	       call   Gen_Legal
-		mov   rcx, rsp
-	@@:	cmp   rcx, rdi
-		jae   Move_Do_DoIllegal
-		mov   eax, dword[rbp+Pos.debugMove]
-		cmp   eax, dword[rcx]
-		lea   rcx,[rcx+sizeof.ExtMove]
-		jne   @b
-		add   rsp, MAX_MOVES*sizeof.ExtMove
-		pop   rdx rcx
+push rcx rdx
+sub rsp, MAX_MOVES*sizeof.ExtMove
+mov dword[rbp+Pos.debugMove], ecx
+lea rdi, [DebugOutput]
+mov qword[rbp+Pos.state], rbx
+call Position_PrintSmall
+mov eax, 10
+stosd
+mov qword[rbp+Pos.state], rbx
+call Position_IsLegal
+test eax, eax
+jnz Move_Do_posill
+mov ecx, dword[rbp+Pos.debugMove]
+call Move_IsPseudoLegal
+test rax, rax
+jz Move_Do_pillegal
+mov ecx, dword[rbp+Pos.debugMove]
+call Move_IsLegal
+test eax, eax
+jz Move_Do_illegal
+mov rdi, rsp
+call Gen_Legal
+mov rcx, rsp
+@@:
+cmp rcx, rdi
+jae Move_Do_DoIllegal
+mov eax, dword[rbp+Pos.debugMove]
+cmp eax, dword[rcx]
+lea rcx,[rcx+sizeof.ExtMove]
+jne @b
+add rsp, MAX_MOVES*sizeof.ExtMove
+pop rdx rcx
 }
 
 match=1, VERBOSE {
-	       push   rax rcx rsi rdi
-		lea   rdi, [VerboseOutput]
-		mov   rax, 'do move '
-	      stosq
-	       call   PrintUciMove
-		mov   al, 10
-	      stosb
-		lea   rcx, [VerboseOutput]
-	       call   _WriteOut
-		pop   rdi rsi rcx rax
+push rax rcx rsi rdi
+lea rdi, [VerboseOutput]
+mov rax, 'do move '
+stosq
+call PrintUciMove
+mov al, 10
+stosb
+lea rcx, [VerboseOutput]
+call _WriteOut
+pop rdi rsi rcx rax
 }
 
 		mov   esi, dword[rbp+Pos.sideToMove]
@@ -133,6 +134,11 @@ match=1, VERBOSE {
 		mov   r9d, ecx
 		and   r9d, 63	; r9d = to
 		shr   ecx, 12
+
+match =1, PROFILE {
+lock inc qword[profile.moveDo]
+lock inc qword[profile.moveUnpack]
+}
 
 	      movzx   r10d, byte[rbp+Pos.board+r8]     ; r10 = FROM PIECE
 	      movzx   r11d, byte[rbp+Pos.board+r9]     ; r11 = TO PIECE

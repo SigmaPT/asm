@@ -7,8 +7,9 @@ CPU_HAS_AVX1	 equ 0	;  256 bit floating point       probably only used for memor
 CPU_HAS_AVX2	 equ 0	;  256 bit integer + fmadd      probably not used
 CPU_HAS_BMI1	 equ 0	;  andn                         why not use it if we can
 CPU_HAS_BMI2	 equ 0	;  pext + pdep                  nice for move generation, but not much faster than magics
-DEBUG		 equ 1	;  turns on the asserts         use this for detecting bugs, should be no functional change
+DEBUG		 equ 0	;  turns on the asserts         use this for detecting bugs, should be no functional change
 VERBOSE 	 equ 0	;  LOTS of print + eval trace   use this for hunting down bugs
+PROFILE 	 equ 0	;  counts in the code
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
@@ -25,8 +26,18 @@ include 'Debug.asm'
 
 section '.data' data readable writeable
 
+match =1, PROFILE {
+align 16
+ profile:
+ .moveDo     dq 0
+ .moveUnpack dq 0
+ .moveStore  dq 0
+ .moveRetrieve dq 0
+ .ender rb 0
+}
 
 match =1, VERBOSE {
+align 16
  trace.Material  dd 0
  trace.Imbalance dd 0
  trace.Pawn	 dd 0
@@ -439,6 +450,7 @@ include 'OsWindows.asm'
 include 'Tablebase.asm'
 include 'TablebaseCore.asm'
 
+Interrupt : int3
 
 Start:
 	       push   rbp

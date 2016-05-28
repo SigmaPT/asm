@@ -35,6 +35,10 @@ match=1, VERBOSE {
 		and   r9d, 63	; r9d = to
 		shr   ecx, 12
 
+match =1, PROFILE {
+lock inc qword[profile.moveUnpack]
+}
+
 	      movzx   r11d, byte[rbx+State.capturedPiece]      ; r11 = TO PIECE
 	      movzx   r10d, byte[rbp+Pos.board+r9]	       ; r10 = FROM PIECE
 

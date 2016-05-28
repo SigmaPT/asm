@@ -48,13 +48,13 @@ end virtual
 		 je   .mate
 
 	; check tb
-		mov   rcx, qword[rbp+Pos.typeBB+8*White]
-		 or   rcx, qword[rbp+Pos.typeBB+8*Black]
-	     popcnt   rcx, rcx, rdx
-		sub   eax, ecx
-		sar   eax, 31
-		 or   al, byte[rbx+State.castlingRights]
-		 jz   .check_tb
+;                mov   rcx, qword[rbp+Pos.typeBB+8*White]
+;                 or   rcx, qword[rbp+Pos.typeBB+8*Black]
+;             popcnt   rcx, rcx, rdx
+;                sub   eax, ecx
+;                sar   eax, 31
+;                 or   al, byte[rbx+State.castlingRights]
+;                 jz   .check_tb
 .check_tb_ret:
 
 	; start workers

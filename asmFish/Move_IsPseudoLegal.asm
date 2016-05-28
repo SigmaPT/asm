@@ -20,6 +20,10 @@ Move_IsPseudoLegal:
 		mov   r9d, ecx
 		and   r9d, 63
 
+match =1, PROFILE {
+lock inc qword[profile.moveUnpack]
+}
+
 	; r11 = FROM PIECE
 	      movzx   r11d, byte[rbp+Pos.board+r8]
 

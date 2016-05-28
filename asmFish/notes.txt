@@ -1,3 +1,89 @@
+
+asmFish 2016.05.28 DEBUG POPCNT
+uci
+id name asmFish 2016.05.28 DEBUG POPCNT
+id author TypingALot
+option name Contempt type spin default 0 min -100 max 100
+option name Threads type spin default 1 min 1 max 128
+option name Hash type spin default 16 min 1 max 1048576
+option name ClearHash type button
+option name Ponder type check default false
+option name MultiPV type spin default 1 min 1 max 500
+option name Weakness type spin default 0 min 0 max 1000
+option name MoveOverhead type spin default 30 min 0 max 5000
+option name MinThinkTime type spin default 20 min 0 max 5000
+option name SlowMover type spin default 89 min 10 max 1000
+option name UCI_Chess960 type check default false
+option name SyzygyPath type string default <empty>
+option name SyzygyProbeDepth type spin default 1 min 1 max 100
+option name Syzygy50MoveRule type check default true
+option name SyzygyProbeLimit type spin default 6 min 0 max 6
+uciok
+go depth 20
+info depth 1 multipv 1 time 0 nps 21000 score cp 75 nodes 21 pv e2e4
+info depth 2 multipv 1 time 1 nps 58000 score cp 80 nodes 58 pv e2e4 b7b6
+info depth 3 multipv 1 time 1 nps 145000 score cp 97 nodes 145 pv d2d4 d7d6 e2e4
+
+info depth 4 multipv 1 time 1 nps 231000 score cp 92 nodes 231 pv d2d4 e7e6 e2e4
+ d7d6
+info depth 5 multipv 1 time 5 nps 344200 score cp 17 nodes 1721 pv e2e4 e7e5 d2d
+4 d7d5 d4e5
+info depth 6 multipv 1 time 9 nps 401888 score cp 7 nodes 3617 pv d2d4 d7d5 g1f3
+ e7e6 e2e3 g8f6
+info depth 7 multipv 1 time 15 nps 476066 score cp 32 nodes 7141 pv e2e4 e7e5 d2
+d4 d7d5 d4e5 d5e4 d1d8 e8d8 c1g5 f7f6 e5f6
+info depth 8 multipv 1 time 24 nps 526125 score cp 13 nodes 12627 pv e2e4 d7d5 e
+4e5 d5d4 d2d3 b8c6 g1f3 e7e6
+info depth 9 multipv 1 time 59 nps 609016 score cp 55 nodes 35932 pv e2e4 d7d5 e
+4d5 g8f6 c2c4 e7e6 d5e6 c7c6 d2d4
+info depth 10 multipv 1 time 99 nps 644494 score cp 57 nodes 63805 pv e2e4 e7e6
+d2d4 d7d5 e4e5 a7a6 c1d2 g8e7 g1f3 e7c6
+info depth 11 multipv 1 time 167 nps 660880 score cp 44 nodes 110367 pv e2e4 b8c
+6 d2d4 d7d5 e4e5 e7e6 g1f3 g8e7 b1c3 c8d7 h2h3
+info depth 12 multipv 1 time 211 nps 663933 score cp 49 nodes 140090 pv e2e4 c7c
+5 b1c3 b8c6 g1f3 e7e6 f1e2 d7d5 e4d5 e6d5 d2d4 c5d4 f3d4 g8f6
+info depth 13 multipv 1 time 611 nps 673708 score cp 27 nodes 411636 pv e2e4 e7e
+5 g1f3 b8c6 f1c4 g8f6 d2d3 f8c5 c1g5 h7h6 g5f6 d8f6 c2c3 a7a6 e1g1
+info depth 14 multipv 1 time 862 nps 673729 score cp 28 nodes 580755 pv e2e4 e7e
+5 g1f3 b8c6 f1c4 g8f6 d2d3 f8c5 e1g1 d7d6 c2c3 c5b6 b2b4 a7a6 c1g5 c8e6 c4e6
+info depth 15 multipv 1 time 1808 nps 672020 score cp 19 nodes 1215013 pv e2e4 e
+7e5 g1f3 b8c6 d2d4 e5d4 f3d4 g8f6 d4c6 d7c6 d1d8 e8d8 c1g5 h7h6 g5f6 g7f6 b1c3 f
+8c5 a1d1 d8e7
+info depth 16 multipv 1 time 2447 nps 671911 score cp 26 nodes 1644168 pv d2d4 d
+7d5 g1f3 g8f6 e2e3 c8g4 h2h3 g4f3 d1f3 c7c6 b1d2 b8d7 c2c4 e7e5 c4d5 f6d5 f1c4 d
+5f6
+info depth 17 multipv 1 time 3097 nps 671133 score cp 26 lowerbound nodes 207850
+1 pv d2d4
+info depth 17 multipv 1 time 3200 nps 671294 score cp 22 nodes 2148142 pv d2d4 d
+7d5 g1f3 g8f6 e2e3 c8g4 f1e2 c7c6 e1g1 e7e6 b1d2 f8d6 h2h3 g4f5 f3e5 e8g8 g2g4 f
+5g6 c2c3
+info depth 18 multipv 1 time 3780 nps 671793 score cp 29 lowerbound nodes 253938
+1 pv e2e4
+info depth 18 multipv 1 time 4537 nps 673864 score cp 36 lowerbound nodes 305732
+4 pv e2e4
+info depth 18 multipv 1 time 6118 nps 675841 score cp 29 upperbound nodes 413479
+7 pv e2e4 e7e6
+info depth 18 multipv 1 time 7734 nps 676017 score cp 34 nodes 5228322 pv e2e4 e
+7e6 b1c3 d7d5 d2d4 f8b4 e4d5 e6d5 g1f3 b8c6 f1d3 g8f6 d1e2 c8e6 a2a3 b4a5 e1g1 a
+5b6 c1g5 e8g8 g5f6 d8f6
+info depth 19 multipv 1 time 8192 nps 676359 score cp 27 upperbound nodes 554073
+4 pv e2e4 e7e6
+info depth 19 multipv 1 time 8471 nps 676248 score cp 34 lowerbound nodes 572850
+3 pv e2e4
+info depth 19 multipv 1 time 8586 nps 676250 score cp 32 nodes 5806284 pv e2e4 e
+7e6 b1c3 d7d5 d2d4 f8b4 e4d5 e6d5 g1f3 b8c6 f1d3 g8f6 d1e2 c8e6 a2a3 b4c3 b2c3 d
+8e7 a1b1 e8c8 e1g1 c8b8 f1e1 b8c8
+info depth 20 multipv 1 time 9300 nps 676179 score cp 25 upperbound nodes 628846
+6 pv e2e4 e7e6
+info depth 20 multipv 1 time 12155 nps 675990 score cp 19 nodes 8216667 pv e2e4
+e7e6 d2d4 d7d5 e4d5 e6d5 b1c3 f8b4 a2a3 b4c3 b2c3 b8c6 f1d3 g8f6 d1e2 d8e7 e2e7
+c6e7 g1f3 c8f5 e1g1 f6e4 f1e1 e8c8
+bestmove e2e4 ponder e7e6
+
+
+
+
+
 position fen 8/8/2k5/8/6K1/8/3R4/8 w - - 0 1
 eval
 position fen k7/8/8/8/6K1/2NNN3/8/8 w - - 0 1
@@ -170,6 +256,8 @@ position startpos moves e2e4 d7d6 d2d4 g8f6 b1c3 g7g6 f2f4 f8g7 e4e5 f6d7 g1f3 e
 position startpos moves e2e4 d7d6 d2d4 g8f6 b1c3 g7g6 f2f4 f8g7 e4e5 f6d7 g1f3 e8g8 h2h4 h7h5 e5e6 f7e6 f3g5 f8f6 g2g4 h5g4 d1g4 d7f8 h4h5 e6e5 g4h4 g6h5 f1c4 e7e6 d4e5 d6e5 f4e5 f6h6 c1d2 b8c6 e1c1 d8e7 c3e4 c6e5 c4b3 c8d7 d1g1 e5g4 h4e1 d7c6 d2b4 e7e8 b4c3
 
 "C:\Users\pc\Desktop\fasmw17116\TOOLS\WIN32\PREPSRC.exe" "C:\Users\pc\Dropbox\asm\ace960\ace960.fas" "C:\Users\pc\Dropbox\asm\ace960\preprocessed.asm"
+
+"C:\Users\pc\Desktop\fasmw17116\TOOLS\WIN32\PREPSRC.exe" "C:\Users\pc\Dropbox\asm\asmFish\asmFishW.fas" "C:\Users\pc\Dropbox\asm\asmFish\preprocessed.asm"
 
 
 cd C:\Users\pc\Dropbox\asm\Stockfish-master\src

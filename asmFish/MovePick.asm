@@ -312,22 +312,13 @@ GenNext_AllEvasions:
 		mov   r15, rdi
 		sub   rdi, sizeof.ExtMove
 		cmp   rdi, r14
-		 ja   MovePick_AllEvasions
+		 je   MovePick_AllEvasions_Only1
 		mov   r12, r14
       ScoreEvasions   r12, r15
 
 
 
 MovePick_AllEvasions:
-
-      ;          cmp  byte[rbp+Pos.board+SQ_D2], 8*White+Queen
-      ;          jne  @f
-      ;          cmp  byte[rbp+Pos.board+SQ_B1], 8*White+Knight
-      ;          jne  @f
-      ;          int3
-      ;          call   WriteOutPosition
-      ;  @@:
-
 		cmp   r14, r15
 		 je   GenNext_QSearchWithChecks
 	   PickBest   r14, r13, r15
@@ -337,7 +328,12 @@ MovePick_AllEvasions:
 		lea   rdx, [MovePick_AllEvasions]
 		ret
 
-
+MovePick_AllEvasions_Only1:
+		mov   eax, dword[r14+ExtMove.move]
+		cmp   eax, dword[rsi+Pick.ttMove]
+		 je   GenNext_QSearchWithChecks
+		lea   rdx, [GenNext_QSearchWithChecks]
+		ret
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 GenNext_QSearchWithChecks:

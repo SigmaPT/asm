@@ -1453,6 +1453,24 @@ match =1, VERBOSE {
 		mov   dword[trace.Material], eax
 		}
 
+		;xor   eax, eax
+		;mov   qword[.ei.attackedBy+8*0], rax
+		;;mov   qword[.ei.attackedBy+8*1], rax
+		;mov   qword[.ei.attackedBy+8*2], rax
+		;mov   qword[.ei.attackedBy+8*3], rax
+		;mov   qword[.ei.attackedBy+8*4], rax
+		;mov   qword[.ei.attackedBy+8*5], rax
+		;mov   qword[.ei.attackedBy+8*6], rax
+		;mov   qword[.ei.attackedBy+8*7], rax
+		;mov   qword[.ei.attackedBy+8*8], rax
+		;;mov   qword[.ei.attackedBy+8*9], rax
+		;mov   qword[.ei.attackedBy+8*10], rax
+		;mov   qword[.ei.attackedBy+8*11], rax
+		;mov   qword[.ei.attackedBy+8*12], rax
+		;mov   qword[.ei.attackedBy+8*13], rax
+		;mov   qword[.ei.attackedBy+8*14], rax
+		;mov   qword[.ei.attackedBy+8*15], rax
+
 
 
 		mov   rsi, qword[rbx+State.materialKey]
@@ -1780,6 +1798,25 @@ VerboseDisplayInt rax
 VerboseDisplay <db 'eval: '>
 VerboseDisplayInt rax
 
+
+
+		;xor   ecx, ecx
+		;mov   qword[.ei.attackedBy+8*0], rcx
+		;mov   qword[.ei.attackedBy+8*1], rcx
+		;mov   qword[.ei.attackedBy+8*2], rcx
+		;mov   qword[.ei.attackedBy+8*3], rcx
+		;mov   qword[.ei.attackedBy+8*4], rcx
+		;mov   qword[.ei.attackedBy+8*5], rcx
+		;mov   qword[.ei.attackedBy+8*6], rcx
+		;mov   qword[.ei.attackedBy+8*7], rcx
+		;mov   qword[.ei.attackedBy+8*8], rcx
+		;mov   qword[.ei.attackedBy+8*9], rcx
+		;mov   qword[.ei.attackedBy+8*10], rcx
+		;mov   qword[.ei.attackedBy+8*11], rcx
+		;mov   qword[.ei.attackedBy+8*12], rcx
+		;mov   qword[.ei.attackedBy+8*13], rcx
+		;mov   qword[.ei.attackedBy+8*14], rcx
+		;mov   qword[.ei.attackedBy+8*15], rcx
 
 		add   rsp, sizeof.EvalInfo
 		pop   r15 r14 r13 r12 rdi rsi rbx

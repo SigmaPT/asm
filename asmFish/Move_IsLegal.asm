@@ -32,6 +32,11 @@ Move_IsLegal:
 		and   ecx, 63
 	; ecx = source square
 
+match =1, PROFILE {
+lock inc qword[profile.moveUnpack]
+}
+
+
 	; pseudo legal castling moves are always legal
 		cmp   edx, MOVE_TYPE_CASTLE
 		 je   .Legal

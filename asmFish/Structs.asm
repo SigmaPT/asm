@@ -104,19 +104,19 @@ ends
 
 
 struct Pick
- cur		 rq 1
- endMoves	 rq 1
- endBadCaptures  rq 1
- stage		 rq 1
- ttMove 	  rd 1
+ cur		 rq 1	  ;0
+ endMoves	 rq 1	  ;8
+ endBadCaptures  rq 1	  ;16
+ stage		 rq 1	  ;24
+ ttMove 	  rd 1	  ;32
  threshold	  rd 1
- countermove	  rd 1
+ countermove	  rd 1	  ;40
  followupmoves	  rd 1
- recaptureSquare  rd 1
+ recaptureSquare  rd 1	  ;48
  depth		  rd 1
- killers    rb sizeof.ExtMove*3
- moves	    rb sizeof.ExtMove*MAX_MOVES
-ends
+ killers    rb sizeof.ExtMove*3  ;56
+ moves	    rb sizeof.ExtMove*MAX_MOVES ;80
+ends					;1872
 
 
 struct RootMovesVec

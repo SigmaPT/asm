@@ -141,7 +141,15 @@ UciChoose:
 	    stdcall   CmpString, 'eval'
 	       test   eax, eax
 		jnz   UciEval
+	    stdcall   CmpString, 'bench'
+	       test   eax, eax
+		jnz   UciBench
 
+match =1, PROFILE {
+	    stdcall   CmpString, 'profile'
+	       test   eax, eax
+		jnz   UciProfile
+}
 
 UciUnknown:
 		lea   rdi, [Output]
@@ -1303,3 +1311,135 @@ match =1, VERBOSE {
 
 
 
+match =1, PROFILE {
+UciProfile:
+		lea   rdi, [Output]
+
+	     szcall   PrintString, 'moveDo:        '
+		mov   rax, qword[profile.moveDo]
+	       call   PrintUnsignedInteger
+		mov   al, 10
+	      stosb
+	     szcall   PrintString, 'moveUnpack:    '
+		mov   rax, qword[profile.moveUnpack]
+	       call   PrintUnsignedInteger
+		mov   al, 10
+	      stosb
+	     szcall   PrintString, 'moveStore:     '
+		mov   rax, qword[profile.moveStore]
+	       call   PrintUnsignedInteger
+		mov   al, 10
+	      stosb
+	     szcall   PrintString, 'moveRetrieve:  '
+		mov   rax, qword[profile.moveRetrieve]
+	       call   PrintUnsignedInteger
+		mov   al, 10
+	      stosb
+
+
+	       push   rdi
+		lea   rdi, [profile]
+		mov   ecx, profile.ender-profile
+		xor   eax, eax
+	      stosb
+		pop   rdi
+		jmp   UciWriteOut
+
+}
+
+UciBench:
+virtual at rsp
+  .time  rq 1
+  .nodes rq 1
+
+  .limits rb sizeof.Limits
+  .localend rb 0
+end virtual
+.localsize = ((.localend-rsp+15) and (-16))
+		sub   rsp, .localsize
+
+		lea   rbp, [pos1]
+
+		xor   eax, eax
+		mov   qword[.nodes], rax
+		lea   rcx, [Position_WriteOutInfo_None]
+		mov   qword[options.printFxn], rcx
+	       call   Search_Clear
+
+
+		lea   rsi, [szStartFEN]
+	       call   Position_ParseFEN
+		lea   rcx, [.limits]
+	       call   Limits_Init
+		lea   rcx, [.limits]
+		mov   dword[rcx+Limits.depth], 20
+	       call   Limits_Set
+		lea   rcx, [.limits]
+
+	       call   _GetTime
+		mov   r14, rax
+		lea   rcx, [.limits]
+	       call   ThreadPool_StartThinking
+		lea   rcx, [mainThread]
+	       call   Thread_WaitForSearchFinished
+	       call   _GetTime
+		sub   r14, rax
+		neg   r14
+	       call   ThreadPool_NodesSearched
+		add   qword[.time], r14
+		add   qword[.nodes], rax
+		mov   r15, rax
+
+		lea   rdi, [Output]
+		mov   rax, 'nodes:  '
+	      stosq
+		mov   rax, qword[.nodes]
+	       call   PrintUnsignedInteger
+		mov   eax, '    '
+	      stosd
+		mov   rcx, r14
+		cmp   r14, 1
+		adc   rcx, 0
+		mov   rax, r15
+		xor   edx, edx
+		div   rcx
+	       call   PrintUnsignedInteger
+		mov   al, ' '
+	      stosb
+		mov   eax, 'knps'
+	      stosd
+		mov   al, 10
+	      stosb
+	       call   _WriteOut_Output
+
+
+		lea   rdi, [Output]
+		mov   rax, 'total no'
+	      stosq
+		mov   rax, 'des:    '
+	      stosq
+		mov   rax, qword[.nodes]
+	       call   PrintUnsignedInteger
+		mov   eax, '    '
+	      stosd
+		mov   rcx, qword[.time]
+		cmp   rcx, 1
+		adc   rcx, 0
+		mov   rax, r15
+		xor   edx, edx
+		div   rcx
+	       call   PrintUnsignedInteger
+		mov   al, ' '
+	      stosb
+		mov   eax, 'knps'
+	      stosd
+		mov   al, 10
+	      stosb
+	       call   _WriteOut_Output
+
+
+		lea   rcx, [Position_WriteOutInfo_Uci]
+		mov   qword[options.printFxn], rcx
+
+		add   rsp, .localsize
+		jmp   UciGetInput

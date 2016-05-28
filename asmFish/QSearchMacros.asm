@@ -25,11 +25,11 @@ VerboseDisplayInt r8
 
 
 virtual at rsp
-  .tte	     rq 1
-  .ltte      rq 1
-  .searchFxn rq 1
+  .tte	     rq 1      ; 0
+  .ltte      rq 1      ; 8
+  .searchFxn rq 1      ; 16
 
-  .ttMove	  rd 1
+  .ttMove	  rd 1 ; 24
   .ttValue	  rd 1
   .ttDepth	  rd 1
   .move 	  rd 1
@@ -50,14 +50,14 @@ virtual at rsp
   .futilityValue  rd 1
   .futilityBase   rd 1
 
-  .inCheck		   rb 1
-  .givesCheck		   rb 1
-  .singularExtensionNode   rb 1
-  .improving		   rb 1
-  .captureOrPromotion	   rb 1
-  .dangerous		   rb 1
-  .doFullDepthSearch	   rb 1
-  .cutNode		   rb 1
+  .inCheck		   rb 1   ;  104
+  .givesCheck		   rb 1   ;  105
+  .singularExtensionNode   rb 1   ;  106
+  .improving		   rb 1   ;  107
+  .captureOrPromotion	   rb 1   ;  108
+  .dangerous		   rb 1   ;  109
+  .doFullDepthSearch	   rb 1   ;  110
+  .cutNode		   rb 1   ;  111
   .ttHit		   rb 1
 			   rb 1
 			   rb 1
@@ -82,6 +82,12 @@ end virtual
 	       push   rbx rsi rdi r12 r13 r14 r15
 	 _chkstk_ms   rsp, .localsize
 		sub   rsp, .localsize
+
+;        repeat .localsize/4
+;                mov   dword[rsp+4*(%-1)], 0x80000000
+;        end repeat
+
+
 
 		mov   dword[.alpha], ecx
 		mov   dword[.beta], edx
@@ -394,6 +400,9 @@ VerboseDisplayInt qword[.alpha]
 		and   edx, 63				; edx = to
 		shr   ecx, 6
 		and   ecx, 63				; ecx = from
+   match =1, PROFILE \{
+lock inc qword[profile.moveUnpack]
+\}
 
 	; speculative prefetch
 		mov   rax, qword[rbx+State.key]

@@ -69,13 +69,14 @@ VerboseDisplayInt r8
 
 
 virtual at rsp
-  .tte	     rq 1
-  .ltte      rq 1
-  .posKey    rq 1
-  .cmh	     rq 1
-  .fmh	     rq 1
-  .fmh2      rq 1
-  .r		  rd 1
+  .tte	     rq 1    ;0
+  .ltte      rq 1    ;8
+  .posKey    rq 1    ;16
+  .cmh	     rq 1    ;24
+;       rq 2
+  .fmh	     rq 1    ;32
+  .fmh2      rq 1    ; 40
+  .r		  rd 1	  ; 48
   .ttMove	  rd 1
   .ttValue	  rd 1
   .move 	  rd 1
@@ -99,7 +100,7 @@ virtual at rsp
   .moved_piece	  rd 1
   .success	  rd 1	 ; for tb
 		  rd 1
-  .givesCheck		   rb 1
+  .givesCheck		   rb 1  ; 144
   .singularExtensionNode   rb 1
   .improving		   rb 1
   .captureOrPromotion	   rb 1  ; nonzero for true
@@ -116,7 +117,7 @@ virtual at rsp
 			   rb 1
 			   rb 1
 
-  .movepick	  rb sizeof.Pick
+  .movepick	  rb sizeof.Pick       ; 116
   .quietsSearched rd 64
 
 if .PvNode eq 1
@@ -132,6 +133,12 @@ end virtual
 	       push   rbx rsi rdi r12 r13 r14 r15
 	 _chkstk_ms   rsp, .localsize
 		sub   rsp, .localsize
+
+
+       ; repeat .localsize/4
+       ;         mov   dword[rsp+4*(%-1)], 0x80000000
+       ; end repeat
+
 
 		mov   dword[.alpha], ecx
 		mov   dword[.beta], edx
@@ -284,8 +291,8 @@ match =1, DEBUG \{
 
     if .RootNode eq 0
 	; Step 4a. Tablebase probe
-	       test   r15d, r15d
-		jns   .CheckTablebase
+;               test   r15d, r15d
+;                jns   .CheckTablebase
 .CheckTablebaseReturn:
     end if
 
@@ -573,6 +580,11 @@ match =1, DEBUG \{
 		shr   eax, 6
 		and   eax, 63
 		and   ecx, 63
+
+match =1, PROFILE \{
+lock inc qword[profile.moveUnpack]
+\}
+
 	      movzx   eax, byte[rbp+Pos.board+rax]
 		shl   eax, 6
 		add   eax, ecx
@@ -669,6 +681,7 @@ VerboseDisplay <db 'entering moves_loop',10>
 		mov   rcx, qword[rbx-2*sizeof.State+State.counterMoves]
 		mov   rdx, qword[rbx-4*sizeof.State+State.counterMoves]
 		mov   qword[.cmh], rax
+		;mov   qword[.cmhCOPY], rax
 		mov   qword[.fmh], rcx
 		mov   qword[.fmh2], rdx
 
@@ -770,6 +783,10 @@ VerboseDisplay <db 'entering moves_loop',10>
 		mov   edx, ecx
 		shr   edx, 6
 		and   edx, 63
+match =1, PROFILE \{
+lock inc qword[profile.moveUnpack]
+\}
+
 	      movzx   edx, byte[rbp+Pos.board+rdx]
 		mov   dword[.moved_piece], edx
 		mov   eax, ecx
@@ -846,6 +863,9 @@ VerboseDisplay <db 'entering moves_loop',10>
 		and   r13d, 63				; r13d = to
 	      movzx   r14d, byte[rbp+Pos.board+r12]	; r14d = from piece
 	      movzx   r15d, byte[rbp+Pos.board+r13]	; r15d = to piece
+match =1, PROFILE \{
+lock inc qword[profile.moveUnpack]
+\}
 
     if .RootNode eq 0
 
@@ -887,6 +907,10 @@ VerboseDisplay <db 'entering moves_loop',10>
 
 	; History based pruning
 		mov   r8, qword[.cmh]
+; cmp r8, qword[.cmhCOPY]
+;  je  @f
+;   int3
+;@@:
 		mov   r9, qword[.fmh]
 		mov   r10, qword[.fmh2]
 		cmp   edx, 4*ONE_PLY
@@ -1038,6 +1062,11 @@ VerboseDisplay <db 'entering moves_loop',10>
 
 		mov   r8, qword[rbp+Pos.history]
 		mov   r9, qword[.cmh]
+; cmp r9, qword[.cmhCOPY]
+;  je  @f
+;   int3
+;@@:
+
 		mov   r10, qword[.fmh]
 		mov   r11, qword[.fmh2]
 		mov   eax, dword[r8+4*rcx]

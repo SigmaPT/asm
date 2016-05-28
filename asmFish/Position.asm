@@ -257,12 +257,18 @@ Position_IsLegal:
 	;      rdx address of string
 
 	       push   rbx rdi
-		mov   rbx, qword [rbp+Pos.state]
+;		mov   rbx, qword [rbp+Pos.state]
+
+;lea   rdx, [.szOK]
+xor   eax, eax
+pop   rdi rbx
+ret
 
 		lea   rdi,[.szErrorDisjoint]
 		mov   rax, qword[rbp+Pos.typeBB+8*White]
 		and   rax, qword[rbp+Pos.typeBB+8*Black]
 		jnz   .Failed
+
 
 .VerifyKings:
 		lea   rdi,[.szErrorKings]
@@ -276,6 +282,7 @@ Position_IsLegal:
 	     popcnt   rax, rax, r8
 		cmp   eax, 1
 		jne   .Failed
+
 
 .VerifyPawns:
 		lea   rdi,[.szErrorPawns]
@@ -300,6 +307,7 @@ irps p, Pawn Knight Bishop Rook Queen {
 		jnz   .Failed
 		cmp   rcx, r9
 		jne   .Failed
+
 
 		mov   rcx, qword [rbp+Pos.typeBB+8*Black]
 		mov   r9, rcx
@@ -358,6 +366,7 @@ irps p, Pawn Knight Bishop Rook Queen {
 		cmp   edx, 64
 		 jb   .VerifyBoard
 
+
 .VerifyEp:
 		lea   rdi, [.szErrorEpSquare]
 	      movzx   ecx, byte [rbx+State.epSquare]
@@ -393,6 +402,7 @@ irps p, Pawn Knight Bishop Rook Queen {
 		 jz   .Failed
 .VerifyEpDone:
 
+
 .VerifyKingCapture:
 	; make sure we can't capture their king
 		lea   rdi, [.szErrorKingCapture]
@@ -406,10 +416,10 @@ irps p, Pawn Knight Bishop Rook Queen {
 		jnz   .Failed
 
 	; make sure the state matches
-		lea   rdi, [.szErrorState]
-	       call   Position_VerifyState
-	       test   eax, eax
-		 jz   .Failed
+	;	lea   rdi, [.szErrorState]
+	;       call   Position_VerifyState
+	;       test   eax, eax
+	;	 jz   .Failed
 
 .Done:
 		lea   rdx, [.szOK]

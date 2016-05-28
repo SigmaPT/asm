@@ -111,6 +111,10 @@ call _WriteOut
 pop rdi r14 r15 r11 r10 r9 r8 rdx rcx rax
 }
 
+match =1, PROFILE {
+lock inc qword[profile.moveRetrieve]
+}
+
 		mov   rcx, qword[rax]
 		and   rcx, 0xFFFFFFFFFFFFFF03
 		 or   edx, -1
