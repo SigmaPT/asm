@@ -108,7 +108,7 @@ end virtual
 		mov   rcx, rbp
 		mov   rdx, r13
 		sub   rsp, 8*4
-	       call   _ZN13TablebaseCore15probe_dtz_tableER8PositioniPi
+	       call   _ZN13TablebaseCore15probe_wdl_tableER8PositionPi
 		add   rsp, 8*4
 		xor   edx, edx
 		cmp   edx, dword[r13]
@@ -137,6 +137,7 @@ Tablebase_ProbeWDL:
 	;     rcx  address of success
 	; out: eax v
 	       push   r15
+		mov   dword[rcx], 1	        
 		mov   r15, rcx
 		mov   r8, rcx
 		mov   ecx, -2
@@ -377,18 +378,20 @@ Tablebase_ProbeDTZNoEP_SuccessIsNeg_WdlIsPositive:
 		cmp   rsi, rdi
 		jae   .MovesDone
 		and   eax, 7
-		cmp   ecx, MOVE_TYPE_EPCAP shl 12
-		jae   .MoveLoop
+		;cmp   ecx, MOVE_TYPE_EPCAP shl 12
+		;jae   .MoveLoop
 		cmp   eax, Pawn
-		jne   .MoveLoop
+		 je   .MoveLoop
+		cmp   ecx, MOVE_TYPE_CASTLE shl 12
+		jae   @f
 	       test   edx, edx
 		jnz   .MoveLoop
-	       call   Move_GivesCheck
+	@@:    call   Move_GivesCheck
 		mov   ecx, dword[rsi+ExtMove.move]
 		mov   edx, eax
 	       call   Move_Do
 		mov   rcx, r15
-	       call   Tablebase_ProbeAB
+	       call   Tablebase_ProbeDTZ
 		neg   eax
 	       push   rax
 		mov   ecx, dword[rsi+ExtMove.move]
