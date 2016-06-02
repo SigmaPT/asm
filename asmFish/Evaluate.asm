@@ -940,6 +940,7 @@ macro EvalThreats Us {
 
 local ..SafeThreatsDone, ..SafeThreatsLoop, ..WeakDone
 local ..ThreatMinorLoop, ..ThreatMinorDone, ..ThreatRookLoop, ..ThreatRookDone
+local ..SkipQueenPin, ..QueenPinLoop
 
 match =White, Us
 \{
@@ -961,12 +962,13 @@ match =Black, Us
 	TRank7BB equ Rank2BB
 \}
 
-	LooseEnemies equ ((0 shl 16) + (25))
-	ThreatByHangingPawn equ ((71 shl 16) + (61))
-	ThreatByKing0 equ ((3 shl 16) + (62))
-	ThreatByKing1 equ ((9 shl 16) + (138))
-	Hanging equ ((48 shl 16) + (27))
-	ThreatByPawnPush equ ((38 shl 16) + (22))
+	LooseEnemies		equ (( 0 shl 16) + ( 25))
+	ThreatByHangingPawn	equ ((71 shl 16) + ( 61))
+	ThreatByKing0		equ (( 3 shl 16) + ( 62))
+	ThreatByKing1		equ (( 9 shl 16) + (138))
+	Hanging 		equ ((48 shl 16) + ( 27))
+	ThreatByPawnPush	equ ((38 shl 16) + ( 22))
+	WeakQueen		equ ((35 shl 16) + (  0))
 
 
 VerboseDisplay <db 'new threats',10,0>
@@ -974,6 +976,70 @@ VerboseDisplay <db 'new threats',10,0>
 		xor   esi, esi
 
 VerboseDisplayScore rsi
+
+;    // Bonus for pin or discovered attack on the opponent queen
+;    if (   pos.count<QUEEN>(Them) == 1
+;	 && pos.slider_blockers(pos.pieces(),
+;				pos.pieces(Us, ROOK, BISHOP),
+;				pos.square<QUEEN>(Them)))
+;	 score += WeakQueen;
+;
+;Bitboard Position::slider_blockers(Bitboard target, Bitboard sliders, Square s) const {
+;  Bitboard b, pinners, result = 0;
+ ; // Pinners are sliders that attack 's' when a pinned piece is removed
+;;  pinners = (  (PseudoAttacks[ROOK  ][s] & pieces(QUEEN, ROOK))
+;	      | (PseudoAttacks[BISHOP][s] & pieces(QUEEN, BISHOP))) & sliders;
+;  while (pinners)
+;  {
+;      b = between_bb(s, pop_lsb(&pinners)) & pieces();
+;      if (!more_than_one(b))
+;	   result |= b & target;
+;  }
+;  return result;
+;}
+		mov   r9, qword[rbp+Pos.typeBB+8*Them]
+		and   r9, qword[rbp+Pos.typeBB+8*Queen]
+		 jz   ..SkipQueenPin
+		bsf   r8, r9
+		lea   r10, [r9-1]
+	       test   r10, r9
+		jnz   ..SkipQueenPin
+		mov   rax, qword[rbp+Pos.typeBB+8*Queen]
+		 or   rax, qword[rbp+Pos.typeBB+8*Rook]
+		and   rax, qword[RookAttacksPDEP+8*r8]
+		mov   rcx, qword[rbp+Pos.typeBB+8*Queen]
+		 or   rcx, qword[rbp+Pos.typeBB+8*Bishop]
+		and   rcx, qword[BishopAttacksPDEP+8*r8]
+		 or   rax, rcx
+		mov   rdx, qword[rbp+Pos.typeBB+8*Rook]
+		 or   rdx, qword[rbp+Pos.typeBB+8*Bishop]
+		and   rdx, qword[rbp+Pos.typeBB+8*Us]
+		and   rax, rdx
+		 jz   ..SkipQueenPin
+		shl   r8d, 6+3
+		lea   rdx, [BetweenBB+r8]
+		mov   r10, qword[rbp+Pos.typeBB+8*White]
+		 or   r10, qword[rbp+Pos.typeBB+8*Black]
+		bsf   rcx, rax
+..QueenPinLoop:
+		mov   rcx, qword[rdx+8*rcx]
+	       blsr   rax, rax, r9
+		and   rcx, r10
+	       blsr   r8, rcx, r9
+		neg   r8
+		sbb   r8, r8
+	       andn   rcx, r8, rcx
+		 or   rsi, rcx
+		bsf   rcx, rax
+		jnz   ..QueenPinLoop
+		mov   rax, qword[rbp+Pos.typeBB+8*Rook]
+		 or   rax, qword[rbp+Pos.typeBB+8*Bishop]
+		and   rax, qword[rbp+Pos.typeBB+8*Us]
+		and   rsi, rax
+		neg   rsi
+		sbb   esi, esi
+		and   esi, WeakQueen
+..SkipQueenPin:
 
 
 		mov   rax, qword[.ei.attackedBy+8*(8*Us+0)]
@@ -991,47 +1057,6 @@ VerboseDisplayScore rsi
 		add   esi, eax
 VerboseDisplayScore rsi
 
-;    // Bonus for pin or discovered attack on the opponent queen
-;    if (   pos.count<QUEEN>(Them) == 1
-;        && pos.slider_blockers(pos.pieces(),
-;                               pos.pieces(Us, ROOK, BISHOP),
-;                               pos.square<QUEEN>(Them)))
-;        score += WeakQueen;
-;
-;Bitboard Position::slider_blockers(Bitboard target, Bitboard sliders, Square s) const {
-;  Bitboard b, pinners, result = 0;
- ; // Pinners are sliders that attack 's' when a pinned piece is removed
-;;  pinners = (  (PseudoAttacks[ROOK  ][s] & pieces(QUEEN, ROOK))
-;             | (PseudoAttacks[BISHOP][s] & pieces(QUEEN, BISHOP))) & sliders;
-;  while (pinners)
-;  {
-;      b = between_bb(s, pop_lsb(&pinners)) & pieces();
-;      if (!more_than_one(b))
-;          result |= b & target;
-;  }
-;  return result;
-;}
-		mov   rax, qword[rbp+Pos.typeBB+8*Them]
-		and   rax, qword[rbp+Pos.typeBB+8*Queen]
-		 jz   .SkipQueenPin
-		bsf   r8, rax
-	       blsr   rcx, rax
-	        jnz   .SkipQueenPin
-	        mov   rax, qword[rbp+Pos.typeBB+8*Queen]
-	         or   rax, qword[rbp+Pos.typeBB+8*Rook]
-	        and   rax, qword[RookAttacksPDEP+8*r8]
-	        mov   rcx, qword[rbp+Pos.typeBB+8*Queen]
-	         or   rcx, qword[rbp+Pos.typeBB+8*Bishop]
-	        and   rcx, qword[BishopAttacksPDEP+8*r8]
-		 or   rax, rcx
-	        mov   rdx, qword[rbp+Pos.typeBB+8*Rook]
-	         or   rdx, qword[rbp+Pos.typeBB+8*Bishop]
-	        and   rdx, qword[rbp+Pos.typeBB+8*Us]
-	        and   rax, rdx
-	         jz   .SkipQueenPin
-		int3
-	        
-.SkipQueenPin:		 
 
 
 		mov   r8, qword[rbp+Pos.typeBB+8*Them]
@@ -1495,7 +1520,7 @@ match =1, VERBOSE {
 
 		;xor   eax, eax
 		;mov   qword[.ei.attackedBy+8*0], rax
-		;;mov   qword[.ei.attackedBy+8*1], rax
+		;;mov	qword[.ei.attackedBy+8*1], rax
 		;mov   qword[.ei.attackedBy+8*2], rax
 		;mov   qword[.ei.attackedBy+8*3], rax
 		;mov   qword[.ei.attackedBy+8*4], rax
@@ -1503,7 +1528,7 @@ match =1, VERBOSE {
 		;mov   qword[.ei.attackedBy+8*6], rax
 		;mov   qword[.ei.attackedBy+8*7], rax
 		;mov   qword[.ei.attackedBy+8*8], rax
-		;;mov   qword[.ei.attackedBy+8*9], rax
+		;;mov	qword[.ei.attackedBy+8*9], rax
 		;mov   qword[.ei.attackedBy+8*10], rax
 		;mov   qword[.ei.attackedBy+8*11], rax
 		;mov   qword[.ei.attackedBy+8*12], rax
@@ -1899,7 +1924,7 @@ DoMaterialEval:
 	;     rbp address of position
 	;     rbx address of state
 	;     rsp address of EvalInfo
-	; out:       return is .DoMaterialEvalReturn
+	; out:	     return is .DoMaterialEvalReturn
 	;     eax  sign_ext(word[rsi+MaterialEntry.value])
 	;     ecx  zero_ext(byte[rsi+MaterialEntry.evaluationFunction])
 	       push   r12 r13 r14 r15

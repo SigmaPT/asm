@@ -417,8 +417,8 @@ irps p, Pawn Knight Bishop Rook Queen {
 
 	; make sure the state matches
 	;	lea   rdi, [.szErrorState]
-	;       call   Position_VerifyState
-	;       test   eax, eax
+	;	call   Position_VerifyState
+	;	test   eax, eax
 	;	 jz   .Failed
 
 .Done:
@@ -937,10 +937,10 @@ Position_ParseFEN:
 SetCastlingRights:
 	; in: edx color
 	;     ecx = 'q' for qeenside castling
-	;           'k' for kingside castling
-	;           'a' through 'h' for file of rook
+	;	    'k' for kingside castling
+	;	    'a' through 'h' for file of rook
 	; out eax = 0 if success
-	;         = -1 if failed
+	;	  = -1 if failed
 
 	       push   rdi rsi r12 r13 r14 rsi
 
@@ -1170,6 +1170,7 @@ Position_PrintFen:
 	; ply
 		mov   eax, ' '
 	      stosb
+
 		mov   eax, dword[rbp+Pos.gamePly]
 		add   eax, 2
 		shr   eax, 1

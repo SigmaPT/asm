@@ -983,8 +983,8 @@ ppush  equ r11d
 		mov   r9, qword[rbp+Pos.typeBB+8*rcx]
 		and   r9, qword[rbp+Pos.typeBB+8*Bishop]
 		bsf   r9, r9
-		lea   ppush, [2*rcx-1]
-		shl   ppush, 3
+		lea   ppush_, [2*rcx-1]
+		shl   ppush_, 3
 		xor   ecx, 1
 	       imul   edx, ecx, 7
 		mov   eax, psq
@@ -1339,7 +1339,7 @@ VerboseDisplayInt rax
 		pop   rbx r12 r13 r14 r15
 		ret
 	@@:
-		lea   eax, [2*rcx-1]
+		lea   rax, [2*rcx-1]
 		lea   blockSq1, [psq2_+8*rax]
 		mov   blockSq2, psq1
 		and   blockSq2, 7

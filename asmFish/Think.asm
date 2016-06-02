@@ -12,7 +12,6 @@ end virtual
 		mov   rbx, qword[rbp+Pos.state]
 
      VerboseDisplay   <db 'MainThread_Think',10>
-
 		mov   ecx, dword[rbp+Pos.sideToMove]
 		mov   edx, dword[rbp+Pos.gamePly]
 	       call   TimeMng_Init
@@ -48,13 +47,13 @@ end virtual
 		 je   .mate
 
 	; check tb
-;                mov   rcx, qword[rbp+Pos.typeBB+8*White]
-;                 or   rcx, qword[rbp+Pos.typeBB+8*Black]
-;             popcnt   rcx, rcx, rdx
-;                sub   eax, ecx
-;                sar   eax, 31
-;                 or   al, byte[rbx+State.castlingRights]
-;                 jz   .check_tb
+;		 mov   rcx, qword[rbp+Pos.typeBB+8*White]
+;		  or   rcx, qword[rbp+Pos.typeBB+8*Black]
+;	      popcnt   rcx, rcx, rdx
+;		 sub   eax, ecx
+;		 sar   eax, 31
+;		  or   al, byte[rbx+State.castlingRights]
+;		  jz   .check_tb
 .check_tb_ret:
 
 	; start workers
@@ -84,12 +83,9 @@ end virtual
 		 or   al, byte[limits.infinite]
 		 jz   .dont_wait
 		mov   byte[signals.stopOnPonderhit], al
-
 		lea   rcx, [rbp-Thread.rootPos]
 		lea   rdx, [signals.stop]
 	       call   Thread_Wait
-
-
 .dont_wait:
 		 or   eax, -1
 		mov   byte[signals.stop], al
@@ -142,48 +138,13 @@ end virtual
 		mov   dword[rbp-Thread.rootPos+Thread.previousScore], r9d
 		cmp   rsi, mainThread
 		 je   .dont_send_pv
-
-
 .dont_send_pv:
 
+		mov   rcx, rsi
+	       call   qword[options.printBestmoveFxn]
 
-	; print best move and ponder move
-		lea   rdi, [.output]
-		mov   rax, 'bestmove'
-	      stosq
-		mov   al, ' '
-	      stosb
-		mov   rcx, qword[rsi+Thread.rootPos+Pos.rootMovesVec+RootMovesVec.table]
-		mov   ecx, dword[rcx+0*sizeof.RootMove+RootMove.pv+4*0]
-	      movzx   edx, byte[rsi+Thread.rootPos+Pos.chess960]
-		mov   dword[XBoardMove], ecx
-	       call   PrintUciMove
 
-	; in xboard mode, only print 'move' not 'bestmove'
-		lea   rcx, [.output+4]
-		cmp   byte[XBoardMode], 0
-		jnz   .out
-
-		mov   rcx, qword[rsi+Thread.rootPos+Pos.rootMovesVec+RootMovesVec.table]
-		mov   eax, dword[rcx+0*sizeof.RootMove+RootMove.pvSize]
-		cmp   eax, 2
-		 jb   .get_ponder_from_tt
-.have_ponder_from_tt:
-		mov   rax, ' ponder '
-	      stosq
-		mov   ecx, dword[rcx+0*sizeof.RootMove+RootMove.pv+4*1]
-	      movzx   edx, byte[rsi+Thread.rootPos+Pos.chess960]
-	       call   PrintUciMove
-.skip_ponder:
-		lea   rcx, [.output]
-.out:
-		mov   eax, 10
-	      stosb
-	       call   _WriteOut
-
-.return:
       VerboseDisplay  <db 'MainThread_Think returning',10>
-
 
 		add   rsp, .lsize
 		pop   r15 rdi rsi rbx rbp
@@ -213,13 +174,7 @@ end virtual
 		jmp   .search_done
 
 
-.get_ponder_from_tt:
-		lea   rcx, [rsi+Thread.rootPos]
-	       call   ExtractPonderFromTT
-		mov   rcx, qword[rsi+Thread.rootPos+Pos.rootMovesVec+RootMovesVec.table]
-	       test   eax, eax
-		jnz   .have_ponder_from_tt
-		jmp   .skip_ponder
+
 
 .check_tb:
 	       call   Tablebase_RootProbe
@@ -250,6 +205,59 @@ end virtual
 		mov   dword[Tablebase_Score], eax
 		jmp   .check_tb_ret
 
+
+
+
+PrintBestmove_Uci:
+	; in: rcx address of best thread
+virtual at rsp
+  .output rb 32
+  .lend rb 0
+end virtual
+.lsize = ((.lend-rsp+15) and (-16))
+	       push   rsi rdi r15
+		sub   rsp, .lsize
+		mov   rsi, rcx
+
+	; print best move and ponder move
+		lea   rdi, [.output]
+		mov   rax, 'bestmove'
+	      stosq
+		mov   al, ' '
+	      stosb
+		mov   rcx, qword[rsi+Thread.rootPos+Pos.rootMovesVec+RootMovesVec.table]
+		mov   ecx, dword[rcx+0*sizeof.RootMove+RootMove.pv+4*0]
+	      movzx   edx, byte[rsi+Thread.rootPos+Pos.chess960]
+		mov   dword[XBoardMove], ecx
+	       call   PrintUciMove
+
+		mov   rcx, qword[rsi+Thread.rootPos+Pos.rootMovesVec+RootMovesVec.table]
+		mov   eax, dword[rcx+0*sizeof.RootMove+RootMove.pvSize]
+		cmp   eax, 2
+		 jb   .get_ponder_from_tt
+.have_ponder_from_tt:
+		mov   rax, ' ponder '
+	      stosq
+		mov   ecx, dword[rcx+0*sizeof.RootMove+RootMove.pv+4*1]
+	      movzx   edx, byte[rsi+Thread.rootPos+Pos.chess960]
+	       call   PrintUciMove
+.skip_ponder:
+		lea   rcx, [.output]
+		mov   eax, 10
+	      stosb
+	       call   _WriteOut
+.return:
+		add   rsp, .lsize
+		pop   r15 rdi rsi
+		ret
+
+.get_ponder_from_tt:
+		lea   rcx, [rsi+Thread.rootPos]
+	       call   ExtractPonderFromTT
+		mov   rcx, qword[rsi+Thread.rootPos+Pos.rootMovesVec+RootMovesVec.table]
+	       test   eax, eax
+		jnz   .have_ponder_from_tt
+		jmp   .skip_ponder
 
 
 ExtractPonderFromTT:
@@ -307,6 +315,33 @@ end virtual
 
 
 
+PrintBestmove_Xboard:
+	; in: rcx address of best thread
+virtual at rsp
+  .output rb 32
+  .lend rb 0
+end virtual
+.lsize = ((.lend-rsp+15) and (-16))
+	       push   rsi rdi r15
+		sub   rsp, .lsize
+		mov   rsi, rcx
+		lea   rdi, [.output]
+		mov   eax, 'move'
+	      stosd
+		mov   al, ' '
+	      stosb
+		mov   rcx, qword[rsi+Thread.rootPos+Pos.rootMovesVec+RootMovesVec.table]
+		mov   ecx, dword[rcx+0*sizeof.RootMove+RootMove.pv+4*0]
+	      movzx   edx, byte[rsi+Thread.rootPos+Pos.chess960]
+		mov   dword[XBoardMove], ecx
+	       call   PrintUciMove
+		mov   eax, 10
+	      stosb
+	       call   _WriteOut
+		add   rsp, .lsize
+		pop   r15 rdi rsi
+PrintBestmove_None:
+		ret
 
 
 
@@ -404,7 +439,6 @@ VerboseDisplay	 <db 'Thread_Think',10>
 		 bt   r9d, edx
 		 jc   .id_loop
 		jmp   .save_prev_score
-
 .age_out:
 	; Age out PV variability metric
 	     vmovsd   xmm0, qword[rbp-Thread.rootPos+Thread.bestMoveChanges]
@@ -506,9 +540,9 @@ match =1, VERBOSE {
 		jnz   .search_done
 
 	; When failing high/low give some update before a re-search.
-		mov   eax, dword[.multiPV]
 		cmp   rbp, mainThread.rootPos
-		jnz   .dont_print_pv
+		jne   .dont_print_pv
+		mov   eax, dword[.multiPV]
 		cmp   eax, 1
 		jne   .dont_print_pv
 		cmp   r12d, dword[.alpha]
@@ -561,8 +595,8 @@ match =1, VERBOSE {
 		mov   edx, r12d
 		add   edx, r8d
 		mov   eax, VALUE_INFINITE
-		cmp   ecx, eax
-	      cmovg   ecx, eax
+		cmp   edx, eax
+	      cmovg   edx, eax
 		mov   eax, r8d
 		sar   eax, 2
 		lea   r8d, [r8+rax+5]
@@ -636,17 +670,16 @@ match =1, VERBOSE {
 		mov   ecx, r12d
 		sub   ecx, dword[rbp-Thread.rootPos+Thread.previousScore]
 	       imul   ecx, 6
-		add   eax, ecx
+		sub   eax, ecx
 		mov   edx, 229
 		cmp   eax, edx
 	      cmovl   eax, edx
 		mov   edx, 715
 		cmp   eax, edx
-	      cmovl   eax, edx
+	      cmovg   eax, edx
 	  vcvtsi2sd   xmm3, xmm3, eax
 	; xmm3 = improvingFactor
 
-		xor   r9d, r9d
 		mov   eax, dword[time.optimumTime]
 		mov   ecx, 5
 		mul   ecx
@@ -661,6 +694,7 @@ match =1, VERBOSE {
 	     vaddsd   xmm2, xmm2, xmm0
 	; xmm2 = unstablePvFactor
 
+		xor   r9d, r9d
 		cmp   r11d, eax
 		jbe   @f
 		cmp   ecx, dword[.easyMove]
@@ -671,7 +705,7 @@ match =1, VERBOSE {
 	; r9d = doEasyMove
 
 	     vmulsd   xmm2, xmm2, xmm3
-	  vcvtsi2sd   xmm0, xmm0, r11
+	  vcvtsi2sd   xmm0, xmm0, r11d
 	     vmulsd   xmm0, xmm0, qword[constd.628p0]
 	  vcvtsi2sd   xmm1, xmm1, dword[time.optimumTime]
 	     vmulsd   xmm1, xmm1, xmm2
@@ -720,10 +754,10 @@ match =1, VERBOSE {
 
 ;align 4
 ;.improvingFactor_lookup:
-;        dd 640-160*0-126*0-124*0*0
-;        dd 640-160*1-126*0-124*1*0
-;        dd 640-160*0-126*1-124*0*1
-;        dd 640-160*1-126*1-124*1*1
+;	 dd 640-160*0-126*0-124*0*0
+;	 dd 640-160*1-126*0-124*1*0
+;	 dd 640-160*0-126*1-124*0*1
+;	 dd 640-160*1-126*1-124*1*1
 
 
 

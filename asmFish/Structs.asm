@@ -232,6 +232,7 @@ ends
 
 struct Options
  printFxn	rq 1	  ; function for printing pv
+ printBestmoveFxn rq 1
  hash		rd 1
  multiPV	rd 1
  threads       rd 1

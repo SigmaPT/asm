@@ -1,18 +1,3 @@
-; this is the source for windows  see asmFish.asm for unix
-OS_IS_WINDOWS	 fix 1
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; compile options 0 or 1
-CPU_HAS_POPCNT	 equ 1	;  popcnt                       very nice function
-CPU_HAS_AVX1	 equ 0	;  256 bit floating point       probably only used for memory copy if used at all
-CPU_HAS_AVX2	 equ 0	;  256 bit integer + fmadd      probably not used
-CPU_HAS_BMI1	 equ 0	;  andn                         why not use it if we can
-CPU_HAS_BMI2	 equ 0	;  pext + pdep                  nice for move generation, but not much faster than magics
-DEBUG		 equ 0	;  turns on the asserts         use this for detecting bugs, should be no functional change
-VERBOSE 	 equ 0	;  LOTS of print + eval trace   use this for hunting down bugs
-PROFILE 	 equ 0	;  counts in the code
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-
 format PE64 console
 entry Start
 
@@ -69,8 +54,8 @@ align 16
 
 align 16
 RazorMargin dd 483, 570, 603, 554
-CaptureOrPromotion_or  db 0,0,1,1,1,1,0,1
-CaptureOrPromotion_and db 1,0,1,1,1,1,0,1
+CaptureOrPromotion_or  db  0,0,-1,-1,-1,-1,0,-1
+CaptureOrPromotion_and db -1,0,-1,-1,-1,-1,0,-1
 
 align 16
 constd:
@@ -81,19 +66,19 @@ constd:
 .628p0	 dq 628.0
 .min	 dq 0x0010000000000000
 
-?_2726: 						; oword
-	dq 0FFFFFFFFFFFFFFF7H				; 1A90 _ FFFFFFFFFFFFFFF7 
-	dq 0000000000000007H				; 1A98 _ 0000000000000007 
-
-?_2727: dq 8181818181818181H				; 1AA0 _ 8181818181818181 
-?_2728: dq 0FF000000000000FFH				; 1AA8 _ FF000000000000FF
-?_2737: dq 4059000000000000H				; 1AF0 _ 100.0
-?_2738: dq 401C5C28F5C28F5CH				; 1AF8 _ 7.09
-?_2739: dq 3FD6666666666666H				; 1B00 _ 0.35
-?_2740: dq 404D333333333333H				; 1B08 _ 58.4
-?_2741: dq 401E8F5C28F5C28FH				; 1B10 _ 7.64
-?_2742: dq 0BFC76C8B43958106H				; 1B18 _ -0.183
-?_2748: dq 0000FFFFFF000000H				; 1B48 _ 0000FFFFFF000000
+;?_2726:						 ; oword
+;	 dq 0FFFFFFFFFFFFFFF7H				 ; 1A90 _ FFFFFFFFFFFFFFF7
+;	 dq 0000000000000007H				 ; 1A98 _ 0000000000000007
+;
+;?_2727: dq 8181818181818181H				 ; 1AA0 _ 8181818181818181
+;?_2728: dq 0FF000000000000FFH				 ; 1AA8 _ FF000000000000FF
+;?_2737: dq 4059000000000000H				 ; 1AF0 _ 100.0
+;?_2738: dq 401C5C28F5C28F5CH				 ; 1AF8 _ 7.09
+;?_2739: dq 3FD6666666666666H				 ; 1B00 _ 0.35
+;?_2740: dq 404D333333333333H				 ; 1B08 _ 58.4
+;?_2741: dq 401E8F5C28F5C28FH				 ; 1B10 _ 7.64
+;?_2742: dq 0BFC76C8B43958106H				 ; 1B18 _ -0.183
+;?_2748: dq 0000FFFFFF000000H				 ; 1B48 _ 0000FFFFFF000000
 
 
 align 16
@@ -316,7 +301,7 @@ align 64
 Reductions	   rd 2*2*64*64
 FutilityMoveCounts rd 16*2
 
-;ReductionsORG         rd 2*2*64*64
+;ReductionsORG	       rd 2*2*64*64
 ;FutilityMoveCountsORG rd 16*2
 
 DrawValue	   rd 2

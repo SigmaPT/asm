@@ -2,6 +2,8 @@ Options_Init:
 		lea   rdx, [options]
 		lea   rcx, [Position_WriteOutInfo_Uci]
 		mov   qword[rdx+Options.printFxn], rcx
+		lea   rcx, [PrintBestmove_Uci]
+		mov   qword[rdx+Options.printBestmoveFxn], rcx
 		mov   dword[rdx+Options.contempt], 0
 		mov   dword[rdx+Options.threads], 1
 		mov   dword[rdx+Options.hash], 16
@@ -411,6 +413,7 @@ UciParseMoves:
 	      movzx   ecx, word[rbx+State.move+sizeof.State]
 		mov   edx, eax
 	       call   Move_Do__UciParseMoves
+		inc   dword[rbp+Pos.gamePly]
 		mov   qword[rbp+Pos.state], rbx
 	       call   SetCheckInfo
 		jmp   .get_move
@@ -653,18 +656,18 @@ UciDoNull:
 		jmp   UciShow
 
 UciPick:
-	     ;  call   TestPick
+	     ;	call   TestPick
 		jmp   UciGetInput
 
 
 
 UciPerftP:
-	     ;           xor   eax, eax
-	     ;    ;       mov   qword[rbp+Pos.nodes], rax
-	     ;          call   SkipSpaces
-	     ;          call   ParseInteger
-	     ;           mov   ecx, eax
-	     ;          call   PerftPick_Root
+	     ;		 xor   eax, eax
+	     ;	  ;	  mov	qword[rbp+Pos.nodes], rax
+	     ;		call   SkipSpaces
+	     ;		call   ParseInteger
+	     ;		 mov   ecx, eax
+	     ;		call   PerftPick_Root
 			jmp   UciGetInput
 
 
@@ -742,34 +745,34 @@ UciMoves:
 
 
 UciTest:
-	;        lea   rdi, [Output]
-	;        mov   rcx, qword[DistanceRingBB+8*(8*SQ_E1+0)]
-	;       call   PrintBitboard
-	;        mov   al, 10
+	;	 lea   rdi, [Output]
+	;	 mov   rcx, qword[DistanceRingBB+8*(8*SQ_E1+0)]
+	;	call   PrintBitboard
+	;	 mov   al, 10
 	;      stosb
-	;        mov   rcx, qword[DistanceRingBB+8*(8*SQ_E1+1)]
-	;       call   PrintBitboard
-	;        mov   al, 10
+	;	 mov   rcx, qword[DistanceRingBB+8*(8*SQ_E1+1)]
+	;	call   PrintBitboard
+	;	 mov   al, 10
 	;      stosb
-	;        jmp   UciWriteOut
+	;	 jmp   UciWriteOut
 
 
 
 		mov   rdi, [InputBuffer]
 	     szcall   PrintString, 'position startpos moves c2c4 e7e5 b1c3 f8b4 c3d5 a7a5 e2e3 g8f6 g1f3 e5e4 f3d4 c7c6 d5b4 a5b4 b2b3 e8g8 c1b2 d7d6 h2h3 f8e8 g2g4 b8a6 h1g1 a6c5 d1c2 f6d7 d4f5 d7e5 f1e2 c8f5 g4f5 d8f6 f2f4 e4f3 e2f1 e5d3 f1d3 f6b2 e1f2 b2f6 f2f3 e8e5 e3e4 a8e8 g1g4 e5e4 d3e4 f6a1 d2d3 a1e5 c2e2 d6d5 c4d5 c6d5 e2e3 d5e4 d3e4 e8d8 f3g2 d8d3 e3f4 e5b2 g2h1 d3d1 g4g1 d1g1 h1g1 b2b1 g1h2 b1a2 h2g1 a2b1 g1h2 b1c2 h2g1 c2d1 g1h2 d1e2 h2g1 h7h6 e4e5 c5e4 e5e6 f7e6 f5e6 e4g5 f4b8 g8h7 h3h4 g5f3 g1h1'
-;             szcall   PrintString, 'position startpos moves e2e4 d7d6 d2d4 g8f6 b1c3 g7g6 f2f4 f8g7 e4e5 f6d7 g1f3 e8g8 h2h4 h7h5 e5e6 f7e6 f3g5 f8f6 g2g4 h5g4 d1g4 d7f8 h4h5 e6e5 g4h4 g6h5 f1c4 e7e6 d4e5 d6e5 f4e5 f6h6 c1d2 b8c6 e1c1 d8e7 c3e4 c6e5 c4b3 c8d7 d1g1 e5g4 h4e1 d7c6 d2b4 e7e8 b4c3 e8g6 c3g7 g6g7 c1b1 c6d5 g5f3 f8g6 b3d5 e6d5 e4g3 g7f7 g3h5 f7f3 g1g4 h6h5 g4g6 g8h8'
+;	      szcall   PrintString, 'position startpos moves e2e4 d7d6 d2d4 g8f6 b1c3 g7g6 f2f4 f8g7 e4e5 f6d7 g1f3 e8g8 h2h4 h7h5 e5e6 f7e6 f3g5 f8f6 g2g4 h5g4 d1g4 d7f8 h4h5 e6e5 g4h4 g6h5 f1c4 e7e6 d4e5 d6e5 f4e5 f6h6 c1d2 b8c6 e1c1 d8e7 c3e4 c6e5 c4b3 c8d7 d1g1 e5g4 h4e1 d7c6 d2b4 e7e8 b4c3 e8g6 c3g7 g6g7 c1b1 c6d5 g5f3 f8g6 b3d5 e6d5 e4g3 g7f7 g3h5 f7f3 g1g4 h6h5 g4g6 g8h8'
 		mov   eax, 10
 	      stosd
 		mov   rsi, [InputBuffer]
 		jmp   UciChoose
 
-	 ;      call   Position_Test
-	 ;       lea   rdi,[Output]
-	 ;      test   eax, eax
-	 ;       jnz   .Failed
-	 ;       lea   rcx, [szOK]
-	 ;      call   PrintString
-	 ;       jmp   UciWriteOut
+	 ;	call   Position_Test
+	 ;	 lea   rdi,[Output]
+	 ;	test   eax, eax
+	 ;	 jnz   .Failed
+	 ;	 lea   rcx, [szOK]
+	 ;	call   PrintString
+	 ;	 jmp   UciWriteOut
 .Failed:
 		mov   ecx, eax
 	       call   PrintUciMoveLong
@@ -1364,15 +1367,20 @@ end virtual
 		mov   qword[.nodes], rax
 		lea   rcx, [Position_WriteOutInfo_None]
 		mov   qword[options.printFxn], rcx
+		lea   rcx, [PrintBestmove_None]
+		mov   qword[options.printBestmoveFxn], rcx
 	       call   Search_Clear
 
 
-		lea   rsi, [szStartFEN]
+		xor   r13d, r13d
+.nextpos:
+
+		mov   rsi, [.bench_fen_tab+8*r13]
 	       call   Position_ParseFEN
 		lea   rcx, [.limits]
 	       call   Limits_Init
 		lea   rcx, [.limits]
-		mov   dword[rcx+Limits.depth], 20
+		mov   dword[rcx+Limits.depth], 18
 	       call   Limits_Set
 		lea   rcx, [.limits]
 
@@ -1412,6 +1420,10 @@ end virtual
 	      stosb
 	       call   _WriteOut_Output
 
+		add   r13d, 1
+		cmp   r13d, 30
+		 jb   .nextpos
+
 
 		lea   rdi, [Output]
 		mov   rax, 'total no'
@@ -1425,7 +1437,7 @@ end virtual
 		mov   rcx, qword[.time]
 		cmp   rcx, 1
 		adc   rcx, 0
-		mov   rax, r15
+		mov   rax, qword[.nodes]
 		xor   edx, edx
 		div   rcx
 	       call   PrintUnsignedInteger
@@ -1440,6 +1452,92 @@ end virtual
 
 		lea   rcx, [Position_WriteOutInfo_Uci]
 		mov   qword[options.printFxn], rcx
+		lea   rcx, [PrintBestmove_Uci]
+		mov   qword[options.printBestmoveFxn], rcx
 
 		add   rsp, .localsize
 		jmp   UciGetInput
+
+align 8
+.bench_fen_tab:
+dq .bench_fen00
+dq .bench_fen01
+dq .bench_fen02
+dq .bench_fen03
+dq .bench_fen04
+dq .bench_fen05
+dq .bench_fen06
+dq .bench_fen07
+dq .bench_fen08
+dq .bench_fen09
+dq .bench_fen10
+dq .bench_fen11
+dq .bench_fen12
+dq .bench_fen13
+dq .bench_fen14
+dq .bench_fen15
+dq .bench_fen16
+dq .bench_fen17
+dq .bench_fen18
+dq .bench_fen19
+dq .bench_fen20
+dq .bench_fen21
+dq .bench_fen22
+dq .bench_fen23
+dq .bench_fen24
+dq .bench_fen25
+dq .bench_fen26
+dq .bench_fen27
+dq .bench_fen28
+dq .bench_fen29
+dq .bench_fen30
+dq .bench_fen31
+dq .bench_fen32
+dq .bench_fen33
+dq .bench_fen34
+dq .bench_fen35
+dq .bench_fen36
+
+
+
+.bench_fen00 db "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",0
+.bench_fen01 db "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 10",0
+.bench_fen02 db "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 11",0
+.bench_fen03 db "4rrk1/pp1n3p/3q2pQ/2p1pb2/2PP4/2P3N1/P2B2PP/4RRK1 b - - 7 19",0
+.bench_fen04 db "rq3rk1/ppp2ppp/1bnpb3/3N2B1/3NP3/7P/PPPQ1PP1/2KR3R w - - 7 14",0
+.bench_fen05 db "r1bq1r1k/1pp1n1pp/1p1p4/4p2Q/4Pp2/1BNP4/PPP2PPP/3R1RK1 w - - 2 14",0
+.bench_fen06 db "r3r1k1/2p2ppp/p1p1bn2/8/1q2P3/2NPQN2/PPP3PP/R4RK1 b - - 2 15",0
+.bench_fen07 db "r1bbk1nr/pp3p1p/2n5/1N4p1/2Np1B2/8/PPP2PPP/2KR1B1R w kq - 0 13",0
+.bench_fen08 db "r1bq1rk1/ppp1nppp/4n3/3p3Q/3P4/1BP1B3/PP1N2PP/R4RK1 w - - 1 16",0
+.bench_fen09 db "4r1k1/r1q2ppp/ppp2n2/4P3/5Rb1/1N1BQ3/PPP3PP/R5K1 w - - 1 17",0
+.bench_fen10 db "2rqkb1r/ppp2p2/2npb1p1/1N1Nn2p/2P1PP2/8/PP2B1PP/R1BQK2R b KQ - 0 11",0
+.bench_fen11 db "r1bq1r1k/b1p1npp1/p2p3p/1p6/3PP3/1B2NN2/PP3PPP/R2Q1RK1 w - - 1 16",0
+.bench_fen12 db "3r1rk1/p5pp/bpp1pp2/8/q1PP1P2/b3P3/P2NQRPP/1R2B1K1 b - - 6 22",0
+.bench_fen13 db "r1q2rk1/2p1bppp/2Pp4/p6b/Q1PNp3/4B3/PP1R1PPP/2K4R w - - 2 18",0
+.bench_fen14 db "4k2r/1pb2ppp/1p2p3/1R1p4/3P4/2r1PN2/P4PPP/1R4K1 b - - 3 22",0
+.bench_fen15 db "3q2k1/pb3p1p/4pbp1/2r5/PpN2N2/1P2P2P/5PP1/Q2R2K1 b - - 4 26",0
+.bench_fen16 db "6k1/6p1/6Pp/ppp5/3pn2P/1P3K2/1PP2P2/3N4 b - - 0 1",0
+.bench_fen17 db "3b4/5kp1/1p1p1p1p/pP1PpP1P/P1P1P3/3KN3/8/8 w - - 0 1",0
+.bench_fen18 db "2K5/p7/7P/5pR1/8/5k2/r7/8 w - - 0 1",0
+.bench_fen19 db "8/6pk/1p6/8/PP3p1p/5P2/4KP1q/3Q4 w - - 0 1",0
+.bench_fen20 db "7k/3p2pp/4q3/8/4Q3/5Kp1/P6b/8 w - - 0 1",0
+.bench_fen21 db "8/2p5/8/2kPKp1p/2p4P/2P5/3P4/8 w - - 0 1",0
+.bench_fen22 db "8/1p3pp1/7p/5P1P/2k3P1/8/2K2P2/8 w - - 0 1",0
+.bench_fen23 db "8/pp2r1k1/2p1p3/3pP2p/1P1P1P1P/P5KR/8/8 w - - 0 1",0
+.bench_fen24 db "8/3p4/p1bk3p/Pp6/1Kp1PpPp/2P2P1P/2P5/5B2 b - - 0 1",0
+.bench_fen25 db "5k2/7R/4P2p/5K2/p1r2P1p/8/8/8 b - - 0 1",0
+.bench_fen26 db "6k1/6p1/P6p/r1N5/5p2/7P/1b3PP1/4R1K1 w - - 0 1",0
+.bench_fen27 db "1r3k2/4q3/2Pp3b/3Bp3/2Q2p2/1p1P2P1/1P2KP2/3N4 w - - 0 1",0
+.bench_fen28 db "6k1/4pp1p/3p2p1/P1pPb3/R7/1r2P1PP/3B1P2/6K1 w - - 0 1",0
+.bench_fen29 db "8/3p3B/5p2/5P2/p7/PP5b/k7/6K1 w - - 0 1",0
+  ; 5-man positions
+.bench_fen30 db "8/8/8/8/5kp1/P7/8/1K1N4 w - - 0 1",0	  ; Kc2 - mate
+.bench_fen31 db "8/8/8/5N2/8/p7/8/2NK3k w - - 0 1",0	  ; Na2 - mate
+.bench_fen32 db "8/3k4/8/8/8/4B3/4KB2/2B5 w - - 0 1",0	  ; draw
+  ; 6-man positions
+.bench_fen33 db "8/8/1P6/5pr1/8/4R3/7k/2K5 w - - 0 1",0   ; Re5 - mate
+.bench_fen34 db "8/2p4P/8/kr6/6R1/8/8/1K6 w - - 0 1",0	  ; Ka2 - mate
+.bench_fen35 db "8/8/3P3k/8/1p6/8/1P6/1K3n2 b - - 0 1",0  ; Nd2 - draw
+  ; 7-man positions
+.bench_fen36 db "8/R7/2q5/8/6k1/8/1P5p/K6R w - - 0 124",0  ; Draw
+

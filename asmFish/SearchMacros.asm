@@ -73,7 +73,6 @@ virtual at rsp
   .ltte      rq 1    ;8
   .posKey    rq 1    ;16
   .cmh	     rq 1    ;24
-;       rq 2
   .fmh	     rq 1    ;32
   .fmh2      rq 1    ; 40
   .r		  rd 1	  ; 48
@@ -136,7 +135,7 @@ end virtual
 
 
        ; repeat .localsize/4
-       ;         mov   dword[rsp+4*(%-1)], 0x80000000
+       ;	 mov   dword[rsp+4*(%-1)], 0x80000000
        ; end repeat
 
 
@@ -291,8 +290,8 @@ match =1, DEBUG \{
 
     if .RootNode eq 0
 	; Step 4a. Tablebase probe
-;               test   r15d, r15d
-;                jns   .CheckTablebase
+;		test   r15d, r15d
+;		 jns   .CheckTablebase
 .CheckTablebaseReturn:
     end if
 
@@ -351,14 +350,14 @@ match =1, DEBUG \{
 		mov   edx, dword[.depth]
 		cmp   edx, 4*ONE_PLY
 		jge   .6skip
+		mov   eax, dword[.ttMove]
+	       test   eax, eax
+		jnz   .6skip
 		mov   ecx, dword[.eval]
 		mov   eax, dword[RazorMargin+4*rdx]
 		add   eax, ecx
 		cmp   eax, dword[.alpha]
 		 jg   .6skip
-		mov   eax, dword[.ttMove]
-	       test   eax, eax
-		jnz   .6skip
 
 		cmp   edx, ONE_PLY
 		 jg   .6b
@@ -657,7 +656,7 @@ lock inc qword[profile.moveUnpack]
 	       call   Search_NonPv
 	end if
 		mov   byte[rbx+State.skipEarlyPruning], 0
-		mov   rcx, qword[rbx+State.key]
+		mov   rcx, qword[.posKey]
 	       call   MainHash_Probe
 		mov   qword[.tte], rax
 		mov   qword[.ltte], rcx
@@ -681,7 +680,6 @@ VerboseDisplay <db 'entering moves_loop',10>
 		mov   rcx, qword[rbx-2*sizeof.State+State.counterMoves]
 		mov   rdx, qword[rbx-4*sizeof.State+State.counterMoves]
 		mov   qword[.cmh], rax
-		;mov   qword[.cmhCOPY], rax
 		mov   qword[.fmh], rcx
 		mov   qword[.fmh2], rdx
 
@@ -713,13 +711,14 @@ VerboseDisplay <db 'entering moves_loop',10>
     else
 		mov   eax, 1
 		mov   ecx, dword[.depth]
-		cmp   ecx, 8
+		cmp   ecx, 8*ONE_PLY
 	      setge   cl
 		and   al, cl
 		mov   edx, dword[.ttMove]
 	       test   edx, edx
 	      setne   cl
 		and   al, cl
+		mov   edx, dword[.ttValue]
 		add   edx, VALUE_KNOWN_WIN-1
 		cmp   edx, 2*(VALUE_KNOWN_WIN-1)
 	      setbe   cl
@@ -843,9 +842,6 @@ lock inc qword[profile.moveUnpack]
 		cmp   eax, edi
 	       setl   cl
 		mov   dword[.extension], ecx
-
-
-
 .12done:
 		mov   eax, dword[.depth]
 		sub   eax, 1
@@ -887,11 +883,10 @@ lock inc qword[profile.moveUnpack]
 		jne   .13do
 		mov   ecx, r12d
 		shr   ecx, 3
-		and   ecx, 7
 	       imul   eax, 7
 		xor   ecx, eax
-		cmp   ecx, 4
-		jae   .13done
+		cmp   ecx, RANK_4
+		 ja   .13done
 .13do:
 		mov   edx, dword[.depth]
 
@@ -907,10 +902,6 @@ lock inc qword[profile.moveUnpack]
 
 	; History based pruning
 		mov   r8, qword[.cmh]
-; cmp r8, qword[.cmhCOPY]
-;  je  @f
-;   int3
-;@@:
 		mov   r9, qword[.fmh]
 		mov   r10, qword[.fmh2]
 		cmp   edx, 4*ONE_PLY
@@ -979,7 +970,6 @@ lock inc qword[profile.moveUnpack]
 		 js   .MovePickLoop
 .13done:
     end if
-
 
 	; Speculative prefetch as early as possible
 		shl   r14d, 6+3
@@ -1062,11 +1052,6 @@ lock inc qword[profile.moveUnpack]
 
 		mov   r8, qword[rbp+Pos.history]
 		mov   r9, qword[.cmh]
-; cmp r9, qword[.cmhCOPY]
-;  je  @f
-;   int3
-;@@:
-
 		mov   r10, qword[.fmh]
 		mov   r11, qword[.fmh2]
 		mov   eax, dword[r8+4*rcx]
