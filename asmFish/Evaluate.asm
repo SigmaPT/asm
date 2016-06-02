@@ -989,9 +989,49 @@ VerboseDisplayScore rsi
 		sbb   eax, eax
 		and   eax, LooseEnemies
 		add   esi, eax
-
-
 VerboseDisplayScore rsi
+
+;    // Bonus for pin or discovered attack on the opponent queen
+;    if (   pos.count<QUEEN>(Them) == 1
+;        && pos.slider_blockers(pos.pieces(),
+;                               pos.pieces(Us, ROOK, BISHOP),
+;                               pos.square<QUEEN>(Them)))
+;        score += WeakQueen;
+;
+;Bitboard Position::slider_blockers(Bitboard target, Bitboard sliders, Square s) const {
+;  Bitboard b, pinners, result = 0;
+ ; // Pinners are sliders that attack 's' when a pinned piece is removed
+;;  pinners = (  (PseudoAttacks[ROOK  ][s] & pieces(QUEEN, ROOK))
+;             | (PseudoAttacks[BISHOP][s] & pieces(QUEEN, BISHOP))) & sliders;
+;  while (pinners)
+;  {
+;      b = between_bb(s, pop_lsb(&pinners)) & pieces();
+;      if (!more_than_one(b))
+;          result |= b & target;
+;  }
+;  return result;
+;}
+		mov   rax, qword[rbp+Pos.typeBB+8*Them]
+		and   rax, qword[rbp+Pos.typeBB+8*Queen]
+		 jz   .SkipQueenPin
+		bsf   r8, rax
+	       blsr   rcx, rax
+	        jnz   .SkipQueenPin
+	        mov   rax, qword[rbp+Pos.typeBB+8*Queen]
+	         or   rax, qword[rbp+Pos.typeBB+8*Rook]
+	        and   rax, qword[RookAttacksPDEP+8*r8]
+	        mov   rcx, qword[rbp+Pos.typeBB+8*Queen]
+	         or   rcx, qword[rbp+Pos.typeBB+8*Bishop]
+	        and   rcx, qword[BishopAttacksPDEP+8*r8]
+		 or   rax, rcx
+	        mov   rdx, qword[rbp+Pos.typeBB+8*Rook]
+	         or   rdx, qword[rbp+Pos.typeBB+8*Bishop]
+	        and   rdx, qword[rbp+Pos.typeBB+8*Us]
+	        and   rax, rdx
+	         jz   .SkipQueenPin
+		int3
+	        
+.SkipQueenPin:		 
 
 
 		mov   r8, qword[rbp+Pos.typeBB+8*Them]
