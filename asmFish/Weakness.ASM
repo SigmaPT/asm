@@ -18,16 +18,46 @@
 ; should return a root move
 
 Weakness_PickMove:
-	; in: ecx weakness
-	; out: eax index of root move
+	; in: rbp address of position
+	;     ecx number of root moves to consider  ecx>0
+	; out: rax address of root move
 
 virtual at rsp
   .prng    rq 1
+  .count   rd 1
+           rd 1
   .weights rq MAX_MOVES
-  .lend rb 0
+  .localend    rb 0
 end virtual
-.localsize = ((.lend-rsp+15) and (-16))
+.localsize = ((.localend-rsp+15) and (-16))
 
+	       push   rbx rsi rdi
+	        sub   rsp, .localsize
+	        mov   dword[.count], ecx
+	; get some randomness into the generator
+	       call   _GetTime
+		xor   rax, rdx
+		mov   qword[.prng], rax
+	        
+	        lea   rdi, [.weights]
+	        mov   rsi, qword[rbp+Pos.rootMovesVec+RootMovesVec.table]
+	   cvtsd2si   xmm4, dword[option.weakness]
+	        xor   ecx, ecx
+.WeightLoop:
+	   cvtsd2si   xmm0, dword[rsi+RootMoves.score]
+	      subsd   xmm0, xmm4
+	      mulsd   xmm0, xmm0
+	      
+		
+		add   ecx, 1
+		cmp   ecx, dword[.count]
+		 jb   .WeightLoop
+	        
+	        
+	        add   rsp, .localsize
+	        pop   rdi rsi rbx
+	        ret
+	        
 		       push   rdi
 			sub   rsp, .localsize
 			mov   edi, ecx
