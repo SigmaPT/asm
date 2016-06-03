@@ -34,16 +34,16 @@ match =1, VERBOSE {
 
 	; r15 = strong pieces
 		mov   rdi, qword[rbp+Pos.typeBB+8*King]
-		mov   r14, rdi
+		mov   r14, qword[rbp+Pos.typeBB+8*rcx]
+		and   r14, rdi
 		xor   ecx, 1
 		and   rdi, qword[rbp+Pos.typeBB+8*rcx]
 		bsf   rdi, rdi
 	; rdi = weak ksq
-		and   r14, qword[rbp+Pos.typeBB+8*rsi]
 		bsf   r14, r14
 	; r14 = strong ksq
 		cmp   esi, dword[rbp+Pos.sideToMove]
-		 je   .CheckStalemate
+		jne   .CheckStalemate
 .NotStalemate:
 		mov   r8, qword[rbp+Pos.typeBB+8*Rook]
 		 or   r8, qword[rbp+Pos.typeBB+8*Queen]
@@ -305,15 +305,15 @@ psq equ r11d
 		cmp   edx, ecx
 		 ja  .Return
 @@:
-	; If the pawn is far advanced and supported by the defending king,
-	; the position is drawish
+
+
 		shl   wksq, 6
 		mov   ecx, psq
 		and   ecx, 0111b
-		shl   ecx, 6
+     ;		 shl   ecx, 6
 	      movzx   edx, byte[SquareDistance+bksq_+psq_+DELTA_S]
 	      movzx   eax, byte[SquareDistance+wksq_+psq_+DELTA_S]
-	      movzx   ecx, byte[SquareDistance+rcx+psq_]
+     ;	       movzx   ecx, byte[SquareDistance+rcx+psq_]
 		sub   eax, edx
 		sub   eax, ecx
 		lea   eax, [8*rax-200]
@@ -369,18 +369,10 @@ EndgameEval_KRKN:
 		bsf   r8, r8
 		bsf   r9, r9
 		shl   r8, 6
-
 	      movzx   eax, byte[SquareDistance+r8+r9]
-VerboseDisplay db 'eax: '
-VerboseDisplayInt rax
-
 	      movzx   eax, byte[PushAway+rax]
 	      movzx   edx, byte[PushToEdges+r9]
-VerboseDisplay db 'edx: '
-VerboseDisplayInt rdx
-
 		add   eax, edx
-
 		xor   ecx, dword[rbp+Pos.sideToMove]
 		sub   ecx, 1
 		xor   eax, ecx
@@ -516,7 +508,7 @@ VerboseDisplayInt rax
 		xor   r11, rax
 
 		mov   r10, qword[rbp+Pos.typeBB+8*Bishop]
-		and   r10, r9
+		;and   r10, r9
 
 		mov   rax, qword[rbp+Pos.typeBB+8*King]
 		and   rax, qword[rbp+Pos.typeBB+8*rcx]

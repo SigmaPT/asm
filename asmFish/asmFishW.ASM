@@ -1,3 +1,6 @@
+; this file is included in asmFishW_popcnt.asm, asmFishW_avx1.asm, ...
+; for faster assembling of different versions
+
 format PE64 console
 entry Start
 

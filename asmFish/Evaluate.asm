@@ -210,8 +210,8 @@ VerboseDisplayInt r14
 		add   dword[.ei.kingAttackersCount+4*Us], 1
 		add   dword[.ei.kingAttackersWeight+4*Us], KingAttackWeight
 		mov   rax, qword[.ei.attackedBy+8*(8*Them+King)]
-		and   rax, r12
-	   popcnt15   rax, rax, rcx
+		and   rax, r12 
+   	     popcnt   rax, rax, rcx
 		add   dword[.ei.kingAdjacentZoneAttacksCount+4*Us], eax
 ..NoKingRing:
 
@@ -332,7 +332,7 @@ else if Pt eq Rook
 		mov   rax, qword[rbp+Pos.typeBB+8*Them]
 		and   rax, qword[rbp+Pos.typeBB+8*Pawn]
 		and   rax, qword[RookAttacksPDEP+8*r14]
-	   popcnt15   rax, rax, rcx
+	     popcnt   rax, rax, rcx
 	       imul   eax, RookOnPawn
 		add   r13d, eax
 ..NoEnemyPawnBonus:
@@ -475,10 +475,10 @@ match =Black, Us
 \}
 
 	QueenContactCheck equ 89
-	QueenCheck  equ 52
-	RookCheck   equ 45
-	BishopCheck equ 5
-	KnightCheck equ 17
+	QueenCheck  equ 62
+	RookCheck   equ 57
+	BishopCheck equ 48
+	KnightCheck equ 78
 	SafeCheck  equ	((20 shl 16) + (20))
 	OtherCheck equ	((10 shl 16) + (10))
 
@@ -542,13 +542,13 @@ VerboseDisplayBigInt r9
 	       imul   eax, dword[.ei.kingAdjacentZoneAttacksCount+4*Them], 9
 		add   edi, eax
 	     popcnt   rax, r8, rcx
-	       imul   eax, 27
+	       imul   eax, 21
 		add   edi, eax
 	     popcnt   rax, r9, rcx
 		mov   rdx, qword[.ei.pinnedPieces+8*Us]
 		neg   rdx
 		adc   eax, 0
-	       imul   eax, 11
+	       imul   eax, 12
 		add   edi, eax
 		mov   rax, qword[rbp+Pos.typeBB+8*Them]
 		and   rax, qword[rbp+Pos.typeBB+8*Queen]
@@ -1897,7 +1897,7 @@ VerboseDisplayInt rax
 	      movzx   edx, byte[rdi+PawnEntry.semiopenFiles+1]
 		mov   r8, qword[rbx+State.pawnKey]
 		xor   ecx, edx
-	     popcnt   rcx, rcx, r8
+	     popcnt   rcx, rcx, r9
 		sub   eax, esi
 		mov   qword[rdi+PawnEntry.key], r8
 		mov   dword[rdi+PawnEntry.score], eax
