@@ -133,10 +133,48 @@ end virtual
 	 _chkstk_ms   rsp, .localsize
 		sub   rsp, .localsize
 
-
-       ; repeat .localsize/4
-       ;	 mov   dword[rsp+4*(%-1)], 0x80000000
-       ; end repeat
+match =2, VERBOSE \{
+push rcx rdx r8 r9 r13 r14 r15
+mov r15, rcx
+mov r14, rdx
+mov r13, r8
+lea rdi, [VerboseOutput]
+mov rax,'search<'
+stosq
+sub rdi, 1
+match =_ROOT_NODE, NT
+\\{
+mov al, '2'
+\\}
+match =_PV_NODE, NT
+\\{
+mov al, '1'
+\\}
+match =_NONPV_NODE, NT
+\\{
+mov al, '0'
+\\}
+stosb
+mov eax, '> ('
+stosd
+sub rdi, 1
+movsxd rax, r15d
+call PrintSignedInteger
+mov ax, ', '
+stosw
+movsxd rax, r14d
+call PrintSignedInteger
+mov eax, ')  '
+stosd
+sub rdi, 1
+movsxd rax, r13d
+call PrintSignedInteger
+mov al, 10
+stosb
+lea rcx, [VerboseOutput]
+call _WriteOut
+pop r15 r14 r13 r9 r8 rdx rcx
+\}
 
 
 		mov   dword[.alpha], ecx
@@ -290,8 +328,8 @@ match =1, DEBUG \{
 
     if .RootNode eq 0
 	; Step 4a. Tablebase probe
-;		test   r15d, r15d
-;		 jns   .CheckTablebase
+;               test   r15d, r15d
+;                jns   .CheckTablebase
 .CheckTablebaseReturn:
     end if
 
@@ -596,7 +634,6 @@ lock inc qword[profile.moveUnpack]
 	       call   Move_GivesCheck
 		mov   ecx, dword[.move]
 		mov   edx, eax
-		add   qword[rbp-Thread.rootPos+Thread.nodes], 1
 	       call   Move_Do__ProbCut
 		mov   ecx, edi
 		neg   ecx
@@ -954,12 +991,7 @@ lock inc qword[profile.moveUnpack]
 		add   eax, 256
 		add   eax, dword[rbx+State.staticEval]
 		cmp   eax, dword[.alpha]
-		jge   @f
-		cmp   eax, dword[.bestValue]
 		jle   .MovePickLoop
-		mov   dword[.bestValue], eax
-		jmp   .MovePickLoop
-	@@:
 
 	; Prune moves with negative SEE at low depths
 		mov   ecx, dword[.move]
@@ -1007,13 +1039,10 @@ lock inc qword[profile.moveUnpack]
 	; Step 14. Make the move
 		mov   ecx, dword[.move]
 	      movsx   edx, byte[.givesCheck]
-		add   qword[rbp-Thread.rootPos+Thread.nodes], 1
 	       call   Move_Do__Search
 
 
 	; Step 15. Reduced depth search (LMR)
-
-
 		mov   eax, dword[.depth]
 		cmp   eax, 3*ONE_PLY
 		 jl   .15skip
@@ -1038,6 +1067,14 @@ lock inc qword[profile.moveUnpack]
 		add   eax, ecx
 		mov   eax, dword[Reductions+4*(rax+2*64*64*.PvNode)]
 		mov   dword[.r], eax
+		mov   edi, eax
+
+
+
+SD_String db '_r='
+SD_Int rdi
+SD_String db '|'
+
 
 		mov   r12d, dword[.move]
 		shr   r12d, 6
@@ -1047,44 +1084,14 @@ lock inc qword[profile.moveUnpack]
 	      movzx   r14d, byte[rbp+Pos.board+r12]	; r14d = from piece   should be 0
 	      movzx   r15d, byte[rbp+Pos.board+r13]	; r15d = to piece
 
-	       imul   ecx, r15d, 64
-		add   ecx, r13d
 
-		mov   r8, qword[rbp+Pos.history]
-		mov   r9, qword[.cmh]
-		mov   r10, qword[.fmh]
-		mov   r11, qword[.fmh2]
-		mov   eax, dword[r8+4*rcx]
-	       test   r9, r9
-		 jz   @f
-		add   eax, dword[r9+4*rcx]
-	@@:    test   r10, r10
-		 jz   @f
-		add   eax, dword[r10+4*rcx]
-	@@:    test   r11, r11
-		 jz   @f
-		add   eax, dword[r11+4*rcx]
-	@@:
-
-
-		mov   edi, dword[.r]
 	if .PvNode eq 0
 		cmp   byte[.cutNode], 0
-		 jz   @f
-		add   edi, ONE_PLY
-	@@:
+		 jz   .15testA
+		add   edi, 2*ONE_PLY
+		jmp   .15skipA
 	end if
-		sub   eax, 10000
-		cdq
-		mov   ecx, 20000
-	       idiv   ecx
-		xor   ecx, ecx
-		sub   edi, eax
-	      cmovs   edi, ecx
-		mov   dword[.r], edi
-
-	       test   edi, edi
-		 jz   .15skipA
+.15testA:
 		mov   ecx, dword[.move]
 		cmp   ecx, MOVE_TYPE_PROM shl 12
 		jae   .15skipA
@@ -1101,16 +1108,56 @@ lock inc qword[profile.moveUnpack]
 	       call   See
 	       test   eax, eax
 		jns   .15skipA
-		sub   edi, 1
-		adc   edi, 0
-		mov   dword[.r], edi
+		sub   edi, 2*ONE_PLY
 .15skipA:
+
+SD_String db '_r='
+SD_Int rdi
+SD_String db '|'
+
+	       imul   ecx, r15d, 64
+		add   ecx, r13d
+		mov   r8, qword[rbp+Pos.history]
+		mov   r9, qword[.cmh]
+		mov   r10, qword[.fmh]
+		mov   r11, qword[.fmh2]
+		mov   eax, dword[r8+4*rcx]
+	       test   r9, r9
+		 jz   @f
+		add   eax, dword[r9+4*rcx]
+	@@:    test   r10, r10
+		 jz   @f
+		add   eax, dword[r10+4*rcx]
+	@@:    test   r11, r11
+		 jz   @f
+		add   eax, dword[r11+4*rcx]
+	@@:
+
+SD_String db '_val='
+SD_Int rax
+SD_String db '|'
+
+		sub   eax, 10000
+		cdq
+		mov   ecx, 20000
+	       idiv   ecx
+		xor   ecx, ecx
+		sub   edi, eax
+	      cmovs   edi, ecx
+		mov   dword[.r], edi
+
 
 		mov   eax, 1
 		mov   r8d, dword[.newDepth]
-		sub   r8d, dword[.r]
+		sub   r8d, edi
 		cmp   r8d, eax
 	      cmovl   r8d, eax
+
+
+SD_String db '_d='
+SD_Int r8
+SD_String db '|'
+
 		mov   edx, dword[.alpha]
 		neg   edx
 		lea   ecx, [rdx-1]
@@ -1254,8 +1301,6 @@ lock inc qword[profile.moveUnpack]
 
 	; Step 17. Undo move
 .17entry:
-VerboseDisplay db 'search value: '
-VerboseDisplayInt qword[.value]
 
 		mov   ecx, dword[.move]
 	       call   Move_Undo
@@ -1309,6 +1354,27 @@ VerboseDisplayInt qword[.value]
 		cmp   edi, dword[.bestValue]
 		jle   .18NoNewBestValue
 		mov   dword[.bestValue], edi
+
+
+
+;push rsi rdi rax rcx rdx r8 r9 r13 r14 r15
+;mov r15, rdi
+;lea rdi, [VerboseOutput]
+;mov rax,'bestValu'
+;stosq
+;mov ax, 'e='
+;stosw
+;movsxd rax, r15d
+;call PrintSignedInteger
+;mov al, '|'
+;stosb
+;lea rcx, [VerboseOutput]
+;call _WriteOut
+;pop r15 r14 r13 r9 r8 rdx rcx rax rdi rsi
+
+
+
+
 		cmp   edi, dword[.alpha]
 		jle   .18NoNewAlpha
 		mov   dword[.bestMove], ecx
@@ -1392,6 +1458,25 @@ VerboseDisplayInt qword[.value]
 
 	; Step 20. Check for mate and stalemate
 		mov   edi, dword[.bestValue]
+
+
+;push rsi rdi rax rcx rdx r8 r9 r13 r14 r15
+;mov r15, rdi
+;lea rdi, [VerboseOutput]
+;mov al, 'i'
+;stosb
+;mov rax,'bestValu'
+;stosq
+;mov ax, 'e='
+;stosw
+;movsxd rax, r15d
+;call PrintSignedInteger
+;mov al, '|'
+;stosb
+;lea rcx, [VerboseOutput]
+;call _WriteOut
+;pop r15 r14 r13 r9 r8 rdx rcx rax rdi rsi
+
 		mov   edx, dword[.bestMove]
 		mov   ecx, edx
 		mov   eax, edx
@@ -1472,6 +1557,22 @@ VerboseDisplayInt qword[.value]
 
 
 .20TTStore:
+
+;push rsi rdi rax rcx rdx r8 r9 r13 r14 r15
+;mov r15, rdi
+;lea rdi, [VerboseOutput]
+;mov rax,'bestValu'
+;stosq
+;mov ax, 'e='
+;stosw
+;movsxd rax, r15d
+;call PrintSignedInteger
+;mov al, '|'
+;stosb
+;lea rcx, [VerboseOutput]
+;call _WriteOut
+;pop r15 r14 r13 r9 r8 rdx rcx rax rdi rsi
+
 	; edi = bestValue
 		mov   r9, qword[.posKey]
 		lea   ecx, [rdi+VALUE_MATE_IN_MAX_PLY]
@@ -1498,6 +1599,39 @@ VerboseDisplayInt qword[.value]
     end if
      HashTable_Save   r8, r9w, edx, sil, byte[.depth], eax, word[rbx+State.staticEval]
 		mov   eax, edi
+
+match =2, VERBOSE \{
+push rsi rdi rax rcx rdx r8 r9 r13 r14 r15
+mov r15, rax
+lea rdi, [VerboseOutput]
+mov rax,'search<'
+stosq
+sub rdi, 1
+match =_ROOT_NODE, NT
+\\{
+mov al, '2'
+\\}
+match =_PV_NODE, NT
+\\{
+mov al, '1'
+\\}
+match =_NONPV_NODE, NT
+\\{
+mov al, '0'
+\\}
+stosb
+mov eax, '> '
+stosw
+mov rax, 'return: '
+stosq
+movsxd rax, r15d
+call PrintSignedInteger
+mov al, 10
+stosb
+lea rcx, [VerboseOutput]
+call _WriteOut
+pop r15 r14 r13 r9 r8 rdx rcx rax rdi rsi
+\}
 
 
 .Return:

@@ -257,12 +257,6 @@ Position_IsLegal:
 	;      rdx address of string
 
 	       push   rbx rdi
-;		mov   rbx, qword [rbp+Pos.state]
-
-;lea   rdx, [.szOK]
-xor   eax, eax
-pop   rdi rbx
-ret
 
 		lea   rdi,[.szErrorDisjoint]
 		mov   rax, qword[rbp+Pos.typeBB+8*White]
@@ -416,10 +410,10 @@ irps p, Pawn Knight Bishop Rook Queen {
 		jnz   .Failed
 
 	; make sure the state matches
-	;	lea   rdi, [.szErrorState]
-	;	call   Position_VerifyState
-	;	test   eax, eax
-	;	 jz   .Failed
+	;       lea   rdi, [.szErrorState]
+	;       call   Position_VerifyState
+	;       test   eax, eax
+	;        jz   .Failed
 
 .Done:
 		lea   rdx, [.szOK]
@@ -739,14 +733,9 @@ Position_PrintSmall:
 
 
 
-
-
-
 ;;;;;;;;;;;;;;;
 ;  fen
 ;;;;;;;;;;;;;;;
-
-
 
 Position_ParseFEN:
 	; in: rsi address of fen string
@@ -937,10 +926,10 @@ Position_ParseFEN:
 SetCastlingRights:
 	; in: edx color
 	;     ecx = 'q' for qeenside castling
-	;	    'k' for kingside castling
-	;	    'a' through 'h' for file of rook
+	;           'k' for kingside castling
+	;           'a' through 'h' for file of rook
 	; out eax = 0 if success
-	;	  = -1 if failed
+	;         = -1 if failed
 
 	       push   rdi rsi r12 r13 r14 rsi
 

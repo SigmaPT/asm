@@ -55,6 +55,112 @@ match =1, PROFILE \{
 }
 
 
+macro SD_String m {
+; lets not clobber any registers here
+local ..message, ..over
+ match =2, VERBOSE \{
+	       push   rdi rax rcx rdx r8 r9 r10 r11
+		lea   rcx, [..message]
+		jmp   ..over
+   ..message:
+	    m
+	    db 0
+   ..over:
+		lea   rdi, [VerboseOutput]
+	       call   PrintString
+		lea   rcx, [VerboseOutput]
+		lea  rcx, [VerboseOutput]
+	       call _WriteOut
+		pop   r11 r10 r9 r8 rdx rcx rax rdi
+ \}
+}
+
+
+
+macro SD_Int x {
+ match =2, VERBOSE \{
+	push  x
+	push  rdi rax rcx rdx r8 r9 r10 r11
+	lea  rdi, [VerboseOutput]
+	movsxd rax, dword[rsp+8*8]
+	call PrintSignedInteger
+	lea  rcx, [VerboseOutput]
+	call _WriteOut
+	pop r11 r10 r9 r8 rdx rcx rax rdi
+	add  rsp, 8
+ \}
+}
+
+
+
+
+
+
+macro ED_String m {
+; lets not clobber any registers here
+local ..message, ..over
+ match =3, VERBOSE \{
+	       push   rdi rax rcx rdx r8 r9 r10 r11
+		lea   rcx, [..message]
+		jmp   ..over
+   ..message:
+	    m
+	    db 0
+   ..over:
+		lea   rdi, [VerboseOutput]
+	       call   PrintString
+		lea   rcx, [VerboseOutput]
+		lea  rcx, [VerboseOutput]
+	       call _WriteOut
+		pop   r11 r10 r9 r8 rdx rcx rax rdi
+ \}
+}
+
+
+
+macro ED_Int x {
+ match =3, VERBOSE \{
+	push  x
+	push  rdi rax rcx rdx r8 r9 r10 r11
+	lea  rdi, [VerboseOutput]
+	movsxd rax, dword[rsp+8*8]
+	call PrintSignedInteger
+	lea  rcx, [VerboseOutput]
+	call _WriteOut
+	pop r11 r10 r9 r8 rdx rcx rax rdi
+	add  rsp, 8
+ \}
+}
+
+
+
+macro ED_Score x {
+ match =3, VERBOSE \{
+	push  x
+	push  rdi rax rcx rdx r8 r9 r10 r11
+	lea  rdi, [VerboseOutput]
+	mov  eax, dword[rsp+8*8]
+	add  eax, 0x08000
+	sar  eax, 16
+	movsxd rax, eax
+	call PrintSignedInteger
+	mov  al, ','
+	stosb
+	movsx  rax, word[rsp+8*8]
+	call PrintSignedInteger
+	lea  rcx, [VerboseOutput]
+	call _WriteOut
+	pop r11 r10 r9 r8 rdx rcx rax rdi
+	add rsp, 8
+ \}
+}
+
+
+
+
+
+
+
 macro VerboseDisplay m {
 ; lets not clobber any registers here
 local ..message, ..over

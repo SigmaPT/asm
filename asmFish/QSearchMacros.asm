@@ -83,15 +83,49 @@ end virtual
 	 _chkstk_ms   rsp, .localsize
 		sub   rsp, .localsize
 
-;        repeat .localsize/4
-;                mov   dword[rsp+4*(%-1)], 0x80000000
-;        end repeat
-
+match =2, VERBOSE \{
+push rcx rdx r8 r9 r13 r14 r15
+mov r15, rcx
+mov r14, rdx
+mov r13, r8
+lea rdi, [VerboseOutput]
+mov rax,'qsearch<'
+stosq
+match =1, InCheck \\{
+mov al, 't'
+\\}
+match =0, InCheck \\{
+mov al, 'f'
+\\}
+stosb
+mov eax, '> ('
+stosd
+sub rdi, 1
+movsxd rax, r15d
+call PrintSignedInteger
+mov ax, ', '
+stosw
+movsxd rax, r14d
+call PrintSignedInteger
+mov eax, ')  '
+stosd
+sub rdi, 1
+movsxd rax, r13d
+call PrintSignedInteger
+mov al, 10
+stosb
+lea rcx, [VerboseOutput]
+call _WriteOut
+pop r15 r14 r13 r9 r8 rdx rcx
+\}
 
 
 		mov   dword[.alpha], ecx
 		mov   dword[.beta], edx
 		mov   dword[.depth], r8d
+
+
+
 
 		mov   edx, dword[rbx-1*sizeof.State+State.ply]
 		add   edx, 1
@@ -185,6 +219,7 @@ end virtual
 
 	; Evaluate the position statically
 	;  r13d = ttHit
+
 	if InCheck eq 1
 		mov   eax, -VALUE_INFINITE
 		mov   dword[rbx+State.staticEval], VALUE_NONE
@@ -426,7 +461,6 @@ lock inc qword[profile.moveUnpack]
 		mov   ecx, dword[.move]
 	      movzx   edx, byte[.givesCheck]
 		mov   dword[rbx+State.currentMove], ecx
-		add   qword[rbp-Thread.rootPos+Thread.nodes], 1
 		mov   rsi, qword[.searchFxn]
 	       call   Move_Do__QSearch
 
@@ -494,7 +528,7 @@ lock inc qword[profile.moveUnpack]
 		mov   eax, dword[.move]
      HashTable_Save   r8, r9w, edx, BOUND_LOWER, byte[.ttDepth], eax, word[rbx+State.staticEval]
 		mov   eax, edi
-		jmp   .Return
+		jmp   .ReturnD
 
 .FailHighValueToTT:
 		mov   edx, dword[rbx+State.ply]
@@ -516,7 +550,7 @@ lock inc qword[profile.moveUnpack]
 		mov   eax, dword[rbx+State.ply]
 		sub   eax, VALUE_MATE
 		cmp   edi, -VALUE_INFINITE
-		 je   .Return
+		 je   .ReturnE
 	end if
 
 	if .PvNode eq 1
@@ -543,7 +577,99 @@ lock inc qword[profile.moveUnpack]
 	end if
 		mov   eax, edi
 
+match =2, VERBOSE \{
+		jmp   .ReturnF
+\}
+
+.ReturnA:
+match =2, VERBOSE \{
+push  rax rcx rdx r8
+mov   word[Output],'A '
+lea   rdi, [Output+2]
+call   _WriteOut_Output
+pop   r8 rdx rcx rax
+jmp   .Return
+\}
+
+.ReturnB:
+match =2, VERBOSE \{
+
+push  rax rcx rdx r8
+mov   word[Output],'B '
+lea   rdi, [Output+2]
+call   _WriteOut_Output
+pop   r8 rdx rcx rax
+jmp   .Return
+\}
+
+.ReturnC:
+match =2, VERBOSE \{
+push  rax rcx rdx r8
+mov   word[Output],'C '
+lea   rdi, [Output+2]
+call   _WriteOut_Output
+pop   r8 rdx rcx rax
+jmp   .Return
+\}
+
+.ReturnD:
+match =2, VERBOSE \{
+push  rax rcx rdx r8
+mov   word[Output],'D '
+lea   rdi, [Output+2]
+call   _WriteOut_Output
+pop   r8 rdx rcx rax
+jmp   .Return
+\}
+
+.ReturnE:
+match =2, VERBOSE \{
+push  rax rcx rdx r8
+mov   word[Output],'E '
+lea   rdi, [Output+2]
+call   _WriteOut_Output
+pop   r8 rdx rcx rax
+jmp   .Return
+\}
+
+.ReturnF:
+match =2, VERBOSE \{
+push  rax rcx rdx r8
+mov   word[Output],'F '
+lea   rdi, [Output+2]
+call   _WriteOut_Output
+pop   r8 rdx rcx rax
+jmp   .Return
+\}
+
+
 .Return:
+
+
+match =2, VERBOSE \{
+push rax r13 r14 r15
+mov r15, rax
+lea rdi, [VerboseOutput]
+mov rax,'qsearch<'
+stosq
+match =1, InCheck \\{
+mov al, 't'
+\\}
+match =0, InCheck \\{
+mov al, 'f'
+\\}
+stosb
+szcall PrintString, '> return: '
+movsxd rax, r15d
+call PrintSignedInteger
+mov al, 10
+stosb
+lea rcx, [VerboseOutput]
+call _WriteOut
+pop r15 r14 r13 rax
+\}
+
+
 		add   rsp, .localsize
 		pop   r15 r14 r13 r12 rdi rsi rbx
 		ret
@@ -586,15 +712,15 @@ lock inc qword[profile.moveUnpack]
 		mov   eax, dword[rbp+Pos.sideToMove]
 		mov   eax, dword[DrawValue+4*rax]
 	       test   rcx, rcx
-		 jz   .Return
+		 jz   .ReturnA
 	       call   Evaluate
-		jmp   .Return
+		jmp   .ReturnA
 
 		      align   8
 .AbortSearch_PlySmaller:
 		mov   eax, dword[rbp+Pos.sideToMove]
 		mov   eax, dword[DrawValue+4*rax]
-		jmp   .Return
+		jmp   .ReturnA
 
 	if .PvNode eq 0
 
@@ -602,7 +728,7 @@ lock inc qword[profile.moveUnpack]
 .ReturnTTValue:
 		mov   dword[rbx+State.currentMove], ecx
 		mov   eax, edi
-		jmp   .Return
+		jmp   .ReturnB
 	end if
 
 
@@ -614,14 +740,14 @@ lock inc qword[profile.moveUnpack]
 		shr   r9, 48
 		mov   edx, eax
 	       test   r13d, r13d
-		jnz   .Return
+		jnz   .ReturnC
 		add   eax, VALUE_MATE_IN_MAX_PLY
 		cmp   eax, 2*VALUE_MATE_IN_MAX_PLY
 		jae   .ReturnStaticValue_ValueToTT
  .ReturnStaticValue_ValueToTTRet:
      HashTable_Save   r8, r9w, edx, BOUND_LOWER, DEPTH_NONE, 0, word[rbx+State.staticEval]
 		mov   eax, dword[.bestValue]
-		jmp   .Return
+		jmp   .ReturnC
 
  .ReturnStaticValue_ValueToTT:
 		mov   ecx, dword[rbx+State.ply]

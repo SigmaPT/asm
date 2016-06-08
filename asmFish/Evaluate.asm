@@ -1,4 +1,26 @@
 
+PrintScore:
+	push rbx
+	mov ebx, ecx
+	mov al, '('
+	stosb
+	mov  eax, ebx
+	add  eax, 0x08000
+	sar  eax, 16
+	movsxd rax, eax
+	call PrintSignedInteger
+	mov  al, ','
+	stosb
+	movsx  rax, bx
+	call PrintSignedInteger
+	mov al, ')'
+	stosb
+	pop   rbx
+	ret
+
+
+
+
 
 macro EvalInit Us {
 local Them, Down
@@ -211,7 +233,7 @@ VerboseDisplayInt r14
 		add   dword[.ei.kingAttackersWeight+4*Us], KingAttackWeight
 		mov   rax, qword[.ei.attackedBy+8*(8*Them+King)]
 		and   rax, r12 
-   	     popcnt   rax, rax, rcx
+	     popcnt   rax, rax, rcx
 		add   dword[.ei.kingAdjacentZoneAttacksCount+4*Us], eax
 ..NoKingRing:
 
@@ -317,7 +339,6 @@ VerboseDisplayScore r13
 
 
 else if Pt eq Rook
-
     if Us eq White
 		cmp   r14d, SQ_A5
 		 jb   ..NoEnemyPawnBonus
@@ -386,17 +407,18 @@ VerboseDisplay <db 'inside mob <= 3',10>
 	@@:
 		mov   ecx, dword[.ei.ksq+4*Us]
 		and   ecx, 7
+		mov   edx, ecx
 		mov   eax, r14d
 		and   eax, 7
 		sub   ecx, eax
 		sar   ecx, 31
-		sub   eax, ecx
-		xor   edx, edx
-		bts   edx, eax
-		sub   edx, 1
-		xor   edx, ecx
+		sub   edx, ecx
+		xor   eax, eax
+		bts   eax, edx
+		sub   eax, 1
+		xor   eax, ecx
 		mov   r8, qword[.ei.pi]
-	       test   dl, byte[r8+PawnEntry.semiopenFiles+1*Us]
+	       test   al, byte[r8+PawnEntry.semiopenFiles+1*Us]
 		jnz   ..NoTrappedByKing
 	      movzx   eax, byte[rbx+State.castlingRights]
 		and   eax, 3 shl (2*Us)
@@ -428,6 +450,27 @@ end if
 		sub   dword[.ei.score], r13d
 	end if
 
+
+match =3, VERBOSE \{
+push rdi rsi rax rcx rdx r8 r9 r10 r11
+lea rdi,[VerboseOutput]
+szcall PrintString, ' evaluate_pieces<'
+mov eax, Us
+call PrintUnsignedInteger
+mov ax, ', '
+stosw
+mov eax, Pt
+call PrintUnsignedInteger
+szcall PrintString, '>: '
+mov ecx, r13d
+call PrintScore
+mov al, 10
+stosb
+lea rcx, [VerboseOutput]
+call _WriteOut
+pop r11 r10 r9 r8 rdx rcx rax rsi rdi
+\}
+
 match =1, VERBOSE \{
 		mov   dword[trace.Knight+4*(3*(Pt-Knight)+Us)], r13d
 
@@ -457,7 +500,7 @@ macro EvalKing Us {
 	; in  rbp address of Pos struct
 	;     rbx address of State struct
 	;     rsp address of evaluation info
-local ..AllDone, ..KingSafetyDone, ..DoKingSafety
+local ..AllDone, ..KingSafetyDone, ..DoKingSafety, ..KingSafetyDoneRet
 local ..NoQueenContactCheck
 local ..NoKingSide, ..NoQueenSide, ..kingRingLoop, ..NoPawns
 local ..ShelterStorm, ..FileLookUp
@@ -494,9 +537,18 @@ VerboseDisplay <db 'new king',10,0>
 		xor   eax, edx
 	       test   eax, 3 shl (2*Us)
 		jne   ..DoKingSafety
-..KingSafetyDone:
+..KingSafetyDoneRet:
 
-VerboseDisplayScore rsi
+match =2, VERBOSE \{
+push rdi rsi rax rcx rdx r8 r9 r10 r11
+lea rdi,[VerboseOutput]
+szcall PrintString, 'ks:'
+mov ecx, esi
+call PrintScore
+lea rcx, [VerboseOutput]
+call _WriteOut
+pop r11 r10 r9 r8 rdx rcx rax rsi rdi
+\}
 
 
 		mov   r11d, dword[.ei.kingAttackersCount+4*Them]
@@ -719,7 +771,7 @@ VerboseDisplayScore rsi
 		mov   r12d, eax
 		and   eax, 3 shl (2*Us)
 		and   edx, 3 shl (2*Them)
-		add   edx, ecx
+		add   edx, eax
 		mov   byte[rdi+PawnEntry.kingSquares+1*Us], cl
 		mov   byte[rdi+PawnEntry.castlingRights], dl
 
@@ -786,6 +838,9 @@ match=1,DEBUG\{ and   rdx, qword[rcx+8*7] \}
 	     Assert   ne, rdx, 0, 'assertion rdx !=0 failed in  ..DoKingSafety'
 		jmp   ..KingSafetyDone
 
+..KingSafetyDone:
+		mov   dword[rdi+PawnEntry.kingSafety+4*Us], esi
+		jmp   ..KingSafetyDoneRet
 
 
 ..ShelterStorm:
@@ -926,8 +981,20 @@ VerboseDisplayInt qword[rsi+4*r12]
 	end if
 
 
-match =1, VERBOSE \{
-		mov   dword[trace.King+4*Us], esi
+match =3, VERBOSE \{
+push rdi rsi rax rcx rdx r8 r9 r10 r11
+lea rdi,[VerboseOutput]
+szcall PrintString, ' evaluate_king<'
+mov eax, Us
+call PrintUnsignedInteger
+szcall PrintString, '>: '
+mov ecx, esi
+call PrintScore
+mov al, 10
+stosb
+lea rcx, [VerboseOutput]
+call _WriteOut
+pop r11 r10 r9 r8 rdx rcx rax rsi rdi
 \}
 
 }
@@ -979,21 +1046,21 @@ VerboseDisplayScore rsi
 
 ;    // Bonus for pin or discovered attack on the opponent queen
 ;    if (   pos.count<QUEEN>(Them) == 1
-;	 && pos.slider_blockers(pos.pieces(),
-;				pos.pieces(Us, ROOK, BISHOP),
-;				pos.square<QUEEN>(Them)))
-;	 score += WeakQueen;
+;        && pos.slider_blockers(pos.pieces(),
+;                               pos.pieces(Us, ROOK, BISHOP),
+;                               pos.square<QUEEN>(Them)))
+;        score += WeakQueen;
 ;
 ;Bitboard Position::slider_blockers(Bitboard target, Bitboard sliders, Square s) const {
 ;  Bitboard b, pinners, result = 0;
  ; // Pinners are sliders that attack 's' when a pinned piece is removed
 ;;  pinners = (  (PseudoAttacks[ROOK  ][s] & pieces(QUEEN, ROOK))
-;	      | (PseudoAttacks[BISHOP][s] & pieces(QUEEN, BISHOP))) & sliders;
+;             | (PseudoAttacks[BISHOP][s] & pieces(QUEEN, BISHOP))) & sliders;
 ;  while (pinners)
 ;  {
 ;      b = between_bb(s, pop_lsb(&pinners)) & pieces();
 ;      if (!more_than_one(b))
-;	   result |= b & target;
+;          result |= b & target;
 ;  }
 ;  return result;
 ;}
@@ -1032,10 +1099,7 @@ VerboseDisplayScore rsi
 		 or   rsi, rcx
 		bsf   rcx, rax
 		jnz   ..QueenPinLoop
-		mov   rax, qword[rbp+Pos.typeBB+8*Rook]
-		 or   rax, qword[rbp+Pos.typeBB+8*Bishop]
-		and   rax, qword[rbp+Pos.typeBB+8*Us]
-		and   rsi, rax
+		and   rsi, r10
 		neg   rsi
 		sbb   esi, esi
 		and   esi, WeakQueen
@@ -1224,9 +1288,24 @@ VerboseDisplayScore rsi
 		sub   dword[.ei.score], esi
 	end if
 
-match =1, VERBOSE \{
-		mov   dword[trace.Threats+4*Us], esi
+
+match =3, VERBOSE \{
+push rdi rsi rax rcx rdx r8 r9 r10 r11
+lea rdi,[VerboseOutput]
+szcall PrintString, ' evaluate_threats<'
+mov eax, Us
+call PrintUnsignedInteger
+szcall PrintString, '>: '
+mov ecx, esi
+call PrintScore
+mov al, 10
+stosb
+lea rcx, [VerboseOutput]
+call _WriteOut
+pop r11 r10 r9 r8 rdx rcx rax rsi rdi
 \}
+
+
 
 }
 
@@ -1283,6 +1362,14 @@ VerboseDisplayInt rcx
 	       imul   r13d, r12d
 	; r13d = rr = r*(r-1)
 
+ED_String db 'r: '
+ED_Int r12
+ED_String db 10
+
+ED_String db 'rr: '
+ED_Int r13
+ED_String db 10
+
 		lea   r14d, [rcx+Up]
 	; r14d = blockSq
 
@@ -1307,7 +1394,7 @@ VerboseDisplayInt rcx
 		cmp   ecx, SQ_A7
 	      cmovb   r10d, r11d
 	else if Us eq Black
-		cmp   ecx, SQ_A2
+		cmp   ecx, SQ_A3
 	     cmovae   r10d, r11d
 	end if
 		lea   edx, [2*rdx+r10]
@@ -1364,8 +1451,10 @@ VerboseDisplayInt rax
 		add   eax, ecx
 	; eax = k/2
 
-VerboseDisplay db 'k/2='
-VerboseDisplayInt rax
+ED_String db 'k/2: '
+ED_Int rax
+ED_String db 10
+
 
 		add   r13d, r13d
 	       imul   eax, r13d
@@ -1384,8 +1473,20 @@ VerboseDisplayInt rax
 	end if
 
 
-match =1, VERBOSE \{
-		mov   dword[trace.PassedPawns+4*Us], esi
+match =3, VERBOSE \{
+push rdi rsi rax rcx rdx r8 r9 r10 r11
+lea rdi,[VerboseOutput]
+szcall PrintString, ' evaluate_passed_pawns<'
+mov eax, Us
+call PrintUnsignedInteger
+szcall PrintString, '>: '
+mov ecx, esi
+call PrintScore
+mov al, 10
+stosb
+lea rcx, [VerboseOutput]
+call _WriteOut
+pop r11 r10 r9 r8 rdx rcx rax rsi rdi
 \}
 
 
@@ -1489,9 +1590,23 @@ VerboseDisplayInt rsi
 		sub   dword[.ei.score], eax
 	end if
 
-match =1, VERBOSE \{
-		mov   dword[trace.Space+4*Us], eax
+match =3, VERBOSE \{
+push rdi rsi rax rcx rdx r8 r9 r10 r11
+mov esi, eax
+lea rdi,[VerboseOutput]
+szcall PrintString, ' evaluate_space<'
+mov eax, Us
+call PrintUnsignedInteger
+szcall PrintString, '>: '
+mov ecx, esi
+call PrintScore
+mov al, 10
+stosb
+lea rcx, [VerboseOutput]
+call _WriteOut
+pop r11 r10 r9 r8 rdx rcx rax rsi rdi
 \}
+
 
 }
 
@@ -1514,27 +1629,24 @@ end virtual
 
 		mov   eax, dword[rbx+State.psq]
 		mov   dword[.ei.score], eax
-match =1, VERBOSE {
-		mov   dword[trace.Material], eax
-		}
 
-		;xor   eax, eax
-		;mov   qword[.ei.attackedBy+8*0], rax
-		;;mov	qword[.ei.attackedBy+8*1], rax
-		;mov   qword[.ei.attackedBy+8*2], rax
-		;mov   qword[.ei.attackedBy+8*3], rax
-		;mov   qword[.ei.attackedBy+8*4], rax
-		;mov   qword[.ei.attackedBy+8*5], rax
-		;mov   qword[.ei.attackedBy+8*6], rax
-		;mov   qword[.ei.attackedBy+8*7], rax
-		;mov   qword[.ei.attackedBy+8*8], rax
-		;;mov	qword[.ei.attackedBy+8*9], rax
-		;mov   qword[.ei.attackedBy+8*10], rax
-		;mov   qword[.ei.attackedBy+8*11], rax
-		;mov   qword[.ei.attackedBy+8*12], rax
-		;mov   qword[.ei.attackedBy+8*13], rax
-		;mov   qword[.ei.attackedBy+8*14], rax
-		;mov   qword[.ei.attackedBy+8*15], rax
+
+
+match =3, VERBOSE {
+mov eax, dword[.ei.score]
+push rdi rsi rax rcx rdx r8 r9 r10 r11
+mov esi, eax
+lea rdi,[VerboseOutput]
+szcall PrintString, 'psq score: '
+mov ecx, esi
+call PrintScore
+mov al, 10
+stosb
+lea rcx, [VerboseOutput]
+call _WriteOut
+pop r11 r10 r9 r8 rdx rcx rax rsi rdi
+}
+
 
 
 
@@ -1551,11 +1663,27 @@ match =1, VERBOSE {
 .DoMaterialEvalReturn:
 	       imul   eax, 0x00010001
 		add   dword[.ei.score], eax
-match =1, VERBOSE {
-		mov   dword[trace.Imbalance], eax
+
+
+match =2, VERBOSE {
+mov eax, dword[.ei.score]
+push rdi rsi rax rcx rdx r8 r9 r10 r11
+mov esi, eax
+lea rdi,[VerboseOutput]
+szcall PrintString, 'imb:'
+mov ecx, esi
+call PrintScore
+lea rcx, [VerboseOutput]
+call _WriteOut
+pop r11 r10 r9 r8 rdx rcx rax rsi rdi
 }
+
+
 	       test   ecx, ecx
 		jnz   .HaveSpecializedEval
+
+
+
 
 		mov   rdi, qword[rbx+State.pawnKey]
 		and   edi, PAWN_HASH_ENTRY_COUNT-1
@@ -1568,9 +1696,21 @@ match =1, VERBOSE {
 		jne   .DoPawnEval
 .DoPawnEvalReturn:
 		add   dword[.ei.score], eax
-match=1,VERBOSE {
-		mov   dword[trace.Pawn], eax
+
+
+match =2, VERBOSE {
+mov eax, dword[.ei.score]
+push rdi rsi rax rcx rdx r8 r9 r10 r11
+mov esi, eax
+lea rdi,[VerboseOutput]
+szcall PrintString, 'ps:'
+mov ecx, esi
+call PrintScore
+lea rcx, [VerboseOutput]
+call _WriteOut
+pop r11 r10 r9 r8 rdx rcx rax rsi rdi
 }
+
 
 		xor   eax, eax
 		mov   dword[.ei.mobility+4*0], eax
@@ -1616,11 +1756,23 @@ match=1,VERBOSE {
 	 EvalPieces   Black, Queen
 		mov   eax, dword[.ei.mobility+4*White]
 		mov   ecx, dword[.ei.mobility+4*Black]
-match =1,VERBOSE {
-		mov   dword[trace.Mobility+4*0], eax
-		mov   dword[trace.Mobility+4*1], ecx
-}
 		sub   eax, ecx
+
+
+match =3, VERBOSE {
+push rdi rsi rax rcx rdx r8 r9 r10 r11
+mov esi, eax
+lea rdi,[VerboseOutput]
+szcall PrintString, 'mobility: '
+mov ecx, esi
+call PrintScore
+mov al, 10
+stosb
+lea rcx, [VerboseOutput]
+call _WriteOut
+pop r11 r10 r9 r8 rdx rcx rax rsi rdi
+}
+
 		add   dword[.ei.score], eax
 
 	   EvalKing   Black
@@ -1635,7 +1787,7 @@ match =1,VERBOSE {
 
     Unstoppable  equ ((0 shl 16) + (20))
 		mov   r14, qword[.ei.pi]
-	      movzx   eax, word[rbx+State.npMaterial+2*0]
+		mov   eax, dword[rbx+State.npMaterial+2*0]
 	       test   eax, eax
 		jnz   .SkipUnstoppable
 		mov   rcx, qword[r14+PawnEntry.passedPawns+8*White]
@@ -1652,6 +1804,22 @@ match =1,VERBOSE {
 		sub   ecx, edx
 	       imul   ecx, Unstoppable
 		add   dword[.ei.score], ecx
+
+match =3, VERBOSE {
+mov eax, dword[.ei.score]
+push rdi rsi rax rcx rdx r8 r9 r10 r11
+mov esi, eax
+lea rdi,[VerboseOutput]
+szcall PrintString, 'Unstoppable score: '
+mov ecx, esi
+call PrintScore
+mov al, 10
+stosb
+lea rcx, [VerboseOutput]
+call _WriteOut
+pop r11 r10 r9 r8 rdx rcx rax rsi rdi
+}
+
 .SkipUnstoppable:
 
 
@@ -1661,22 +1829,27 @@ match =1,VERBOSE {
 		add   eax, ecx
 		cmp   eax, 12222
 		 jb   .SkipSpace
-	  EvalSpace   White
 	  EvalSpace   Black
+	  EvalSpace   White
 .SkipSpace:
 
 	; Evaluate position potential for the winning side
 		mov   r14, qword[.ei.pi]
 	     popcnt   r9, qword[rbp+Pos.typeBB+8*Pawn], rcx
 
-VerboseDisplay <db 'pawns: '>
-VerboseDisplayInt r9
+
+
+
+ED_String db 'pawns: '
+ED_Int r9
+ED_String db 10
 
 
 	      movzx   edx, byte[r14+PawnEntry.asymmetry]
 
-VerboseDisplay <db 'asymmetry: '>
-VerboseDisplayInt rdx
+ED_String db 'asymmetry: '
+ED_Int rdx
+ED_String db 10
 
 
 		lea   edx, [rdx+r9-15]
@@ -1686,6 +1859,13 @@ VerboseDisplayInt rdx
 
 		mov   esi, dword[.ei.score]
 	      movsx   r10d, si
+
+
+ED_String db 'eg: '
+ED_Int r10
+ED_String db 10
+
+
 		sar   r10d, 31
 		mov   r11d, r10d
 
@@ -1708,28 +1888,19 @@ VerboseDisplayInt rdx
 		sub   eax, edx
 		sub   r8d, eax
 
-VerboseDisplay <db 'kingDistance: '>
-VerboseDisplayInt r8
-
 
 
 		lea   eax, [r9+8*r8]
 	; eax = initiative
-;VerboseDisplay 'in: '
-;push  rax
-;call DisplayInt
-;pop rax
 
-
-
+ED_String db 'initiative: '
+ED_Int rax
+ED_String db 10
 
 	      movsx   edx, si
-VerboseDisplay <db 'eg: '>
-VerboseDisplayInt rdx
-
-		sar   edx, 1
 		xor   edx, r11d
 		sub   edx, r11d
+		shr   edx, 1
 		neg   edx
 		cmp   eax, edx
 	      cmovl   eax, edx
@@ -1741,13 +1912,23 @@ VerboseDisplayInt rdx
 		add   esi, eax
 
 
-VerboseDisplay <db 'initiative: '>
-VerboseDisplayScore rax
-
-
-match =1,VERBOSE {
-		mov   dword[trace.Total], esi
+match =3, VERBOSE {
+push rdi rsi rax rcx rdx r8 r9 r10 r11
+mov esi, eax
+lea rdi,[VerboseOutput]
+szcall PrintString, ' evaluate_initiative: '
+mov ecx, esi
+call PrintScore
+mov al, 10
+stosb
+lea rcx, [VerboseOutput]
+call _WriteOut
+pop r11 r10 r9 r8 rdx rcx rax rsi rdi
 }
+
+
+ED_String db 'partial score: '
+ED_Score rsi
 
 	; esi = score
 	; r14 = ei.pi
@@ -1759,6 +1940,8 @@ match =1,VERBOSE {
 		adc   r13d, r13d
 	      movzx   ecx, byte[r15+MaterialEntry.scalingFunction+r13]
 	      movzx   eax, byte[r15+MaterialEntry.factor+r13]
+ED_String db ' ei.me->scale_factor(pos, strongSide): '
+ED_Int rax
 	      movzx   edx, byte[r15+MaterialEntry.gamePhase]
 	      movsx   r12d, si
 		add   esi, 0x08000
@@ -1812,7 +1995,6 @@ match =1,VERBOSE {
 .NotOppBishop:
 	      movzx   ecx, byte[r14+PawnEntry.pawnSpan+r13]
 		lea   r8d, [r12+BishopValueEg]
-		mov   r9d, dword[.ei.ksq+4*r13]
 		cmp   r8d, 2*BishopValueEg
 		 ja   .ScaleFactorDone
 		sub   ecx, 1
@@ -1820,6 +2002,7 @@ match =1,VERBOSE {
 		mov   r8, qword[rbp+Pos.typeBB+8*Pawn]
 		and   r8, qword[rbp+Pos.typeBB+8*r13]
 		xor   r13d, 1
+		mov   r9d, dword[.ei.ksq+4*r13]
 		shl   r13, 6+3
 		and   ecx, 37-51
 		add   ecx, 51
@@ -1832,10 +2015,28 @@ match =1,VERBOSE {
 	; r12d = eg_value(score)
 	; adjust score for side to move
 
-VerboseDisplay <db 'game phase: '>
-VerboseDisplayInt rdx
-VerboseDisplay <db 'scale factor: '>
-VerboseDisplayInt rax
+
+match =3, VERBOSE {
+push rsi rdi rax rcx rdx r14 r15
+mov r15, rax
+mov r14, rdx
+lea rdi, [Output]
+szcall PrintString, 'score: '
+mov ecx, esi
+shl ecx, 16
+add ecx, r12d
+call PrintScore
+szcall PrintString, ' sf: '
+movsxd rax, r15d
+call PrintSignedInteger
+szcall PrintString, ' phase: '
+movsxd rax, r14d
+call PrintSignedInteger
+mov al, 10
+stosb
+call _WriteOut_Output
+pop r15 r14 rdx rcx rax rdi rsi
+}
 
 	; the evaluation should be exactly symmetric
 	;  hence the signed division by PHASE_MIDGAME*SCALE_FACTOR_NORMAL
@@ -1852,6 +2053,7 @@ VerboseDisplayInt rax
 	       imul   edx, r12d
 	       imul   eax, edx
 		add   eax, esi
+
 		cdq
 		add   eax, (1 shl 12) - 1
 		sub   eax, edx
@@ -1860,28 +2062,9 @@ VerboseDisplayInt rax
 		lea   eax, [rax+rdi+Eval_Tempo]
 
 
-VerboseDisplay <db 'eval: '>
-VerboseDisplayInt rax
-
-
-
-		;xor   ecx, ecx
-		;mov   qword[.ei.attackedBy+8*0], rcx
-		;mov   qword[.ei.attackedBy+8*1], rcx
-		;mov   qword[.ei.attackedBy+8*2], rcx
-		;mov   qword[.ei.attackedBy+8*3], rcx
-		;mov   qword[.ei.attackedBy+8*4], rcx
-		;mov   qword[.ei.attackedBy+8*5], rcx
-		;mov   qword[.ei.attackedBy+8*6], rcx
-		;mov   qword[.ei.attackedBy+8*7], rcx
-		;mov   qword[.ei.attackedBy+8*8], rcx
-		;mov   qword[.ei.attackedBy+8*9], rcx
-		;mov   qword[.ei.attackedBy+8*10], rcx
-		;mov   qword[.ei.attackedBy+8*11], rcx
-		;mov   qword[.ei.attackedBy+8*12], rcx
-		;mov   qword[.ei.attackedBy+8*13], rcx
-		;mov   qword[.ei.attackedBy+8*14], rcx
-		;mov   qword[.ei.attackedBy+8*15], rcx
+SD_String db 'eval:'
+SD_Int rax
+SD_String db '|'
 
 		add   rsp, sizeof.EvalInfo
 		pop   r15 r14 r13 r12 rdi rsi rbx
@@ -1924,7 +2107,7 @@ DoMaterialEval:
 	;     rbp address of position
 	;     rbx address of state
 	;     rsp address of EvalInfo
-	; out:	     return is .DoMaterialEvalReturn
+	; out:       return is .DoMaterialEvalReturn
 	;     eax  sign_ext(word[rsi+MaterialEntry.value])
 	;     ecx  zero_ext(byte[rsi+MaterialEntry.evaluationFunction])
 	       push   r12 r13 r14 r15
@@ -2077,7 +2260,7 @@ match =Black, Us \{
 		mov   eax, dword[rsp+4*(8*Us+Pawn)]
 	       test   eax, eax
 		 jz   .Check_KQKRPs_#Us
-		mov   byte[rsi+MaterialEntry.scalingFunction+1*Us], 2*EndgameScale_KBPsKs_index+Us
+		mov   byte[rsi+MaterialEntry.scalingFunction+1*Us], 2*EndgameScale_KBPsK_index+Us
 		jmp   .Check_sDone_#Us
 .Check_KQKRPs_#Us:
 		cmp   npMat, QueenValueMg
@@ -2100,7 +2283,6 @@ match =Black, Us \{
 
 
 
-
 		mov   rax, qword[rbp+Pos.typeBB+8*Pawn]
 	       test   r14d, r14d
 		jnz   .NotOnlyPawns
@@ -2114,7 +2296,7 @@ match =Black, Us \{
 	       test   ecx, ecx
 		 jz   .OnlyPawnsWrite
 		mov   edx, dword[rsp+4*(8*White+Pawn)]
-		mov   eax, (((2*EndgameScale_KPsK_index+Black)) shl 16) + ((0) shl 0)
+		mov   eax, (((2*EndgameScale_KPsK_index+Black)) shl 8) + ((0) shl 0)
 	       test   edx, edx
 		 jz   .OnlyPawnsWrite
 		xor   eax, eax
@@ -2122,15 +2304,14 @@ match =Black, Us \{
 		jne   .OnlyPawnsWrite
 		cmp   edx, 1
 		jne   .OnlyPawnsWrite
-		mov   eax, (((2*EndgameScale_KPKP_index+Black)) shl 16) + ((2*EndgameScale_KPKP_index+White) shl 0)
+		mov   eax, (((2*EndgameScale_KPKP_index+Black)) shl 8) + ((2*EndgameScale_KPKP_index+White) shl 0)
 .OnlyPawnsWrite:
 		mov   word[rsi+MaterialEntry.scalingFunction], ax  ; write both entries
 .NotOnlyPawns:
 
-
 		mov   eax, dword[rsp+4*(8*White+Pawn)]
 	       test   eax, eax
-		jne   .P1
+		jnz   .P1
 		mov   ecx, r14d
 		sub   ecx, r15d
 		cmp   ecx, BishopValueMg
@@ -2146,7 +2327,7 @@ match =Black, Us \{
 .P1:
 		mov   eax, dword[rsp+4*(8*Black+Pawn)]
 	       test   eax, eax
-		jne   .P2
+		jnz   .P2
 		mov   ecx, r15d
 		sub   ecx, r14d
 		cmp   ecx, BishopValueMg
@@ -2170,6 +2351,7 @@ match =Black, Us \{
 		mov   byte[rsi+MaterialEntry.factor+1*White], SCALE_FACTOR_ONEPAWN
 .P3:
 		mov   eax, dword[rsp+4*(8*Black+Pawn)]
+		cmp   eax, 1
 		jne   .P4
 		mov   ecx, r15d
 		sub   ecx, r14d

@@ -204,8 +204,8 @@ Endgame_Init:
 
 	; these endgame fxns correspond to many material config   except KPKP
 	;  and are not added to the map
-		lea   eax, [EndgameScale_KBPsKs]
-		mov   r8d, EndgameScale_KBPsKs_index
+		lea   eax, [EndgameScale_KBPsK]
+		mov   r8d, EndgameScale_KBPsK_index
 		mov   dword[rbx+4*r8], eax
 
 		lea   eax, [EndgameScale_KQKRPs]

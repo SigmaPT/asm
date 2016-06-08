@@ -111,18 +111,26 @@ add rsp, MAX_MOVES*sizeof.ExtMove
 pop rdx rcx
 }
 
-match=1, VERBOSE {
+match=2, VERBOSE {
 push rax rcx rsi rdi
+mov esi, ecx
 lea rdi, [VerboseOutput]
-mov rax, 'do move '
+movsxd rax, dword[rbp+Pos.gamePly]
+call PrintSignedInteger
+mov rax, 'domove:'
 stosq
+sub rdi,1
+mov ecx, esi
 call PrintUciMove
-mov al, 10
+mov al, '|'
 stosb
 lea rcx, [VerboseOutput]
 call _WriteOut
 pop rdi rsi rcx rax
+		add   dword[rbp+Pos.gamePly], 1
 }
+
+
 
 		mov   esi, dword[rbp+Pos.sideToMove]
 
@@ -151,6 +159,8 @@ lock inc qword[profile.moveUnpack]
 	      vmovq   xmm0, qword[rbx+State.psq]       ; psq and npMaterial
 		cmp   ecx, MOVE_TYPE_CASTLE
 		sbb   edi, edi
+
+		add   qword[rbp-Thread.rootPos+Thread.nodes], 1
 
 	; update rule50 and pliesFromNull and capturedPiece
 	      movzx   eax, word[rbx+State.rule50]

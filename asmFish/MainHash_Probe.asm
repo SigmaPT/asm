@@ -83,7 +83,7 @@ MainHash_Probe:
 	      align   8
 .FoundRefresh:
 
-match =1, VERBOSE {
+match =2, VERBOSE {
 push rax rcx rdx r8 r9 r10 r11 r15 r14 rdi
 mov r15, rax
 movzx  r14d, dx
@@ -104,7 +104,7 @@ call PrintSignedInteger
 szcall PrintString, ' depth='
 movsx rax, byte[r15+MainHashEntry.depth]
 call PrintSignedInteger
-mov al, 10
+mov al, '|'
 stosb
 lea rcx, [VerboseOutput]
 call _WriteOut

@@ -1,350 +1,3 @@
-MainThread_Think:
-	; in: rcx address of Thread struct   should be mainThread
-
-	       push   rbp rbx rsi rdi r15
-virtual at rsp
-  .output rb 32
-  .lend rb 0
-end virtual
-.lsize = ((.lend-rsp+15) and (-16))
-		sub   rsp, .lsize
-		lea   rbp, [rcx+Thread.rootPos]
-		mov   rbx, qword[rbp+Pos.state]
-
-     VerboseDisplay   <db 'MainThread_Think',10>
-		mov   ecx, dword[rbp+Pos.sideToMove]
-		mov   edx, dword[rbp+Pos.gamePly]
-	       call   TimeMng_Init
-
-		mov   eax, dword[rbp+Pos.sideToMove]
-		mov   ecx, VALUE_DRAW
-		sub   ecx, dword[options.contempt]
-		mov   dword[DrawValue+4*rax], ecx
-		xor   eax, 1
-		mov   ecx, VALUE_DRAW
-		add   ecx, dword[options.contempt]
-		mov   dword[DrawValue+4*rax], ecx
-		add   byte[mainHash.date], 4
-
-	; Skip TB probing when no TB found
-		xor   eax, eax
-		mov   dl, byte[options.syzygy50MoveRule]
-		mov   qword[Tablebase_Hits], rax
-		mov   byte[Tablebase_RootInTB], al
-		mov   byte[Tablebase_UseRule50], dl
-		mov   eax, dword[options.syzygyProbeLimit]
-		mov   ecx, dword[options.syzygyProbeDepth]
-		xor   edx, edx
-		cmp   eax, dword[Tablebase_MaxCardinality]
-	      cmovg   eax, dword[Tablebase_MaxCardinality]
-	      cmovg   ecx, edx
-		mov   dword[Tablebase_Cardinality], eax
-		mov   dword[Tablebase_ProbeDepth], ecx
-
-	; check for mate
-		mov   r8, qword[rbp+Pos.rootMovesVec+RootMovesVec.ender]
-		cmp   r8, qword[rbp+Pos.rootMovesVec+RootMovesVec.table]
-		 je   .mate
-
-	; check tb
-;		 mov   rcx, qword[rbp+Pos.typeBB+8*White]
-;		  or   rcx, qword[rbp+Pos.typeBB+8*Black]
-;	      popcnt   rcx, rcx, rdx
-;		 sub   eax, ecx
-;		 sar   eax, 31
-;		  or   al, byte[rbx+State.castlingRights]
-;		  jz   .check_tb
-.check_tb_ret:
-
-	; start workers
-		lea   rsi, [rbp-Thread.rootPos]
-    .next_worker:
-		sub   rsi, sizeof.Thread
-		cmp   rsi, qword[threadPool.stackPointer]
-		 jb   .workers_done
-		mov   rcx, rsi
-	       call   Thread_StartSearching
-		jmp   .next_worker
-    .workers_done:
-
-	; start searching
-		lea   rcx, [rbp-Thread.rootPos]
-		lea   rdx, [.output]
-	       call   Thread_Think
-
-.search_done:
-
-
-	; check for wait
-		mov   al, byte[signals.stop]
-	       test   al, al
-		jnz   .dont_wait
-		mov   al, byte[limits.ponder]
-		 or   al, byte[limits.infinite]
-		 jz   .dont_wait
-		mov   byte[signals.stopOnPonderhit], al
-		lea   rcx, [rbp-Thread.rootPos]
-		lea   rdx, [signals.stop]
-	       call   Thread_Wait
-.dont_wait:
-		 or   eax, -1
-		mov   byte[signals.stop], al
-
-	; wait for workers
-		lea   rsi, [rbp-Thread.rootPos]
-	.next_worker2:
-		sub   rsi, sizeof.Thread
-		cmp   rsi, qword[threadPool.stackPointer]
-		 jb   .workers_done2
-		mov   rcx, rsi
-	       call   Thread_WaitForSearchFinished
-		jmp   .next_worker2
-	.workers_done2:
-
-
-	; find best thread  rsi
-		lea   rsi, [rbp-Thread.rootPos]
-		mov   eax, dword[options.multiPV]
-		sub   eax, 1
-		 or   eax, dword[limits.depth]
-		 or   al, byte[rbp-Thread.rootPos+Thread.easyMovePlayed]
-		jne   .best_done
-		mov   rcx, qword[rbp+Pos.rootMovesVec+RootMovesVec.table]
-		mov   ecx, dword[rcx+0*sizeof.RootMove+RootMove.pv+4*0]
-	       test   ecx, ecx
-		 jz   .best_done
-		mov   rdi, rsi
-		mov   r8d, dword[rsi+Thread.completedDepth]
-		mov   r9, qword[rsi+Thread.rootPos+Pos.rootMovesVec+RootMovesVec.table]
-		mov   r9d, dword[r9+0*sizeof.RootMove+RootMove.score]
-	.next_worker3:
-		sub   rdi, sizeof.Thread
-		cmp   rdi, qword[threadPool.stackPointer]
-		 jb   .workers_done3
-		mov   eax, dword[rdi+Thread.completedDepth]
-		mov   rcx, qword[rdi+Thread.rootPos+Pos.rootMovesVec+RootMovesVec.table]
-		mov   ecx, dword[rcx+0*sizeof.RootMove+RootMove.score]
-		cmp   eax, r8d
-		jle   .next_worker3
-		cmp   ecx, r9d
-		jle   .next_worker3
-		mov   r8d, eax
-		mov   r9d, ecx
-		mov   rsi, rdi
-		jmp   .next_worker3
-	.workers_done3:
-.best_done:
-
-		mov   dword[rbp-Thread.rootPos+Thread.previousScore], r9d
-		cmp   rsi, mainThread
-		 je   .dont_send_pv
-.dont_send_pv:
-
-		mov   rcx, rsi
-	       call   qword[options.printBestmoveFxn]
-
-
-      VerboseDisplay  <db 'MainThread_Think returning',10>
-
-		add   rsp, .lsize
-		pop   r15 rdi rsi rbx rbp
-		ret
-
-
-
-.mate:
-		lea   rdi, [.output]
-		mov   rax, 'info dep'
-	      stosq
-		mov   rax, 'th 0 sco'
-	      stosq
-		mov   eax, 're '
-	      stosd
-		sub   rdi, 1
-		mov   rax, qword[rbx+Thread.rootPos+Pos.state]
-		cmp   qword[rax+State.checkersBB], 1
-		sbb   ecx, ecx
-		and   ecx, VALUE_DRAW+VALUE_MATE
-		sub   ecx, VALUE_MATE
-	       call   PrintScore_Uci
-		mov   al, 10
-	      stosb
-		lea   rcx, [.output]
-	       call   _WriteOut
-		jmp   .search_done
-
-
-
-
-.check_tb:
-	       call   Tablebase_RootProbe
-		mov   byte[Tablebase_RootInTB], al
-		xor   edx, edx
-	       test   eax, eax
-		jnz   .root_in
-	       call   Tablebase_RootProbeWDL
-		mov   byte[Tablebase_RootInTB], al
-		xor   edx, edx
-		cmp   edx, dword[Tablebase_Score]
-	      cmovg   edx, dword[Tablebase_Cardinality]
- .root_in:
-		lea   rcx, [rbp+Pos.rootMovesVec]
-		mov   dword[Tablebase_Cardinality], edx
-	       call   RootMovesVec_Size
-		mov   dword[Tablebase_Hits], eax
-		mov   dl, byte[Tablebase_UseRule50]
-		mov   eax, dword[Tablebase_Score]
-	       test   dl, dl
-		jnz   .check_tb_ret
-		mov   ecx, VALUE_MATE - MAX_PLY - 1
-		cmp   eax, 0
-	      cmovg   eax, ecx
-		neg   ecx
-		cmp   eax, 0
-	      cmovl   eax, ecx
-		mov   dword[Tablebase_Score], eax
-		jmp   .check_tb_ret
-
-
-
-
-PrintBestmove_Uci:
-	; in: rcx address of best thread
-virtual at rsp
-  .output rb 32
-  .lend rb 0
-end virtual
-.lsize = ((.lend-rsp+15) and (-16))
-	       push   rsi rdi r15
-		sub   rsp, .lsize
-		mov   rsi, rcx
-
-	; print best move and ponder move
-		lea   rdi, [.output]
-		mov   rax, 'bestmove'
-	      stosq
-		mov   al, ' '
-	      stosb
-		mov   rcx, qword[rsi+Thread.rootPos+Pos.rootMovesVec+RootMovesVec.table]
-		mov   ecx, dword[rcx+0*sizeof.RootMove+RootMove.pv+4*0]
-	      movzx   edx, byte[rsi+Thread.rootPos+Pos.chess960]
-		mov   dword[XBoardMove], ecx
-	       call   PrintUciMove
-
-		mov   rcx, qword[rsi+Thread.rootPos+Pos.rootMovesVec+RootMovesVec.table]
-		mov   eax, dword[rcx+0*sizeof.RootMove+RootMove.pvSize]
-		cmp   eax, 2
-		 jb   .get_ponder_from_tt
-.have_ponder_from_tt:
-		mov   rax, ' ponder '
-	      stosq
-		mov   ecx, dword[rcx+0*sizeof.RootMove+RootMove.pv+4*1]
-	      movzx   edx, byte[rsi+Thread.rootPos+Pos.chess960]
-	       call   PrintUciMove
-.skip_ponder:
-		lea   rcx, [.output]
-		mov   eax, 10
-	      stosb
-	       call   _WriteOut
-.return:
-		add   rsp, .lsize
-		pop   r15 rdi rsi
-		ret
-
-.get_ponder_from_tt:
-		lea   rcx, [rsi+Thread.rootPos]
-	       call   ExtractPonderFromTT
-		mov   rcx, qword[rsi+Thread.rootPos+Pos.rootMovesVec+RootMovesVec.table]
-	       test   eax, eax
-		jnz   .have_ponder_from_tt
-		jmp   .skip_ponder
-
-
-ExtractPonderFromTT:
-	; in: rcx address of position
-	       push   rbp rbx rsi rdi r15
-virtual at rsp
- .movelist rb sizeof.ExtMove*MAX_MOVES
- .lend	   rb 0
-end virtual
-.localsize = .lend-rsp
-	 _chkstk_ms   rsp, .localsize
-		sub   rsp, .localsize
-
-		mov   r15, qword[rcx+Pos.rootMovesVec+RootMovesVec.table]
-
-		mov   rbp, rcx
-		mov   rbx, qword[rcx+Pos.state]
-	       call   SetCheckInfo
-		mov   ecx, dword[r15+RootMove.pv+4*0]
-	       call   Move_GivesCheck
-		mov   ecx, dword[r15+RootMove.pv+4*0]
-		mov   edx, eax
-		add   qword[rbp-Thread.rootPos+Thread.nodes], 1
-	       call   Move_Do__ExtractPonderFromTT
-		mov   rcx, qword[rbx+State.key]
-	       call   MainHash_Probe
-		mov   esi, ecx
-		shr   esi, 16
-		mov   edi, edx
-		mov   ecx, dword[r15+RootMove.pv+4*0]
-	       call   Move_Undo
-		xor   eax, eax
-	       test   edi, edi
-		 jz   .done
-
-		lea   rdi, [.movelist]
-	       call   Gen_Legal
-		lea   rdx, [.movelist]
-	.loop:
-		xor   eax, eax
-		cmp   rdx, rdi
-		jae   .done
-		add   rdx, sizeof.ExtMove
-		cmp   esi, dword[rdx+ExtMove.move]
-		jne   .loop
-
-		 or   eax, -1
-		mov   ecx, 2
-		mov   dword[r15+RootMove.pv+4*1], esi
-		mov   dword[r15+RootMove.pvSize], ecx
-.done:
-		add   rsp, .localsize
-		pop   r15 rdi rsi rbx rbp
-		ret
-
-
-
-PrintBestmove_Xboard:
-	; in: rcx address of best thread
-virtual at rsp
-  .output rb 32
-  .lend rb 0
-end virtual
-.lsize = ((.lend-rsp+15) and (-16))
-	       push   rsi rdi r15
-		sub   rsp, .lsize
-		mov   rsi, rcx
-		lea   rdi, [.output]
-		mov   eax, 'move'
-	      stosd
-		mov   al, ' '
-	      stosb
-		mov   rcx, qword[rsi+Thread.rootPos+Pos.rootMovesVec+RootMovesVec.table]
-		mov   ecx, dword[rcx+0*sizeof.RootMove+RootMove.pv+4*0]
-	      movzx   edx, byte[rsi+Thread.rootPos+Pos.chess960]
-		mov   dword[XBoardMove], ecx
-	       call   PrintUciMove
-		mov   eax, 10
-	      stosb
-	       call   _WriteOut
-		add   rsp, .lsize
-		pop   r15 rdi rsi
-PrintBestmove_None:
-		ret
-
-
-
 Thread_Think:
 	; in: rcx address of Thread struct
 
@@ -551,58 +204,60 @@ match =1, VERBOSE {
 		 jl   .dont_print_pv
 	@@:    call   _GetTime
 		sub   rax, qword[time.startTime]
+match =0, VERBOSE {
 		cmp   rax, 3000
 		jbe   .dont_print_pv
+}
 		mov   ecx, r15d
 		mov   edx, dword[.alpha]
 		mov   r8d, dword[.beta]
 		mov   r9, rax
 		mov   r10d, dword[.multiPV]
-	       call   qword[options.printFxn]
+	       call   qword[options.displayInfoFxn]
 	.dont_print_pv:
 
 	; In case of failing low/high increase aspiration window and re-search, otherwise exit the loop.
-		mov   ecx, dword[.alpha]
-		mov   edx, dword[.beta]
-		mov   r8d, dword[.delta]
-		cmp   r12d, ecx
-		jle   .fail_low
-		cmp   r12d, edx
-		jge   .fail_high
-		jmp   .search_done
-    .fail_low:
-		add   edx, ecx
-		sar   edx, 1
-		mov   ecx, r12d
-		sub   ecx, r8d
-		mov   eax, -VALUE_INFINITE
-		cmp   ecx, eax
-	      cmovl   ecx, eax
-		mov   eax, r8d
+		mov   r8d, dword[.alpha]
+		mov   r9d, dword[.beta]
+		mov   eax, dword[.delta]
+		mov   r10d, eax
+		cdq
+		and   edx, 3
+		add   eax, edx
 		sar   eax, 2
-		lea   r8d, [r8+rax+5]
-		mov   dword[.alpha], ecx
+		lea   r10d, [r10+rax+5]
+	; r10d = delta + delta / 4 + 5
+		lea   eax, [r8+r9]
+		cdq
+		sub   eax, edx
+		sar   eax, 1
+	; eax = (alpha + beta) / 2
+		mov   edx, r12d
+		cmp   r12d, r8d
+		jle   .fail_low
+		cmp   r12d, r9d
+		 jl   .search_done
+    .fail_high:
+		add   edx, dword[.delta]
+		mov   ecx, VALUE_INFINITE
+		cmp   edx, ecx
+	      cmovg   edx, ecx
+		mov   dword[.alpha], eax
 		mov   dword[.beta], edx
-		mov   dword[.delta], r8d
+		mov   dword[.delta], r10d
+		jmp   .search_loop
+    .fail_low:
+		sub   edx, dword[.delta]
+		mov   ecx, -VALUE_INFINITE
+		cmp   edx, ecx
+	      cmovl   edx, ecx
+		mov   dword[.alpha], edx
+		mov   dword[.beta], eax
+		mov   dword[.delta], r10d
 		cmp   rbp, mainThread.rootPos
 		jne   .search_loop
 		mov   byte[rbp-Thread.rootPos+Thread.failedLow], -1
 		mov   byte[signals.stopOnPonderhit], 0
-		jmp   .search_loop
-    .fail_high:
-		add   ecx, edx
-		sar   ecx, 1
-		mov   edx, r12d
-		add   edx, r8d
-		mov   eax, VALUE_INFINITE
-		cmp   edx, eax
-	      cmovg   edx, eax
-		mov   eax, r8d
-		sar   eax, 2
-		lea   r8d, [r8+rax+5]
-		mov   dword[.alpha], ecx
-		mov   dword[.beta], edx
-		mov   dword[.delta], r8d
 		jmp   .search_loop
 .search_done:
 
@@ -621,14 +276,16 @@ match =1, VERBOSE {
 		lea   eax, [r14+1]
 		cmp   eax, dword[.multiPV]
 		 je   @f
+match =0, VERBOSE {
 		cmp   r9, 3000
 		jbe   .multipv_loop
+}
 	@@:	
 		mov   ecx, r15d
 		mov   edx, dword[.alpha]
 		mov   r8d, dword[.beta]
 		mov   r10d, dword[.multiPV]
-	       call   qword[options.printFxn]
+	       call   qword[options.displayInfoFxn]
 
 		jmp   .multipv_loop
 
@@ -752,12 +409,646 @@ match =1, VERBOSE {
 		ret
 
 
-;align 4
-;.improvingFactor_lookup:
-;	 dd 640-160*0-126*0-124*0*0
-;	 dd 640-160*1-126*0-124*1*0
-;	 dd 640-160*0-126*1-124*0*1
-;	 dd 640-160*1-126*1-124*1*1
+
+
+
+
+
+
+
+
+
+
+
+MainThread_Think:
+	; in: rcx address of Thread struct   should be mainThread
+
+	       push   rbp rbx rsi rdi r15
+		lea   rbp, [rcx+Thread.rootPos]
+		mov   rbx, qword[rbp+Pos.state]
+
+     VerboseDisplay   <db 'MainThread_Think',10>
+		mov   ecx, dword[rbp+Pos.sideToMove]
+		mov   edx, dword[rbp+Pos.gamePly]
+	       call   TimeMng_Init
+
+		mov   eax, dword[rbp+Pos.sideToMove]
+		mov   ecx, VALUE_DRAW
+		sub   ecx, dword[options.contempt]
+		mov   dword[DrawValue+4*rax], ecx
+		xor   eax, 1
+		mov   ecx, VALUE_DRAW
+		add   ecx, dword[options.contempt]
+		mov   dword[DrawValue+4*rax], ecx
+		add   byte[mainHash.date], 4
+
+	; Skip TB probing when no TB found
+		xor   eax, eax
+		mov   dl, byte[options.syzygy50MoveRule]
+		mov   qword[Tablebase_Hits], rax
+		mov   byte[Tablebase_RootInTB], al
+		mov   byte[Tablebase_UseRule50], dl
+		mov   eax, dword[options.syzygyProbeLimit]
+		mov   ecx, dword[options.syzygyProbeDepth]
+		xor   edx, edx
+		cmp   eax, dword[Tablebase_MaxCardinality]
+	      cmovg   eax, dword[Tablebase_MaxCardinality]
+	      cmovg   ecx, edx
+		mov   dword[Tablebase_Cardinality], eax
+		mov   dword[Tablebase_ProbeDepth], ecx
+
+	; check for mate
+		mov   r8, qword[rbp+Pos.rootMovesVec+RootMovesVec.ender]
+		cmp   r8, qword[rbp+Pos.rootMovesVec+RootMovesVec.table]
+		 je   .mate
+
+	; check tb
+;                mov   rcx, qword[rbp+Pos.typeBB+8*White]
+;                 or   rcx, qword[rbp+Pos.typeBB+8*Black]
+;             popcnt   rcx, rcx, rdx
+;                sub   eax, ecx
+;                sar   eax, 31
+;                 or   al, byte[rbx+State.castlingRights]
+;                 jz   .check_tb
+.check_tb_ret:
+
+	; start workers
+		lea   rsi, [rbp-Thread.rootPos]
+    .next_worker:
+		sub   rsi, sizeof.Thread
+		cmp   rsi, qword[threadPool.stackPointer]
+		 jb   .workers_done
+		mov   rcx, rsi
+	       call   Thread_StartSearching
+		jmp   .next_worker
+    .workers_done:
+
+	; start searching
+		lea   rcx, [rbp-Thread.rootPos]
+	       call   Thread_Think
+
+.search_done:
+
+
+	; check for wait
+		mov   al, byte[signals.stop]
+	       test   al, al
+		jnz   .dont_wait
+		mov   al, byte[limits.ponder]
+		 or   al, byte[limits.infinite]
+		 jz   .dont_wait
+		mov   byte[signals.stopOnPonderhit], al
+		lea   rcx, [rbp-Thread.rootPos]
+		lea   rdx, [signals.stop]
+	       call   Thread_Wait
+.dont_wait:
+		 or   eax, -1
+		mov   byte[signals.stop], al
+
+	; wait for workers
+		lea   rsi, [rbp-Thread.rootPos]
+	.next_worker2:
+		sub   rsi, sizeof.Thread
+		cmp   rsi, qword[threadPool.stackPointer]
+		 jb   .workers_done2
+		mov   rcx, rsi
+	       call   Thread_WaitForSearchFinished
+		jmp   .next_worker2
+	.workers_done2:
+
+
+	; find best thread  rsi
+		lea   rsi, [rbp-Thread.rootPos]
+		mov   eax, dword[options.multiPV]
+		sub   eax, 1
+		 or   eax, dword[limits.depth]
+		 or   al, byte[rbp-Thread.rootPos+Thread.easyMovePlayed]
+		jne   .best_done
+		mov   rcx, qword[rbp+Pos.rootMovesVec+RootMovesVec.table]
+		mov   ecx, dword[rcx+0*sizeof.RootMove+RootMove.pv+4*0]
+	       test   ecx, ecx
+		 jz   .best_done
+		mov   rdi, rsi
+		mov   r8d, dword[rsi+Thread.completedDepth]
+		mov   r9, qword[rsi+Thread.rootPos+Pos.rootMovesVec+RootMovesVec.table]
+		mov   r9d, dword[r9+0*sizeof.RootMove+RootMove.score]
+	.next_worker3:
+		sub   rdi, sizeof.Thread
+		cmp   rdi, qword[threadPool.stackPointer]
+		 jb   .workers_done3
+		mov   eax, dword[rdi+Thread.completedDepth]
+		mov   rcx, qword[rdi+Thread.rootPos+Pos.rootMovesVec+RootMovesVec.table]
+		mov   ecx, dword[rcx+0*sizeof.RootMove+RootMove.score]
+		cmp   eax, r8d
+		jle   .next_worker3
+		cmp   ecx, r9d
+		jle   .next_worker3
+		mov   r8d, eax
+		mov   r9d, ecx
+		mov   rsi, rdi
+		jmp   .next_worker3
+	.workers_done3:
+.best_done:
+
+		mov   dword[rbp-Thread.rootPos+Thread.previousScore], r9d
+		cmp   rsi, mainThread
+		 je   .dont_send_pv
+.dont_send_pv:
+
+		mov   rcx, rsi
+	       call   qword[options.displayMoveFxn]
+
+      VerboseDisplay  <db 'MainThread_Think returning',10>
+
+		pop   r15 rdi rsi rbx rbp
+		ret
+
+
+
+.mate:
+		lea   rdi, [Output]
+		mov   rax, 'info dep'
+	      stosq
+		mov   rax, 'th 0 sco'
+	      stosq
+		mov   eax, 're '
+	      stosd
+		sub   rdi, 1
+		mov   rax, qword[rbx+Thread.rootPos+Pos.state]
+		cmp   qword[rax+State.checkersBB], 1
+		sbb   ecx, ecx
+		and   ecx, VALUE_DRAW+VALUE_MATE
+		sub   ecx, VALUE_MATE
+	       call   PrintScore_Uci
+		mov   al, 10
+	      stosb
+		lea   rcx, [Output]
+	       call   _WriteOut
+		jmp   .search_done
+
+
+
+
+.check_tb:
+	       call   Tablebase_RootProbe
+		mov   byte[Tablebase_RootInTB], al
+		xor   edx, edx
+	       test   eax, eax
+		jnz   .root_in
+	       call   Tablebase_RootProbeWDL
+		mov   byte[Tablebase_RootInTB], al
+		xor   edx, edx
+		cmp   edx, dword[Tablebase_Score]
+	      cmovg   edx, dword[Tablebase_Cardinality]
+ .root_in:
+		lea   rcx, [rbp+Pos.rootMovesVec]
+		mov   dword[Tablebase_Cardinality], edx
+	       call   RootMovesVec_Size
+		mov   dword[Tablebase_Hits], eax
+		mov   dl, byte[Tablebase_UseRule50]
+		mov   eax, dword[Tablebase_Score]
+	       test   dl, dl
+		jnz   .check_tb_ret
+		mov   ecx, VALUE_MATE - MAX_PLY - 1
+		cmp   eax, 0
+	      cmovg   eax, ecx
+		neg   ecx
+		cmp   eax, 0
+	      cmovl   eax, ecx
+		mov   dword[Tablebase_Score], eax
+		jmp   .check_tb_ret
+
+
+
+
+
+
+
+DisplayMove_Uci:
+	; in: rcx address of best thread
+virtual at rsp
+  .output rb 32
+  .lend rb 0
+end virtual
+.lsize = ((.lend-rsp+15) and (-16))
+	       push   rsi rdi r15
+		sub   rsp, .lsize
+		mov   rsi, rcx
+
+	; print best move and ponder move
+		lea   rdi, [.output]
+		mov   rax, 'bestmove'
+	      stosq
+		mov   al, ' '
+	      stosb
+		mov   rcx, qword[rsi+Thread.rootPos+Pos.rootMovesVec+RootMovesVec.table]
+		mov   ecx, dword[rcx+0*sizeof.RootMove+RootMove.pv+4*0]
+	      movzx   edx, byte[rsi+Thread.rootPos+Pos.chess960]
+		mov   dword[XBoardMove], ecx
+	       call   PrintUciMove
+
+		mov   rcx, qword[rsi+Thread.rootPos+Pos.rootMovesVec+RootMovesVec.table]
+		mov   eax, dword[rcx+0*sizeof.RootMove+RootMove.pvSize]
+		cmp   eax, 2
+		 jb   .get_ponder_from_tt
+.have_ponder_from_tt:
+		mov   rax, ' ponder '
+	      stosq
+		mov   ecx, dword[rcx+0*sizeof.RootMove+RootMove.pv+4*1]
+	      movzx   edx, byte[rsi+Thread.rootPos+Pos.chess960]
+	       call   PrintUciMove
+.skip_ponder:
+		lea   rcx, [.output]
+		mov   eax, 10
+	      stosb
+	       call   _WriteOut
+.return:
+		add   rsp, .lsize
+		pop   r15 rdi rsi
+		ret
+
+.get_ponder_from_tt:
+		lea   rcx, [rsi+Thread.rootPos]
+	       call   ExtractPonderFromTT
+		mov   rcx, qword[rsi+Thread.rootPos+Pos.rootMovesVec+RootMovesVec.table]
+	       test   eax, eax
+		jnz   .have_ponder_from_tt
+		jmp   .skip_ponder
+
+
+ExtractPonderFromTT:
+	; in: rcx address of position
+	       push   rbp rbx rsi rdi r15
+virtual at rsp
+ .movelist rb sizeof.ExtMove*MAX_MOVES
+ .lend	   rb 0
+end virtual
+.localsize = .lend-rsp
+	 _chkstk_ms   rsp, .localsize
+		sub   rsp, .localsize
+
+		mov   r15, qword[rcx+Pos.rootMovesVec+RootMovesVec.table]
+
+		mov   rbp, rcx
+		mov   rbx, qword[rcx+Pos.state]
+	       call   SetCheckInfo
+		mov   ecx, dword[r15+RootMove.pv+4*0]
+	       call   Move_GivesCheck
+		mov   ecx, dword[r15+RootMove.pv+4*0]
+		mov   edx, eax
+		add   qword[rbp-Thread.rootPos+Thread.nodes], 1
+	       call   Move_Do__ExtractPonderFromTT
+		mov   rcx, qword[rbx+State.key]
+	       call   MainHash_Probe
+		mov   esi, ecx
+		shr   esi, 16
+		mov   edi, edx
+		mov   ecx, dword[r15+RootMove.pv+4*0]
+	       call   Move_Undo
+		xor   eax, eax
+	       test   edi, edi
+		 jz   .done
+
+		lea   rdi, [.movelist]
+	       call   Gen_Legal
+		lea   rdx, [.movelist]
+	.loop:
+		xor   eax, eax
+		cmp   rdx, rdi
+		jae   .done
+		add   rdx, sizeof.ExtMove
+		cmp   esi, dword[rdx+ExtMove.move]
+		jne   .loop
+
+		 or   eax, -1
+		mov   ecx, 2
+		mov   dword[r15+RootMove.pv+4*1], esi
+		mov   dword[r15+RootMove.pvSize], ecx
+.done:
+		add   rsp, .localsize
+		pop   r15 rdi rsi rbx rbp
+		ret
+
+
+
+DisplayMove_Xboard:
+	; in: rcx address of best thread
+virtual at rsp
+  .output rb 32
+  .localend rb 0
+end virtual
+.localsize = ((.localend-rsp+15) and (-16))
+	       push   rsi rdi r15
+		sub   rsp, .localsize
+		mov   rsi, rcx
+		lea   rdi, [.output]
+		mov   eax, 'move'
+	      stosd
+		mov   al, ' '
+	      stosb
+		mov   rcx, qword[rsi+Thread.rootPos+Pos.rootMovesVec+RootMovesVec.table]
+		mov   ecx, dword[rcx+0*sizeof.RootMove+RootMove.pv+4*0]
+	      movzx   edx, byte[rsi+Thread.rootPos+Pos.chess960]
+		mov   dword[XBoardMove], ecx
+	       call   PrintUciMove
+		lea   rcx, [.output]
+		mov   eax, 10
+	      stosb
+	       call   _WriteOut
+		add   rsp, .localsize
+		pop   r15 rdi rsi
+DisplayMove_None:
+		ret
+
+
+
+
+DisplayInfo_Uci:
+	; in: rbp thread pos
+	;     ecx depth
+	;     edx alpha
+	;     r8d beta
+	;     r9 elapsed
+	;     r10d multipv
+
+	       push   rbx rsi rdi r12 r13 r14 r15
+virtual at rsp
+ .elapsed    rq 1
+ .nodes      rq 1
+ .nps	     rq 1
+ .depth      rd 1
+ .alpha      rd 1
+ .beta	     rd 1
+ .multiPV    rd 1
+ .output     rb 8*MAX_PLY
+ .lend rb 0
+end virtual
+.localsize = ((.lend-rsp+15) and (-16))
+	 _chkstk_ms   rsp, .localsize
+		sub   rsp, .localsize
+		mov   dword[.depth], ecx
+		mov   dword[.alpha], edx
+		mov   dword[.beta], r8d
+		mov   qword[.elapsed], r9
+		mov   dword[.multiPV], r10d
+
+	     Assert   ne, r10d, 0, 'assertion dword[.multiPV]!=0 in Position_WriteOutUciInfo failed'
+
+	       call   ThreadPool_NodesSearched
+		mov   qword[.nodes], rax
+		mov   edx, 1000
+		mul   rdx
+		mov   rcx, qword[.elapsed]
+		cmp   rcx, 1
+		adc   rcx, 0
+		div   rcx
+		mov   qword[.nps], rax
+
+
+		xor   r15d, r15d
+.multipv_loop:
+		xor   eax, eax
+		cmp   r15d, dword[rbp-Thread.rootPos+Thread.PVIdx]
+	      setbe   al
+
+		mov   ecx, dword[.depth]
+		sub   ecx, 1
+		mov   edx, eax
+		 or   edx, ecx
+		 jz   .multipv_cont
+		add   ecx, eax
+
+		lea   rdi, [.output]
+
+	       imul   esi, r15d, sizeof.RootMove
+		add   rsi, qword[rbp+Pos.rootMovesVec+RootMovesVec.table]
+		mov   r12d, dword[rsi+4*rax]
+
+		mov   rax, 'info dep'
+	      stosq
+		mov   eax, 'th '
+	      stosd
+		sub   rdi, 1
+		mov   eax, ecx
+	       call   PrintUnsignedInteger
+
+		mov   al, ' '
+	      stosb
+		mov   rax, 'multipv '
+	      stosq
+		lea   eax, [r15+1]
+	       call   PrintUnsignedInteger
+
+match =0, VERBOSE {
+		mov   rax, ' time '
+	      stosq
+		sub   rdi, 2
+		mov   rax, qword[.elapsed]
+	       call   PrintUnsignedInteger
+
+		mov   rax, ' nps '
+	      stosq
+		sub   rdi, 3
+		mov   rax, qword[.nps]
+	       call   PrintUnsignedInteger
+}
+		mov   rax, ' score '
+	      stosq
+		sub   rdi, 1
+		mov   ecx, r12d
+	       call   PrintScore_Uci
+
+		mov   ecx, 'und'
+		cmp   r15d, dword[rbp-Thread.rootPos+Thread.PVIdx]
+		jne   .no_bound
+		mov   rax, ' lowerbo'
+		cmp   r12d, dword[.beta]
+		jge   .yes_bound
+		mov   rax, ' upperbo'
+		cmp   r12d, dword[.alpha]
+		 jg   .no_bound
+	.yes_bound:
+	      stosq
+		mov   eax, ecx
+	      stosd
+		sub   rdi, 1
+	.no_bound:
+
+		mov   rax, ' nodes '
+	      stosq
+		sub   rdi, 1
+		mov   rax, qword[.nodes]
+	       call   PrintUnsignedInteger
+
+		mov   eax, ' pv'
+	      stosd
+		sub   rdi, 1
+
+		mov   r13d, dword[rsi+RootMove.pvSize]
+		lea   r12, [rsi+RootMove.pv]
+		lea   r13, [r12+4*r13]
+	.next_move:
+		mov   al, ' '
+		cmp   r12, r13
+		jae   .moves_done
+	      stosb
+		mov   ecx, dword[r12]
+	      movzx   edx, byte[rbp+Pos.chess960]
+	       call   PrintUciMove
+		add   r12, 4
+		jmp   .next_move
+	.moves_done:
+
+		mov   al, 10
+	      stosb
+		lea   rcx, [.output]
+	       call   _WriteOut
+
+.multipv_cont:
+		add   r15d, 1
+		cmp   r15d, dword[.multiPV]
+		 jb   .multipv_loop
+
+
+		add   rsp, .localsize
+		pop   r15 r14 r13 r12 rdi rsi rbx
+
+
+DisplayInfo_None:
+		ret
+
+
+
+DisplayInfo_Xboard:
+	; in: rbp thread pos
+	;     ecx depth
+	;     edx alpha
+	;     r8d beta
+	;     r9 elapsed
+	;     r10d multipv
+
+
+;1 0 0 23 d7d5
+;2 -35 0 116 d7d5 b1c3
+;3 -5 0 1316 d7d5 f1b5 c8d7 b5d3
+;4 -35 0 6461 e7e5 b1c3 b8c6 g1f3
+;5 -13 3 41331 e7e5 d2d4 e5d4 d1d4 g8f6
+;6 -30 30 346575 d7d5 e4d5 d8d5 b1c3 d5e6 g1e2 b8c6
+;7 -18 248 2882251 e7e5 g1f3 g8f6 b1c3 b8c6 d2d4 d7d6
+	       push   rbx rsi rdi r12 r13 r14 r15
+virtual at rsp
+ .elapsed    rq 1
+ .nodes      rq 1
+ .nps	     rq 1
+ .depth      rd 1
+ .alpha      rd 1
+ .beta	     rd 1
+ .multiPV    rd 1
+ .output     rb 8*MAX_PLY
+ .lend rb 0
+end virtual
+.localsize = ((.lend-rsp+15) and (-16))
+	 _chkstk_ms   rsp, .localsize
+		sub   rsp, .localsize
+		mov   dword[.depth], ecx
+		mov   dword[.alpha], edx
+		mov   dword[.beta], r8d
+		mov   qword[.elapsed], r9
+		mov   dword[.multiPV], r10d
+
+	     Assert   ne, r10d, 0, 'assertion dword[.multiPV]!=0 in Position_WriteOutUciInfo failed'
+
+	       call   ThreadPool_NodesSearched
+		mov   qword[.nodes], rax
+		mov   edx, 1000
+		mul   rdx
+		mov   rcx, qword[.elapsed]
+		cmp   rcx, 1
+		adc   rcx, 0
+		div   rcx
+		mov   qword[.nps], rax
+
+	; xboard wants time in centiseconds
+		mov   rax, qword[.elapsed]
+		xor   edx, edx
+		lea   ecx, [rdx+10]
+		div   rcx
+		mov   qword[.elapsed], rax
+
+
+		xor   r15d, r15d
+.multipv_loop:
+		xor   eax, eax
+		cmp   r15d, dword[rbp-Thread.rootPos+Thread.PVIdx]
+	      setbe   al
+
+		mov   ecx, dword[.depth]
+		sub   ecx, 1
+		mov   edx, eax
+		 or   edx, ecx
+		 jz   .multipv_cont
+		add   ecx, eax
+
+		lea   rdi, [.output]
+
+	       imul   esi, r15d, sizeof.RootMove
+		add   rsi, qword[rbp+Pos.rootMovesVec+RootMovesVec.table]
+		mov   r12d, dword[rsi+4*rax]
+
+	; ply
+		mov   eax, ecx
+	       call   PrintUnsignedInteger
+
+	; score
+		mov   al, ' '
+	      stosb
+		mov   ecx, r12d
+	       call   PrintScore_Xboard
+
+	; time
+		mov   al, ' '
+	      stosb
+		mov   rax, qword[.elapsed]
+	       call   PrintUnsignedInteger
+
+	; nodes
+		mov   al, ' '
+	      stosb
+		mov   rax, qword[.nodes]
+	       call   PrintUnsignedInteger
+
+	; pv
+		mov   r13d, dword[rsi+RootMove.pvSize]
+		lea   r12, [rsi+RootMove.pv]
+		lea   r13, [r12+4*r13]
+	.next_move:
+		mov   al, ' '
+		cmp   r12, r13
+		jae   .moves_done
+	      stosb
+		mov   ecx, dword[r12]
+	      movzx   edx, byte[rbp+Pos.chess960]
+	       call   PrintUciMove
+		add   r12, 4
+		jmp   .next_move
+	.moves_done:
+
+		mov   al, 10
+	      stosb
+		lea   rcx, [.output]
+	       call   _WriteOut
+
+.multipv_cont:
+		add   r15d, 1
+		cmp   r15d, dword[.multiPV]
+		 jb   .multipv_loop
+
+
+		add   rsp, .localsize
+		pop   r15 r14 r13 r12 rdi rsi rbx
+		ret
+
+
 
 
 

@@ -231,8 +231,8 @@ ends
 
 
 struct Options
- printFxn	rq 1	  ; function for printing pv
- printBestmoveFxn rq 1
+ displayInfoFxn rq 1	  ; function for printing pv
+ displayMoveFxn rq 1
  hash		rd 1
  multiPV	rd 1
  threads       rd 1
@@ -302,7 +302,7 @@ struct Thread
 		 rb 1
 		 rb 1
 		 rb 1
- rootPos	 rb sizeof.Pos
+ rootPos	 Pos
 ends
 
 

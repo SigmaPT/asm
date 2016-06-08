@@ -316,14 +316,39 @@ GenNext_AllEvasions:
 		mov   r12, r14
       ScoreEvasions   r12, r15
 
-
+match =1, VERBOSE {
+lea rdi, [VerboseOutput]
+szcall PrintString, 'evasions '
+mov  r12, r14
+.1c:
+cmp r12, r15
+jae .2c
+mov al, '('
+stosb
+mov ecx, dword[r12+ExtMove.move]
+xor  edx, edx
+call PrintUciMove
+mov ax, ', '
+stosw
+movsxd rax, dword[r12+ExtMove.score]
+call PrintSignedInteger
+mov  ax, ') '
+stosw
+add  r12, 8
+jmp  .1c
+.2c:
+mov al, 10
+stosb
+lea rcx, [VerboseOutput]
+call _WriteOut
+}
 
 MovePick_AllEvasions:
 		cmp   r14, r15
 		 je   GenNext_QSearchWithChecks
 	   PickBest   r14, r13, r15
 		mov   ecx, eax
-		cmp   eax, dword [rsi+Pick.ttMove]
+		cmp   eax, dword[rsi+Pick.ttMove]
 		 je   MovePick_AllEvasions
 		lea   rdx, [MovePick_AllEvasions]
 		ret

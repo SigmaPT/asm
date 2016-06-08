@@ -1,3 +1,18 @@
+; this is the source for windows  see asmFish.asm for unix
+OS_IS_WINDOWS	 fix 1
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; compile options 0 or 1
+CPU_HAS_POPCNT	 equ 1	;  popcnt                       very nice function
+CPU_HAS_AVX1	 equ 1	;  256 bit floating point       probably only used for memory copy if used at all
+CPU_HAS_AVX2	 equ 1	;  256 bit integer + fmadd      probably not used
+CPU_HAS_BMI1	 equ 1	;  andn                         why not use it if we can
+CPU_HAS_BMI2	 equ 1	;  pext + pdep                  nice for move generation, but not much faster than magics
+DEBUG		 equ 0	;  turns on the asserts    detecting bugs: should be no functional change
+VERBOSE 	 equ 0	;  LOTS of print           find bugs:  0=off, 2=search debug, 3=eval debug
+PROFILE 	 equ 0	;  counts in the code
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
 ; this file is included in asmFishW_popcnt.asm, asmFishW_avx1.asm, ...
 ; for faster assembling of different versions
 
@@ -24,29 +39,21 @@ align 16
  .ender rb 0
 }
 
-match =1, VERBOSE {
-align 16
- trace.Material  dd 0
- trace.Imbalance dd 0
- trace.Pawn	 dd 0
- trace.Knight	 dd 0,0,0
- trace.Bishop	 dd 0,0,0
- trace.Rook	 dd 0,0,0
- trace.Queen	 dd 0,0,0
- trace.Mobility  dd 0,0,0
- trace.King	 dd 0,0,0
- trace.Threats	 dd 0,0,0
- trace.PassedPawns  dd 0,0,0
- trace.Space	 dd 0,0,0
- trace.Total	 dd 0
-}
-
-match =1, VERBOSE {
+match =2, VERBOSE {
 align 16
   VerboseOutput rq 1024
   VerboseTime1 rq 2
   VerboseTime2 rq 2
+  Verbr15 rq 1
 }
+match =3, VERBOSE {
+align 16
+  VerboseOutput rq 1024
+  VerboseTime1 rq 2
+  VerboseTime2 rq 2
+  Verbr15 rq 1
+}
+
 
 match =1, DEBUG {
 align 16
@@ -68,21 +75,6 @@ constd:
 .1p0	 dq 1.0
 .628p0	 dq 628.0
 .min	 dq 0x0010000000000000
-
-;?_2726:						 ; oword
-;	 dq 0FFFFFFFFFFFFFFF7H				 ; 1A90 _ FFFFFFFFFFFFFFF7
-;	 dq 0000000000000007H				 ; 1A98 _ 0000000000000007
-;
-;?_2727: dq 8181818181818181H				 ; 1AA0 _ 8181818181818181
-;?_2728: dq 0FF000000000000FFH				 ; 1AA8 _ FF000000000000FF
-;?_2737: dq 4059000000000000H				 ; 1AF0 _ 100.0
-;?_2738: dq 401C5C28F5C28F5CH				 ; 1AF8 _ 7.09
-;?_2739: dq 3FD6666666666666H				 ; 1B00 _ 0.35
-;?_2740: dq 404D333333333333H				 ; 1B08 _ 58.4
-;?_2741: dq 401E8F5C28F5C28FH				 ; 1B10 _ 7.64
-;?_2742: dq 0BFC76C8B43958106H				 ; 1B18 _ -0.183
-;?_2748: dq 0000FFFFFF000000H				 ; 1B48 _ 0000FFFFFF000000
-
 
 align 16
 HalfDensitySize = 20
@@ -121,9 +113,6 @@ match =0, CPU_HAS_POPCNT {
 
 
 
-align 8
- XBoardMove dd 0
- XBoardMode db 0
 
 
 align 4
@@ -134,6 +123,8 @@ wdl_to_Value5:
   dd VALUE_DRAW + 2
   dd VALUE_MATE - MAX_PLY - 1
 
+align 4
+ XBoardMove dd 0
 
 
  szUCIresponse	db 'id name '
@@ -211,10 +202,8 @@ section '.rdata' data readable writeable
 align 16
  workThreads	rb sizeof.Thread*(MAX_THREADS-1)
  mainThread	Thread
- threadPool	ThreadPool
  mainHash	MainHash
- pos1		Pos
- pos2		Pos
+ threadPool	ThreadPool
  options	Options
  time		Time
  signals	Signals
@@ -304,7 +293,7 @@ align 64
 Reductions	   rd 2*2*64*64
 FutilityMoveCounts rd 16*2
 
-;ReductionsORG	       rd 2*2*64*64
+;ReductionsORG         rd 2*2*64*64
 ;FutilityMoveCountsORG rd 16*2
 
 DrawValue	   rd 2
@@ -509,25 +498,41 @@ match =1, VERBOSE {
 		lea   rcx, [szGreeting]
 	       call   _WriteOut
 
-	; enter uci loop by default
 
+match =0, VERBOSE {
+.read:
 	       call   _ReadIn
-match =1, VERBOSE {
-	       call   _GetTime
-		mov   qword[VerboseTime1+8*0], rdx
-		mov   qword[VerboseTime1+8*1], rax
-}
+		cmp   byte[rsi], ' '
+		 jb   .read
+	    stdcall   CmpStringCaseless, 'xboard'
+	       test   eax, eax
+		jnz   .xboard
+	    stdcall   CmpStringCaseless, 'uci'
+	       test   eax, eax
+		jnz   .uci
 	    stdcall   CmpStringCaseless, 'quit'
 	       test   eax, eax
-		jnz   @f
-	    stdcall   CmpStringCaseless, 'xboard'
-		lea   rcx, [UciLoop]
-		lea   rdx, [XBoardLoop]
+		jnz   .quit
+		lea   rdi, [Output]
+	    stdcall   PrintString, 'error: unknown command '
+		mov   ecx, 64
+	       call   _ParseToken
+		mov   al, 10
+	      stosb
+	       call   _WriteOut_Output
+		jmp   .read
+.xboard:
+	       call   XboardLoop
 	       test   eax, eax
-	     cmovnz   rcx, rdx
-	       call   rcx
-	@@:
-
+		 jz   .quit
+.uci:
+}
+	       call   UciLoop
+match =0, VERBOSE {
+	       test   eax, eax
+		jnz   .xboard
+.quit:
+}
 	; clean up threads, hash, and tablebases
 		lea   rcx, [options.syzygyPath]
 		mov   rax, '<empty>'
@@ -546,7 +551,7 @@ match =1, VERBOSE {
 	     Assert   e, dword[DebugBalance], 0, 'assertion dword[DebugBalance]==0 failed'
 	       call   _ExitProcess
 
-include 'XBoard.asm'
+include 'Xboard.asm'
 include 'ParseCommandLine.asm'
 include 'Search_Init.asm'
 include 'Position_Init.asm'

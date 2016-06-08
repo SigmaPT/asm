@@ -6,9 +6,9 @@ Search_Clear:
 		mov   byte[mainHash.date],0
 
 		lea   rdi, [CounterMoveHistory]
-		mov   ecx, 16*64*16*64*2
+		mov   ecx, 16*64*16*64
 		xor   eax, eax
-	  rep stosb
+	  rep stosd
 
 		lea   rbx, [mainThread]
 		mov   edx, VALUE_INFINITE

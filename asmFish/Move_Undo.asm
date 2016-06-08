@@ -10,18 +10,8 @@ match =1, DEBUG {
 		mov   dword[rbp+Pos.debugMove], ecx
 }
 
-
-match=1, VERBOSE {
-	       push   rax rcx rsi rdi
-		lea   rdi, [VerboseOutput]
-		mov   rax, 'undo    '
-	      stosq
-	       call   PrintUciMove
-		mov   al, 10
-	      stosb
-		lea   rcx, [VerboseOutput]
-	       call   _WriteOut
-		pop   rdi rsi rcx rax
+match =2, VERBOSE {
+		sub   dword[rbp+Pos.gamePly], 1
 }
 
 

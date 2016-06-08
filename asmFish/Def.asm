@@ -155,7 +155,7 @@ EndgameScale_KRPPKRP_index equ 8  ; KRPP vs KRP
 ENDGAME_SCALE_MAP_SIZE equ 8  ; this should be number of functions added to the eval map
 
 
-EndgameScale_KBPsKs_index   equ 10 ; KB and pawns vs K
+EndgameScale_KBPsK_index   equ 10 ; KB and pawns vs K
 EndgameScale_KQKRPs_index  equ 11 ; KQ vs KR and pawns
 EndgameScale_KPsK_index    equ 12 ; K and pawns vs K
 EndgameScale_KPKP_index    equ 13 ; KP vs KP

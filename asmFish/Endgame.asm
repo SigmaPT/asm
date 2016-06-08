@@ -83,8 +83,9 @@ match =1, VERBOSE {
 .Drawish:
 		xor   eax, esi
 		sub   eax, esi
-VerboseDisplay db 'KXK eval: '
-VerboseDisplayInt rax
+
+SD_String db 'KXK eval: '
+SD_Int rax
 		pop   rsi rdi r14 r15
 		ret
 
@@ -101,8 +102,8 @@ VerboseDisplayInt rax
 	       blsr   r15, r15, rcx
 		jnz   .NextSquare
 		xor   eax, eax
-VerboseDisplay db 'KXK eval: '
-VerboseDisplayInt rax
+SD_String db 'KXK eval: '
+SD_Int rax
 		pop   rsi rdi r14 r15
 		ret
 
@@ -141,8 +142,8 @@ EndgameEval_KBNK:
 		sub   ecx, 1
 		xor   eax, ecx
 		sub   eax, ecx
-VerboseDisplay db 'KBNK eval: '
-VerboseDisplayInt rax
+SD_String db 'KBNK eval: '
+SD_Int rax
 		ret
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -214,8 +215,8 @@ match =1, DEBUG {
 		 bt   r11, rdx
 		sbb   edx, edx
 		and   eax, edx
-VerboseDisplay db 'KPK eval: '
-VerboseDisplayInt rax
+SD_String db 'KPK eval: '
+SD_Int rax
 		ret
 
 
@@ -310,10 +311,10 @@ psq equ r11d
 		shl   wksq, 6
 		mov   ecx, psq
 		and   ecx, 0111b
-     ;		 shl   ecx, 6
+     ;           shl   ecx, 6
 	      movzx   edx, byte[SquareDistance+bksq_+psq_+DELTA_S]
 	      movzx   eax, byte[SquareDistance+wksq_+psq_+DELTA_S]
-     ;	       movzx   ecx, byte[SquareDistance+rcx+psq_]
+     ;         movzx   ecx, byte[SquareDistance+rcx+psq_]
 		sub   eax, edx
 		sub   eax, ecx
 		lea   eax, [8*rax-200]
@@ -323,8 +324,8 @@ psq equ r11d
 		xor   eax, esi
 		sub   eax, esi
 		pop   rsi
-VerboseDisplay db 'KRKP eval: '
-VerboseDisplayInt rax
+SD_String db 'KRKP eval: '
+SD_Int rax
 		ret
 
 restore wksq_
@@ -351,8 +352,8 @@ EndgameEval_KRKB:
 		sub   ecx, 1
 		xor   eax, ecx
 		sub   eax, ecx
-VerboseDisplay db 'KRKB eval: '
-VerboseDisplayInt rax
+SD_String db 'KRKB eval: '
+SD_Int rax
 		ret
 
 
@@ -377,8 +378,8 @@ EndgameEval_KRKN:
 		sub   ecx, 1
 		xor   eax, ecx
 		sub   eax, ecx
-VerboseDisplay db 'KRKN eval: '
-VerboseDisplayInt rax
+SD_String db 'KRKN eval: '
+SD_Int rax
 		ret
 
 
@@ -421,8 +422,8 @@ EndgameEval_KQKP:
 		sub   ecx, 1
 		xor   eax, ecx
 		sub   eax, ecx
-VerboseDisplay db 'KQKP eval: '
-VerboseDisplayInt rax
+SD_String db 'KQKP eval: '
+SD_Int rax
 		ret
 
 
@@ -451,8 +452,8 @@ EndgameEval_KQKR:
 		sub   ecx, 1
 		xor   eax, ecx
 		sub   eax, ecx
-VerboseDisplay db 'KQKR eval: '
-VerboseDisplayInt rax
+SD_String db 'KQKR eval: '
+SD_Int rax
 		ret
 
 
@@ -461,15 +462,15 @@ VerboseDisplayInt rax
 EndgameEval_KNNK:
 	; Some cases of trivial draws
 		xor   eax, eax
-VerboseDisplay db 'KNNK eval: '
-VerboseDisplayInt rax
+SD_String db 'KNNK eval: '
+SD_Int rax
 		ret
 
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	      align   16
-EndgameScale_KBPsKs:
+EndgameScale_KBPsK:
 
 		mov   r8, qword[rbp+Pos.typeBB+8*rcx]
 		mov   r9, r8
@@ -491,8 +492,8 @@ EndgameScale_KBPsKs:
 		 jz   .AllOnGFile
 .ReturnNone:
 		mov   eax, SCALE_FACTOR_NONE
-VerboseDisplay db 'KBPsKs scale: '
-VerboseDisplayInt rax
+SD_String db 'KBPsK scale: '
+SD_Int rax
 		ret
 
 	      align   8
@@ -519,8 +520,8 @@ VerboseDisplayInt rax
 		cmp   byte[SquareDistance+rdx+rax], 2
 		jae   .ReturnNone
 		xor   eax, eax
-VerboseDisplay db 'KBPsKs scale: '
-VerboseDisplayInt rax
+SD_String db 'KBPsK scale: '
+SD_Int rax
 		ret
 
 	      align   8
@@ -585,8 +586,8 @@ VerboseDisplayInt rax
 		cmp   edx, SQ_A7
 		 jb   .ReturnNone
 		xor   eax, eax
-VerboseDisplay db 'KBPsKs scale: '
-VerboseDisplayInt rax
+SD_String db 'KBPsK scale: '
+SD_Int rax
 		ret
 
 
@@ -625,13 +626,13 @@ EndgameScale_KQKRPs:
 		cmp   r10d, RANK_3
 		jne   .ReturnNone
 		xor   eax, eax
-VerboseDisplay db 'KQKRPs scale: '
-VerboseDisplayInt rax
+SD_String db 'KQKRPs scale: '
+SD_Int rax
 		ret
 .ReturnNone:
 		mov   eax, SCALE_FACTOR_NONE
-VerboseDisplay db 'KQKRPs scale: '
-VerboseDisplayInt rax
+SD_String db 'KQKRPs scale: '
+SD_Int rax
 		ret
 
 
@@ -820,8 +821,8 @@ qs equ r15d
 		sub   eax, SCALE_FACTOR_MAX
 		neg   eax
 		pop   rbx r12 r13 r14 r15
-VerboseDisplay db 'KRPKR scale: '
-VerboseDisplayInt rax
+SD_String db 'KRPKR scale: '
+SD_Int rax
 		ret
 .7:
 		cmp   f, FILE_A
@@ -877,8 +878,8 @@ VerboseDisplayInt rax
 		add   eax, SCALE_FACTOR_MAX
 		add   eax, edx
 		pop   rbx r12 r13 r14 r15
-VerboseDisplay db 'KRPKR scale: '
-VerboseDisplayInt rax
+SD_String db 'KRPKR scale: '
+SD_Int rax
 		ret
 .8:
 		cmp   r, RANK_4
@@ -893,8 +894,8 @@ VerboseDisplayInt rax
 		jne   @f
 		mov   eax, 10
 		pop   rbx r12 r13 r14 r15
-VerboseDisplay db 'KRPKR scale: '
-VerboseDisplayInt rax
+SD_String db 'KRPKR scale: '
+SD_Int rax
 		ret
 	@@:
 		mov   eax, bksq
@@ -913,20 +914,20 @@ VerboseDisplayInt rax
 		sub   eax, 24
 		neg   eax
 		pop   rbx r12 r13 r14 r15
-VerboseDisplay db 'KRPKR scale: '
-VerboseDisplayInt rax
+SD_String db 'KRPKR scale: '
+SD_Int rax
 		ret
 .9:
 		mov   eax, SCALE_FACTOR_NONE
 		pop   rbx r12 r13 r14 r15
-VerboseDisplay db 'KRPKR scale: '
-VerboseDisplayInt rax
+SD_String db 'KRPKR scale: '
+SD_Int rax
 		ret
 .ReturnDraw:
 		xor   eax, eax
 		pop   rbx r12 r13 r14 r15
-VerboseDisplay db 'KRPKR scale: '
-VerboseDisplayInt rax
+SD_String db 'KRPKR scale: '
+SD_Int rax
 		ret
 
 
@@ -989,8 +990,8 @@ ppush  equ r11d
 .ReturnNone:
 		mov   eax, SCALE_FACTOR_NONE
 .Return:
-VerboseDisplay db 'KRPKB scale: '
-VerboseDisplayInt rax
+SD_String db 'KRPKB scale: '
+SD_Int rax
 		ret
 .Rank6:
 	       imul   eax, ksq, 64
@@ -1011,8 +1012,8 @@ VerboseDisplayInt rax
 		cmp   eax, 3
 		 jb   .ReturnNone
 		mov   eax, 8
-VerboseDisplay db 'KRPKB scale: '
-VerboseDisplayInt rax
+SD_String db 'KRPKB scale: '
+SD_Int rax
 		ret
 .Rank5:
 		mov   eax, bsq
@@ -1040,8 +1041,8 @@ VerboseDisplayInt rax
 		cmp   ksq, edx
 		jne   .Return
 		mov   eax, 24
-VerboseDisplay db 'KRPKB scale: '
-VerboseDisplayInt rax
+SD_String db 'KRPKB scale: '
+SD_Int rax
 		ret
 restore ksq_
 restore bsq_
@@ -1114,13 +1115,13 @@ KRPPKRPScaleFactors equ (0+256*(9+256*(10+256*(14+256*(21+256*(44))))))
 		lea   ecx, [8*r11]
 		shr   rax, cl
 	      movzx   eax, al
-VerboseDisplay db 'KRPPKRP scale: '
-VerboseDisplayInt rax
+SD_String db 'KRPPKRP scale: '
+SD_Int rax
 		ret
 .ReturnNone:
 		mov   eax, SCALE_FACTOR_NONE
-VerboseDisplay db 'KRPPKRP scale: '
-VerboseDisplayInt rax
+SD_String db 'KRPPKRP scale: '
+SD_Int rax
 		ret
 restore wpsq1_
 restore wpsq2_
@@ -1166,8 +1167,8 @@ ksq_  equ r9
 .ReturnNone:
 		mov   eax, SCALE_FACTOR_NONE
 .Return:
-VerboseDisplay db 'KPsK scale: '
-VerboseDisplayInt rax
+SD_String db 'KPsK scale: '
+SD_Int rax
 		ret
 restore pawns
 restore ksq
@@ -1229,8 +1230,8 @@ weakKingSq_	equ r11
 .ReturnDraw:
 		xor   eax, eax
 
-VerboseDisplay db 'KBPKB scale: '
-VerboseDisplayInt rax
+SD_String db 'KBPKB scale: '
+SD_Int rax
 		pop   rbx
 		ret
 .c2:
@@ -1262,8 +1263,8 @@ VerboseDisplayInt rax
 .ReturnNone:
 		mov   eax, SCALE_FACTOR_NONE
 
-VerboseDisplay db 'KBPKB scale: '
-VerboseDisplayInt rax
+SD_String db 'KBPKB scale: '
+SD_Int rax
 		pop   rbx
 		ret
 
@@ -1325,8 +1326,8 @@ blockSq2_ equ r14
 .ReturnNone:
 		mov   eax, SCALE_FACTOR_NONE
 
-VerboseDisplay db 'KBPPKB scale: '
-VerboseDisplayInt rax
+SD_String db 'KBPPKB scale: '
+SD_Int rax
 
 		pop   rbx r12 r13 r14 r15
 		ret
@@ -1372,8 +1373,8 @@ VerboseDisplayInt rax
 		 jb   .ReturnNone
 .ReturnDraw:
 		xor   eax, eax
-VerboseDisplay db 'KBPPKB scale: '
-VerboseDisplayInt rax
+SD_String db 'KBPPKB scale: '
+SD_Int rax
 		pop   rbx r12 r13 r14 r15
 		ret
 .c1:
@@ -1401,8 +1402,8 @@ VerboseDisplayInt rax
 .ReturnNone2:
 		mov   eax, SCALE_FACTOR_NONE
 		pop   rbx r12 r13 r14 r15
-VerboseDisplay db 'KBPPKB scale: '
-VerboseDisplayInt rax
+SD_String db 'KBPPKB scale: '
+SD_Int rax
 		ret
 .c12:
 		cmp   ksq, blockSq2
@@ -1418,8 +1419,8 @@ VerboseDisplayInt rax
 		jnz   .ReturnDraw
 		mov   eax, SCALE_FACTOR_NONE
 		pop   rbx r12 r13 r14 r15
-VerboseDisplay db 'KBPPKB scale: '
-VerboseDisplayInt rax
+SD_String db 'KBPPKB scale: '
+SD_Int rax
 		ret
 restore wbsq
 restore bbsq
@@ -1488,14 +1489,14 @@ weakKingSq_	equ r10
 	@@:
 		xor   eax, eax
 		pop   rbx
-VerboseDisplay db 'KBPKN scale: '
-VerboseDisplayInt rax
+SD_String db 'KBPKN scale: '
+SD_Int rax
 		ret
 .ReturnNone:
 		mov   eax, SCALE_FACTOR_NONE
 		pop   rbx
-VerboseDisplay db 'KBPKN scale: '
-VerboseDisplayInt rax
+SD_String db 'KBPKN scale: '
+SD_Int rax
 		ret
 restore pawnSq
 restore strongBishopSq
@@ -1531,8 +1532,8 @@ EndgameScale_KNPK:
 		 ja   .Return
 		xor   eax, eax
 .Return:
-VerboseDisplay db 'KNPK scale: '
-VerboseDisplayInt rax
+SD_String db 'KNPK scale: '
+SD_Int rax
 		ret
 
 
@@ -1567,8 +1568,8 @@ weakKingSq_ equ r10
 @@:
 	       imul   eax, weakKingSq, 64
 	      movzx   eax, byte[SquareDistance+rax+pawnSq_]
-VerboseDisplay db 'KNPKB scale: '
-VerboseDisplayInt rax
+SD_String db 'KNPKB scale: '
+SD_Int rax
 		ret
 restore pawnSq
 restore bishopSq
@@ -1581,8 +1582,6 @@ restore weakKingSq_
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 	      align   16
 EndgameScale_KPKP:
-VerboseDisplay db 'strongSide: '
-VerboseDisplayInt rcx
 		mov   rdx, qword[rbp+Pos.typeBB+8*rcx]
 		mov   r9, qword[rbp+Pos.typeBB+8*King]
 		mov   r8, qword[rbp+Pos.typeBB+8*Pawn]
@@ -1619,8 +1618,8 @@ VerboseDisplayInt rcx
 		cmp   eax, 2
 		 jb   .try_KPK
 		mov   eax, SCALE_FACTOR_NONE
-VerboseDisplay db 'KPKP scale: '
-VerboseDisplayInt rax
+SD_String db 'KPKP scale: '
+SD_Int rax
 		ret
 .try_KPK:
 	; look up entry
@@ -1641,6 +1640,6 @@ VerboseDisplayInt rax
 		 bt   r11, rdx
 		sbb   eax, eax
 		and   eax, SCALE_FACTOR_NONE
-VerboseDisplay db 'KPKP scale: '
-VerboseDisplayInt rax
+SD_String db 'KPKP scale: '
+SD_Int rax
 		ret
