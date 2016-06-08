@@ -268,7 +268,7 @@ Position_IsLegal:
 		lea   rdi,[.szErrorKings]
 		mov   rax, qword [rbp+Pos.typeBB+8*White]
 		and   rax, qword [rbp+Pos.typeBB+8*King]
-	     popcnt   rax, rax,r8
+	     popcnt   rax, rax, r8
 		cmp   eax, 1
 		jne   .Failed
 		mov   rax, qword [rbp+Pos.typeBB+8*Black]

@@ -198,6 +198,21 @@ macro vpaddw a,b,c {
  \}
 }
 
+macro vpaddd a,b,c {
+ match =1, CPU_HAS_AVX1 \{
+	     vpaddd  a, b, c
+ \}
+ match =0, CPU_HAS_AVX1 \{
+    if a eq b
+	      paddd  a, c
+    else
+	     movdqa  a, b
+	      paddd  a, c
+    end if
+ \}
+}
+
+
 macro vpand a,b,c {
  match =1, CPU_HAS_AVX1 \{
 	      vpand   a, b, c
@@ -320,6 +335,22 @@ macro vpsubw a,b,c {
     end if
  \}
 }
+
+macro vpsubd a,b,c {
+ match =1, CPU_HAS_AVX1 \{
+	     vpsubd  a, b, c
+ \}
+ match =0, CPU_HAS_AVX1 \{
+    if a eq b
+	      psubd  a, c
+    else
+	     movdqa  a, b
+	      psubd  a, c
+    end if
+ \}
+}
+
+
 
 macro vpunpcklbw a,b,c {
  match =1, CPU_HAS_AVX1 \{

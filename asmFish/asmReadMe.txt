@@ -1,4 +1,4 @@
-1. about asmsf:
+1. about asmFish:
 - it is a rewrite of stockfish into x86-64
 - assemble with fasm (www.flatassembler.net)
 - all of the nonsense that results from c++ coders wrestling with a compiler is avoided here
@@ -24,7 +24,7 @@
 - not tested on more than one core
 - if you see popcnt with three operands, don't panic, its just a macro that needs a temp for non-popcnt cpu's BasicMacros.asm
 - there are three kinds of threads
-  - the gui thread reads from stdin and uses the pos1 and pos2 structures
+  - the gui thread reads from stdin and uses the th1 and th2 structs on its stack
   - the main search thread
   - n-1 worker threads
 - the move generation and picking function have been rewritten
