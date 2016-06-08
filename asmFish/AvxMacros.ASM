@@ -30,10 +30,9 @@ macro vfmaddsd a,b,c,d {
 }
 
 
-
 macro vaddsd a,b,c {
  match =1, CPU_HAS_AVX1 \{
-		     vaddsd  a,b,c
+	     vaddsd  a,b,c
  \}
  match =0, CPU_HAS_AVX1 \{
     if a eq b
@@ -43,6 +42,22 @@ macro vaddsd a,b,c {
     else
 	     movaps  a, b
 	      addsd  a, c
+    end if
+ \}
+}
+
+macro vsubsd a,b,c {
+ match =1, CPU_HAS_AVX1 \{
+	     vsubsd  a,b,c
+ \}
+ match =0, CPU_HAS_AVX1 \{
+    if a eq b
+	      subsd  a, c
+    else if a eq c
+	      subsd  a, b
+    else
+	     movaps  a, b
+	      subsd  a, c
     end if
  \}
 }
@@ -169,6 +184,78 @@ macro vmulsd a,b,c {
     end if
  \}
 }
+
+macro vxorps a,b,c {
+ match =1, CPU_HAS_AVX1 \{
+	     vxorps  a, b, c
+ \}
+ match =0, CPU_HAS_AVX1 \{
+    if a eq b
+	      xorps  a, c
+    else
+	     movaps  a, b
+	      xorps  a, c
+    end if
+ \}
+}
+
+macro vsqrtsd a,b,c {
+ match =1, CPU_HAS_AVX1 \{
+	    vsqrtsd  a, b, c
+ \}
+ match =0, CPU_HAS_AVX1 \{
+    if a eq b
+	     sqrtsd  a, c
+    else
+	     movaps  a, b
+	     sqrtsd  a, c
+    end if
+ \}
+}
+
+macro vminsd a,b,c {
+ match =1, CPU_HAS_AVX1 \{
+	     vminsd  a, b, c
+ \}
+ match =0, CPU_HAS_AVX1 \{
+    if a eq b
+	      minsd  a, c
+    else
+	     movaps  a, b
+	      minsd  a, c
+    end if
+ \}
+}
+
+macro vmaxsd a,b,c {
+ match =1, CPU_HAS_AVX1 \{
+	     vmaxsd  a, b, c
+ \}
+ match =0, CPU_HAS_AVX1 \{
+    if a eq b
+	      maxsd  a, c
+    else
+	     movaps  a, b
+	      maxsd  a, c
+    end if
+ \}
+}
+
+
+
+macro vcvtsd2si a, b {
+ match =1, CPU_HAS_AVX1 \{
+	  vcvtsd2si   a, b
+ \}
+ match =0, CPU_HAS_AVX1 \{
+	   cvtsd2si   a, b
+ \}
+}
+
+
+
+
+
 
 macro vpaddb a,b,c {
  match =1, CPU_HAS_AVX1 \{
@@ -379,18 +466,3 @@ macro vpxor a,b,c {
     end if
  \}
 }
-
-macro vsqrtsd a,b,c {
- match =1, CPU_HAS_AVX1 \{
-	    vsqrtsd  a, b, c
- \}
- match =0, CPU_HAS_AVX1 \{
-    if a eq b
-	     sqrtsd  a, c
-    else
-	     movaps  a, b
-	     sqrtsd  a, c
-    end if
- \}
-}
-
